@@ -51,7 +51,7 @@ export function MarketView() {
   const renderContent = () => {
     if (loading) {
       return (
-        <div className="flex items-center justify-center h-64 text-gray-500">
+        <div className="flex items-center justify-center h-64 text-sol-base1">
           Loading...
         </div>
       )
@@ -59,7 +59,7 @@ export function MarketView() {
 
     if (error) {
       return (
-        <div className="flex items-center justify-center h-64 text-red-500">
+        <div className="flex items-center justify-center h-64 text-sol-red">
           Error: {error}
         </div>
       )
@@ -67,14 +67,14 @@ export function MarketView() {
 
     if (!summary?.content) {
       return (
-        <div className="flex items-center justify-center h-64 text-gray-500">
+        <div className="flex items-center justify-center h-64 text-sol-base1">
           {SOURCE_CONFIG[activeSource].noDataMessage} {summary?.date} yet.
         </div>
       )
     }
 
     return (
-      <div className="prose prose-base max-w-none">
+      <div className="prose prose-base max-w-none prose-headings:text-sol-base01 prose-p:text-sol-base00 prose-a:text-sol-blue prose-strong:text-sol-base01 prose-code:text-sol-cyan prose-code:bg-sol-base2 prose-code:px-1 prose-code:rounded">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{summary.content}</ReactMarkdown>
       </div>
     )
@@ -82,15 +82,15 @@ export function MarketView() {
 
   return (
     <div className="max-w-3xl">
-      <div className="flex gap-1 mb-4 border-b border-gray-200">
+      <div className="flex gap-1 mb-6 border-b border-sol-base1/30">
         {(Object.keys(SOURCE_CONFIG) as SourceTab[]).map((source) => (
           <button
             key={source}
             onClick={() => setActiveSource(source)}
-            className={`px-4 py-2 text-sm font-medium transition-colors ${
+            className={`px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
               activeSource === source
-                ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'text-sol-blue border-b-2 border-sol-blue'
+                : 'text-sol-base00 hover:text-sol-base01'
             }`}
           >
             {SOURCE_CONFIG[source].label}

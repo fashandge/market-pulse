@@ -15,7 +15,7 @@ function App() {
   }
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex min-h-screen bg-sol-base3">
       <Sidebar selectedTab={selectedTab} onSelectTab={setSelectedTab} />
       <main className="flex-1 p-6">{renderContent()}</main>
     </div>

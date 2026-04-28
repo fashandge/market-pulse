@@ -11,16 +11,16 @@ export function Sidebar({ selectedTab, onSelectTab }: SidebarProps) {
   const tickers = ['CRCL']
 
   return (
-    <div className="w-52 min-h-screen bg-gray-50 border-r border-gray-200 p-4">
-      <h1 className="text-lg font-semibold mb-4 text-gray-800">Market Pulse</h1>
+    <div className="w-52 min-h-screen bg-sol-base2 border-r border-sol-base1/30 p-4">
+      <h1 className="text-lg font-semibold mb-4 text-sol-base01">Market Pulse</h1>
 
       <nav className="space-y-1">
         <button
           onClick={() => onSelectTab('market')}
-          className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+          className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
             selectedTab === 'market'
-              ? 'bg-blue-100 text-blue-700'
-              : 'text-gray-600 hover:bg-gray-100'
+              ? 'bg-sol-blue/15 text-sol-blue'
+              : 'text-sol-base00 hover:bg-sol-base3'
           }`}
         >
           Market News
@@ -29,10 +29,10 @@ export function Sidebar({ selectedTab, onSelectTab }: SidebarProps) {
         <div>
           <button
             onClick={() => setTickersExpanded(!tickersExpanded)}
-            className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-md"
+            className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-sol-base00 hover:bg-sol-base3 rounded-lg transition-all duration-200"
           >
             <span>Tickers</span>
-            <span className={`transform transition-transform ${tickersExpanded ? 'rotate-90' : ''}`}>
+            <span className={`transform transition-transform duration-200 ${tickersExpanded ? 'rotate-90' : ''}`}>
               ▶
             </span>
           </button>
@@ -43,10 +43,10 @@ export function Sidebar({ selectedTab, onSelectTab }: SidebarProps) {
                 <button
                   key={ticker}
                   onClick={() => onSelectTab(ticker)}
-                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
                     selectedTab === ticker
-                      ? 'bg-blue-100 text-blue-700 font-medium'
-                      : 'text-gray-500 hover:bg-gray-100'
+                      ? 'bg-sol-blue/15 text-sol-blue font-medium'
+                      : 'text-sol-base00 hover:bg-sol-base3'
                   }`}
                 >
                   {ticker}

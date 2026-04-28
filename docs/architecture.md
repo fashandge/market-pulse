@@ -24,6 +24,11 @@ Market Pulse is a web dashboard for monitoring market and individual stock/crypt
 - Full theming control via CSS variables
 - No build step issues with Vite plugin
 
+**Theme: Solarized Light**
+- Defined in `index.css` using `@theme` directive with `--color-sol-*` variables
+- Warm cream backgrounds (base3/base2), blue accents, green/red for changes
+- Applied consistently across all components including Plotly charts
+
 ### Backend: FastAPI
 
 **Why FastAPI over Flask/Django:**

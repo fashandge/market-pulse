@@ -8,7 +8,7 @@ Market Pulse - A web dashboard for monitoring market and individual stock/crypto
 
 ## Tech Stack
 
-- **Frontend**: React + Vite + TypeScript + Tailwind CSS v4
+- **Frontend**: React + Vite + TypeScript + Tailwind CSS v4 (Solarized Light theme)
 - **Backend**: FastAPI (Python)
 - **Charts**: Plotly (react-plotly.js)
 - **Data Sources**: CoinMarketCap API, news summaries (NDX, CFZH forum, X market news)
@@ -66,4 +66,5 @@ Open http://localhost:5173
 - All timestamps are in LA time (America/Los_Angeles)
 - Market cap values are displayed in billions (e.g., "$77.61B")
 - Backend API endpoints are under `/api/tickers/{ticker}/` and `/api/market/`
+- UI uses Solarized Light color theme (defined in `index.css` as `--color-sol-*` variables)
 - Temp files (screenshots, logs, etc.) go in `tmp/` folder

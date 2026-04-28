@@ -1,6 +1,19 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+@theme {
+  --color-sol-base3: #fdf6e3;
+  --color-sol-base2: #eee8d5;
+  --color-sol-base1: #93a1a1;
+  --color-sol-base00: #657b83;
+  --color-sol-base01: #586e75;
+  --color-sol-blue: #268bd2;
+  --color-sol-cyan: #2aa198;
+  --color-sol-green: #859900;
+  --color-sol-red: #dc322f;
+  --color-sol-yellow: #b58900;
+}
+
 body {
   margin: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
