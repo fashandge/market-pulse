@@ -1,9 +1,14 @@
 """FastAPI backend for the market dashboard."""
 
+from datetime import date
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.backend.tickers import crcl
+
+NEWS_BASE_PATH = Path.home() / "projects/news/data/market_news"
 
 app = FastAPI(title="Market Dashboard API")
 
@@ -44,3 +49,23 @@ def get_crcl_changes():
         "latest_market_cap": latest_market_cap,
         "changes": changes,
     }
+
+
+@app.get("/api/market/ndx-summary")
+def get_ndx_summary():
+    """Get the latest NDX news summary for today."""
+    today = date.today()
+    date_str = today.strftime("%Y%m%d")
+    formatted_date = today.strftime("%B %d, %Y")
+
+    summary_dir = NEWS_BASE_PATH / "ndx" / date_str / "summary"
+
+    if not summary_dir.exists():
+        return {"date": formatted_date, "content": None}
+
+    md_files = sorted(summary_dir.glob("*.md"), reverse=True)
+    if not md_files:
+        return {"date": formatted_date, "content": None}
+
+    content = md_files[0].read_text()
+    return {"date": formatted_date, "content": content}

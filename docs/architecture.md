@@ -48,16 +48,16 @@ Market Pulse is a web dashboard for monitoring market and individual stock/crypt
 ## Data Flow
 
 ```
-CoinMarketCap API
-       ↓
-   FastAPI Backend (port 8000)
-   - Fetches data
-   - Converts UTC → LA time
-   - Computes changes (1d, 7d, 30d, 90d, YTD)
-       ↓
+CoinMarketCap API                    NDX News Summaries
+       ↓                             ~/projects/news/data/market_news/ndx/{date}/summary/
+   FastAPI Backend (port 8000)       ↓
+   - Fetches data                    - Reads latest .md file
+   - Converts UTC → LA time          - Returns markdown content
+   - Computes changes
+       ↓                             ↓
    React Frontend (port 5173)
-   - Filters data by time range
-   - Renders Plotly chart
+   - Filters data by time range      - Renders markdown (react-markdown)
+   - Renders Plotly chart            - Displays tables via remark-gfm
    - Displays changes table
 ```
 
@@ -67,15 +67,19 @@ CoinMarketCap API
 |----------|--------|-------------|
 | `/api/tickers/crcl/market-cap` | GET | Returns 3Y market cap time series |
 | `/api/tickers/crcl/changes` | GET | Returns percentage changes |
+| `/api/market/ndx-summary` | GET | Returns today's NDX news summary (markdown) |
 
 ## Frontend Components
 
 ```
 App.tsx
 ├── Sidebar.tsx
-│   - Market tab (placeholder)
+│   - Market tab → MarketView
 │   - Tickers section (collapsible)
-│     └── CRCL tab
+│     └── CRCL tab → TickerView
+│
+├── MarketView.tsx
+│   └── NDX news summary (react-markdown + remark-gfm)
 │
 └── TickerView.tsx
     ├── Header (ticker name, market cap link)

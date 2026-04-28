@@ -10,11 +10,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.2.4",
     "plotly.js": "^3.5.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "react-plotly.js": "^2.6.0"
+    "react-markdown": "^10.1.0",
+    "react-plotly.js": "^2.6.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
