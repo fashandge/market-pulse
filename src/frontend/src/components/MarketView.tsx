@@ -74,14 +74,14 @@ export function MarketView() {
     }
 
     return (
-      <div className="prose prose-sm max-w-none">
+      <div className="prose prose-base max-w-none">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{summary.content}</ReactMarkdown>
       </div>
     )
   }
 
   return (
-    <div>
+    <div className="max-w-3xl">
       <div className="flex gap-1 mb-4 border-b border-gray-200">
         {(Object.keys(SOURCE_CONFIG) as SourceTab[]).map((source) => (
           <button
