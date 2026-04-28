@@ -41,12 +41,16 @@ src/
 ## Running the App
 
 ```bash
+# Quick start (both servers in one terminal)
+market-pulse-server
+
+# Or manually in separate terminals:
 # Terminal 1 - Backend (port 8000)
-cd /Users/jianfuchen/projects/monitor
+cd /Users/jianfuchen/projects/market-pulse
 /opt/homebrew/Caskroom/miniconda/base/envs/ml/bin/python -m uvicorn src.backend.main:app --reload
 
 # Terminal 2 - Frontend (port 5173)
-cd /Users/jianfuchen/projects/monitor/src/frontend
+cd /Users/jianfuchen/projects/market-pulse/src/frontend
 npm run dev
 ```
 
