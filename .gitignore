@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Temp files
+tmp/
+*.png
+*.jpg
+
+# Playwright
+.playwright-mcp/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
