@@ -11,7 +11,7 @@ Market Pulse - A web dashboard for monitoring market and individual stock/crypto
 - **Frontend**: React + Vite + TypeScript + Tailwind CSS v4
 - **Backend**: FastAPI (Python)
 - **Charts**: Plotly (react-plotly.js)
-- **Data Sources**: CoinMarketCap API, NDX news summaries (local files)
+- **Data Sources**: CoinMarketCap API, news summaries (NDX, CFZH forum, X market news)
 
 ## Project Structure
 
@@ -31,7 +31,7 @@ src/
     │   ├── index.css     # Tailwind CSS
     │   └── components/
     │       ├── Sidebar.tsx
-    │       ├── MarketView.tsx      # NDX news summary display
+    │       ├── MarketView.tsx      # Market news with sub-tabs (Trading View, CFZH, X)
     │       ├── TickerView.tsx
     │       └── MarketCapChart.tsx
     ├── index.html

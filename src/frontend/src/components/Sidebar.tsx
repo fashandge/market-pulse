@@ -23,7 +23,7 @@ export function Sidebar({ selectedTab, onSelectTab }: SidebarProps) {
               : 'text-gray-600 hover:bg-gray-100'
           }`}
         >
-          Market
+          Market News
         </button>
 
         <div>

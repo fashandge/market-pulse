@@ -48,17 +48,17 @@ Market Pulse is a web dashboard for monitoring market and individual stock/crypt
 ## Data Flow
 
 ```
-CoinMarketCap API                    NDX News Summaries
-       ↓                             ~/projects/news/data/market_news/ndx/{date}/summary/
-   FastAPI Backend (port 8000)       ↓
-   - Fetches data                    - Reads latest .md file
-   - Converts UTC → LA time          - Returns markdown content
-   - Computes changes
-       ↓                             ↓
-   React Frontend (port 5173)
-   - Filters data by time range      - Renders markdown (react-markdown)
-   - Renders Plotly chart            - Displays tables via remark-gfm
-   - Displays changes table
+CoinMarketCap API                    News Summaries (3 sources)
+       ↓                             - NDX: ~/projects/news/data/market_news/ndx/{date}/summary/
+   FastAPI Backend (port 8000)       - CFZH: ~/projects/news/data/cfzh_forum_summaries/
+   - Fetches data                    - X: ~/projects/news/data/x_market_news/
+   - Converts UTC → LA time          ↓
+   - Computes changes                - Reads latest .md file for today
+       ↓                             - Returns markdown content
+   React Frontend (port 5173)        ↓
+   - Filters data by time range      - Sub-tabs: Trading View, CFZH, X
+   - Renders Plotly chart            - Renders markdown (react-markdown)
+   - Displays changes table          - Displays tables via remark-gfm
 ```
 
 ## API Endpoints
@@ -67,19 +67,22 @@ CoinMarketCap API                    NDX News Summaries
 |----------|--------|-------------|
 | `/api/tickers/crcl/market-cap` | GET | Returns 3Y market cap time series |
 | `/api/tickers/crcl/changes` | GET | Returns percentage changes |
-| `/api/market/ndx-summary` | GET | Returns today's NDX news summary (markdown) |
+| `/api/market/ndx-summary` | GET | Returns today's NDX/Trading View summary |
+| `/api/market/cfzh-summary` | GET | Returns today's CFZH forum summary |
+| `/api/market/x-summary` | GET | Returns today's X market news summary |
 
 ## Frontend Components
 
 ```
 App.tsx
 ├── Sidebar.tsx
-│   - Market tab → MarketView
+│   - Market News tab → MarketView
 │   - Tickers section (collapsible)
 │     └── CRCL tab → TickerView
 │
 ├── MarketView.tsx
-│   └── NDX news summary (react-markdown + remark-gfm)
+│   ├── Sub-tabs: Trading View | CFZH | X
+│   └── News summary (react-markdown + remark-gfm)
 │
 └── TickerView.tsx
     ├── Header (ticker name, market cap link)

@@ -9,6 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.backend.tickers import crcl
 
 NEWS_BASE_PATH = Path.home() / "projects/news/data/market_news"
+CFZH_PATH = Path.home() / "projects/news/data/cfzh_forum_summaries"
+X_MARKET_NEWS_PATH = Path.home() / "projects/news/data/x_market_news"
 
 app = FastAPI(title="Market Dashboard API")
 
@@ -64,6 +66,40 @@ def get_ndx_summary():
         return {"date": formatted_date, "content": None}
 
     md_files = sorted(summary_dir.glob("*.md"), reverse=True)
+    if not md_files:
+        return {"date": formatted_date, "content": None}
+
+    content = md_files[0].read_text()
+    return {"date": formatted_date, "content": content}
+
+
+@app.get("/api/market/cfzh-summary")
+def get_cfzh_summary():
+    """Get the latest CFZH forum summary for today."""
+    today = date.today()
+    date_str = today.strftime("%Y%m%d")
+    formatted_date = today.strftime("%B %d, %Y")
+
+    pattern = f"cfzh_summary_{date_str}_*.md"
+    md_files = sorted(CFZH_PATH.glob(pattern), reverse=True)
+
+    if not md_files:
+        return {"date": formatted_date, "content": None}
+
+    content = md_files[0].read_text()
+    return {"date": formatted_date, "content": content}
+
+
+@app.get("/api/market/x-summary")
+def get_x_summary():
+    """Get the latest X market news summary for today."""
+    today = date.today()
+    date_str = today.strftime("%Y%m%d")
+    formatted_date = today.strftime("%B %d, %Y")
+
+    pattern = f"x_market_news_{date_str}_*.md"
+    md_files = sorted(X_MARKET_NEWS_PATH.glob(pattern), reverse=True)
+
     if not md_files:
         return {"date": formatted_date, "content": None}
 
