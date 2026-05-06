@@ -61,7 +61,7 @@ CoinMarketCap API                    News Summaries (3 sources)
    - Computes changes                - Reads latest .md file for today
        ↓                             - Returns markdown content
    React Frontend (port 5173)        ↓
-   - Filters data by time range      - Sub-tabs: Trading View, CFZH, X
+   - Filters data by time range      - Sub-tabs: Trading View, X, CFZH
    - Renders Plotly chart            - Renders markdown (react-markdown)
    - Displays changes table          - Displays tables via remark-gfm
 ```
@@ -86,7 +86,7 @@ App.tsx
 │     └── CRCL tab → TickerView
 │
 ├── MarketView.tsx
-│   ├── Sub-tabs: Trading View | CFZH | X
+│   ├── Sub-tabs: Trading View | X | CFZH
 │   └── News summary (react-markdown + remark-gfm)
 │
 └── TickerView.tsx

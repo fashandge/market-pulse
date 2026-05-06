@@ -31,7 +31,7 @@ src/
     │   ├── index.css     # Tailwind CSS
     │   └── components/
     │       ├── Sidebar.tsx
-    │       ├── MarketView.tsx      # Market news with sub-tabs (Trading View, CFZH, X)
+    │       ├── MarketView.tsx      # Market news with sub-tabs (Trading View, X, CFZH)
     │       ├── TickerView.tsx
     │       └── MarketCapChart.tsx
     ├── index.html

@@ -28,7 +28,6 @@ export function MarketCapChart({ data, title }: MarketCapChartProps) {
   const solBase00 = '#657b83' // body text
   const solBase01 = '#586e75' // emphasis
   const solBlue = '#268bd2'
-  const solCyan = '#2aa198'
 
   return (
     <Plot

@@ -9,6 +9,8 @@ interface SummaryResponse {
 
 type SourceTab = 'trading-view' | 'cfzh' | 'x'
 
+const SOURCE_TABS: SourceTab[] = ['trading-view', 'x', 'cfzh']
+
 const SOURCE_CONFIG: Record<SourceTab, { label: string; endpoint: string; noDataMessage: string }> = {
   'trading-view': {
     label: 'Trading View',
@@ -83,7 +85,7 @@ export function MarketView() {
   return (
     <div className="max-w-3xl">
       <div className="flex gap-1 mb-6 border-b border-sol-base1/30">
-        {(Object.keys(SOURCE_CONFIG) as SourceTab[]).map((source) => (
+        {SOURCE_TABS.map((source) => (
           <button
             key={source}
             onClick={() => setActiveSource(source)}
