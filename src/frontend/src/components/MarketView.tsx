@@ -135,7 +135,20 @@ export function MarketView() {
               </div>
             )}
             <div className="px-5 py-4">
-              <p className="text-sol-base01 whitespace-pre-wrap text-sm leading-relaxed">{post.text}</p>
+              <p className="text-sol-base01 whitespace-pre-wrap text-sm leading-relaxed">
+                {(() => {
+                  const urlMatch = post.text.match(/(.*?)\s*(https?:\/\/\S+)\s*$/s)
+                  if (urlMatch) {
+                    return (
+                      <>
+                        {urlMatch[1]}{' '}
+                        <a href={urlMatch[2]} target="_blank" rel="noopener noreferrer" className="text-sol-blue hover:underline">[link]</a>
+                      </>
+                    )
+                  }
+                  return post.text
+                })()}
+              </p>
               <p className="text-sol-base1 text-xs mt-3">{formatTime(post.t)}</p>
             </div>
           </div>
