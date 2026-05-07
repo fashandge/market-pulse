@@ -92,7 +92,7 @@ def get_cfzh_summary():
     content = latest.read_text()
     time_part = latest.stem.split("_")[-1]
     generated_time = f"{time_part[:2]}:{time_part[2:]}"
-    content = f"Generated {formatted_date} {generated_time}\n\n{content}"
+    content = f"Generated {generated_time} ({formatted_date})\n\n{content}"
     return {"date": formatted_date, "content": content}
 
 
