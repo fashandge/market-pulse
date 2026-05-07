@@ -53,17 +53,18 @@ Market Pulse is a web dashboard for monitoring market and individual stock/crypt
 ## Data Flow
 
 ```
-CoinMarketCap API                    News Summaries (3 sources)
+CoinMarketCap API                    News Summaries (3 sources)         TrendSpider Posts
        ↓                             - NDX: ~/projects/news/data/market_news/ndx/{date}/summary/
    FastAPI Backend (port 8000)       - CFZH: ~/projects/news/data/cfzh_forum_summaries/
    - Fetches data                    - X: ~/projects/news/data/x_market_news/
-   - Converts UTC → LA time          ↓
-   - Computes changes                - Reads latest .md file for today
-       ↓                             - Returns markdown content
-   React Frontend (port 5173)        ↓
-   - Filters data by time range      - Sub-tabs: Trading View, X, CFZH
-   - Renders Plotly chart            - Renders markdown (react-markdown)
-   - Displays changes table          - Displays tables via remark-gfm
+   - Converts UTC → LA time          - TrendSpider: ~/projects/news/data/trendspider/
+   - Computes changes                ↓
+       ↓                             - Summaries: reads latest .md for today
+   React Frontend (port 5173)        - TrendSpider: reads JSONL, returns posts with photos
+   - Filters data by time range      ↓
+   - Renders Plotly chart            - Sub-tabs: Trading View, X, CFZH, Trend Spider
+   - Displays changes table          - Summaries rendered as markdown (react-markdown)
+                                     - TrendSpider rendered as card feed with images
 ```
 
 ## API Endpoints
@@ -75,6 +76,7 @@ CoinMarketCap API                    News Summaries (3 sources)
 | `/api/market/ndx-summary` | GET | Returns today's NDX/Trading View summary |
 | `/api/market/cfzh-summary` | GET | Returns today's CFZH forum summary |
 | `/api/market/x-summary` | GET | Returns today's X market news summary |
+| `/api/market/trendspider-posts` | GET | Returns up to 50 recent TrendSpider posts (JSONL) |
 
 ## Frontend Components
 
@@ -86,8 +88,9 @@ App.tsx
 │     └── CRCL tab → TickerView
 │
 ├── MarketView.tsx
-│   ├── Sub-tabs: Trading View | X | CFZH
-│   └── News summary (react-markdown + remark-gfm)
+│   ├── Sub-tabs: Trading View | X | CFZH | Trend Spider
+│   ├── Summary tabs: markdown (react-markdown + remark-gfm)
+│   └── Trend Spider tab: card feed with images and timestamps
 │
 └── TickerView.tsx
     ├── Header (ticker name, market cap link)

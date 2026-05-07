@@ -82,6 +82,17 @@ export function MarketView() {
     }
   }, [activeSource])
 
+  const formatTime = (iso: string) => {
+    const d = new Date(iso)
+    return d.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    })
+  }
+
   const renderTrendSpiderContent = () => {
     if (trendSpiderPosts.length === 0) {
       return (
@@ -92,27 +103,28 @@ export function MarketView() {
     }
 
     return (
-      <div className="space-y-0">
+      <div className="flex flex-col items-center gap-4">
         {trendSpiderPosts.map((post, index) => (
-          <div key={index}>
-            <div className="py-4">
-              <p className="text-sol-base00 whitespace-pre-wrap text-sm leading-relaxed">{post.text}</p>
-              {post.media.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {post.media.map((url, imgIndex) => (
-                    <img
-                      key={imgIndex}
-                      src={url}
-                      alt=""
-                      className="max-w-[600px] w-full rounded border border-sol-base2"
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-            {index < trendSpiderPosts.length - 1 && (
-              <hr className="border-sol-base2" />
+          <div
+            key={index}
+            className="w-full max-w-xl bg-sol-base3 rounded-xl border border-sol-base2 shadow-sm overflow-hidden"
+          >
+            {post.media.length > 0 && (
+              <div className="flex flex-col">
+                {post.media.map((url, imgIndex) => (
+                  <img
+                    key={imgIndex}
+                    src={url}
+                    alt=""
+                    className="w-full object-cover"
+                  />
+                ))}
+              </div>
             )}
+            <div className="px-5 py-4">
+              <p className="text-sol-base01 whitespace-pre-wrap text-sm leading-relaxed">{post.text}</p>
+              <p className="text-sol-base1 text-xs mt-3">{formatTime(post.t)}</p>
+            </div>
           </div>
         ))}
       </div>
