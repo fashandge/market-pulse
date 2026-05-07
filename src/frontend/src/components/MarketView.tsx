@@ -203,7 +203,7 @@ export function MarketView() {
             className={`px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
               activeSource === source
                 ? 'text-sol-blue border-b-2 border-sol-blue'
-                : 'text-sol-base00 hover:text-sol-base01'
+                : 'text-sol-base00 hover:text-sol-base01 hover:bg-sol-blue/20 rounded-t cursor-pointer'
             }`}
           >
             {TAB_LABELS[source]}
