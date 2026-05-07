@@ -88,7 +88,11 @@ def get_cfzh_summary():
     if not md_files:
         return {"date": formatted_date, "content": None}
 
-    content = md_files[0].read_text()
+    latest = md_files[0]
+    content = latest.read_text()
+    time_part = latest.stem.split("_")[-1]
+    generated_time = f"{time_part[:2]}:{time_part[2:]}"
+    content = f"Generated {formatted_date} {generated_time}\n\n{content}"
     return {"date": formatted_date, "content": content}
 
 
