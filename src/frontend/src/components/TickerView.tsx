@@ -20,6 +20,10 @@ interface TickerViewProps {
 
 type TimeRange = 'YTD' | '1Y' | '3Y'
 
+const DISPLAY_NAMES: Record<string, string> = {
+  CRCL: 'USDC',
+}
+
 export function TickerView({ ticker }: TickerViewProps) {
   const [allData, setAllData] = useState<DataPoint[]>([])
   const [changes, setChanges] = useState<Changes | null>(null)
@@ -116,7 +120,7 @@ export function TickerView({ ticker }: TickerViewProps) {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-baseline gap-4">
-        <h2 className="text-2xl font-semibold text-sol-base01">{ticker}</h2>
+        <h2 className="text-2xl font-semibold text-sol-base01">{DISPLAY_NAMES[ticker] ?? ticker}</h2>
         <span className="text-lg text-sol-base00">
           Market Cap:{' '}
           <a
@@ -166,7 +170,7 @@ export function TickerView({ ticker }: TickerViewProps) {
         </div>
       </div>
 
-      <MarketCapChart data={chartData} title={`${ticker} Market Cap (${timeRange})`} timeRange={timeRange} />
+      <MarketCapChart data={chartData} title={`${DISPLAY_NAMES[ticker] ?? ticker} Market Cap (${timeRange})`} timeRange={timeRange} />
 
       <div className="bg-sol-base3 rounded-lg border border-sol-base1/30 overflow-hidden max-w-md mx-auto shadow-sm">
         <table className="w-full">
