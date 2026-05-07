@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -52,6 +52,18 @@ export function MarketView() {
   const [trendSpiderPosts, setTrendSpiderPosts] = useState<TrendSpiderPost[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+
+  const closeLightbox = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') setLightboxUrl(null)
+  }, [])
+
+  useEffect(() => {
+    if (lightboxUrl) {
+      document.addEventListener('keydown', closeLightbox)
+      return () => document.removeEventListener('keydown', closeLightbox)
+    }
+  }, [lightboxUrl, closeLightbox])
 
   useEffect(() => {
     setLoading(true)
@@ -116,7 +128,8 @@ export function MarketView() {
                     key={imgIndex}
                     src={url}
                     alt=""
-                    className="w-full object-cover"
+                    className="w-full object-cover cursor-zoom-in"
+                    onClick={() => setLightboxUrl(url)}
                   />
                 ))}
               </div>
@@ -185,6 +198,20 @@ export function MarketView() {
         ))}
       </div>
       {renderContent()}
+
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 cursor-zoom-out"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <img
+            src={lightboxUrl}
+            alt=""
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   )
 }
