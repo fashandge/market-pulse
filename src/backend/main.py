@@ -1,5 +1,6 @@
 """FastAPI backend for the market dashboard."""
 
+import json
 from datetime import date
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from src.backend.tickers import crcl
 NEWS_BASE_PATH = Path.home() / "projects/news/data/market_news"
 CFZH_PATH = Path.home() / "projects/news/data/cfzh_forum_summaries"
 X_MARKET_NEWS_PATH = Path.home() / "projects/news/data/x_market_news"
+TRENDSPIDER_PATH = Path.home() / "projects/news/data/trendspider"
 
 app = FastAPI(title="Market Dashboard API")
 
@@ -105,3 +107,27 @@ def get_x_summary():
 
     content = md_files[0].read_text()
     return {"date": formatted_date, "content": content}
+
+
+@app.get("/api/market/trendspider-posts")
+def get_trendspider_posts():
+    """Get recent TrendSpider posts filtered to watchlist tickers."""
+    max_posts = 50
+    posts = []
+    jsonl_files = sorted(TRENDSPIDER_PATH.glob("trendspider_*.jsonl"), reverse=True)
+
+    for jsonl_file in jsonl_files:
+        for line in jsonl_file.read_text().strip().split("\n"):
+            if line:
+                post = json.loads(line)
+                posts.append(post)
+        if len(posts) >= max_posts:
+            break
+
+    posts.sort(key=lambda p: p.get("t", ""), reverse=True)
+    posts = posts[:max_posts]
+
+    for post in posts:
+        post.pop("id", None)
+
+    return {"posts": posts}
