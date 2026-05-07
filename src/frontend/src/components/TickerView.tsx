@@ -166,7 +166,7 @@ export function TickerView({ ticker }: TickerViewProps) {
         </div>
       </div>
 
-      <MarketCapChart data={chartData} title={`${ticker} Market Cap (${timeRange})`} />
+      <MarketCapChart data={chartData} title={`${ticker} Market Cap (${timeRange})`} timeRange={timeRange} />
 
       <div className="bg-sol-base3 rounded-lg border border-sol-base1/30 overflow-hidden max-w-md mx-auto shadow-sm">
         <table className="w-full">

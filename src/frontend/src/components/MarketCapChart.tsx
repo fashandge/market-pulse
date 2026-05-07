@@ -11,11 +11,15 @@ interface DataPoint {
 interface MarketCapChartProps {
   data: DataPoint[]
   title: string
+  timeRange?: 'YTD' | '1Y' | '3Y'
 }
 
-export function MarketCapChart({ data, title }: MarketCapChartProps) {
+export function MarketCapChart({ data, title, timeRange }: MarketCapChartProps) {
   const timestamps = data.map((d) => d.timestamp)
   const marketCaps = data.map((d) => d.market_cap / 1e9) // Convert to billions
+
+  // Format based on time range: shorter ranges need day precision
+  const tickformat = timeRange === 'YTD' ? '%b %d' : timeRange === '1Y' ? "%b '%y" : '%b %Y'
 
   // Add padding to show the last data point clearly
   const lastDate = timestamps.length > 0 ? new Date(timestamps[timestamps.length - 1]) : null
@@ -50,7 +54,7 @@ export function MarketCapChart({ data, title }: MarketCapChartProps) {
         },
         xaxis: {
           title: { text: 'Date', font: { color: solBase00 } },
-          tickformat: '%b %Y',
+          tickformat,
           tickfont: { color: solBase00 },
           gridcolor: `${solBase1}40`,
           linecolor: solBase1,
