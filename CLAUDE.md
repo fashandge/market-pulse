@@ -11,7 +11,7 @@ Market Pulse - A web dashboard for monitoring market and individual stock/crypto
 - **Frontend**: React + Vite + TypeScript + Tailwind CSS v4 (Solarized Light theme)
 - **Backend**: FastAPI (Python)
 - **Charts**: Plotly (react-plotly.js)
-- **Data Sources**: CoinMarketCap API, news summaries (NDX, CFZH forum, X market news), TrendSpider posts
+- **Data Sources**: CoinMarketCap API, TradingView watchlist (crawl4ai), news summaries (NDX, CFZH forum, X market news), TrendSpider posts
 
 ## Project Structure
 
@@ -20,6 +20,8 @@ src/
 ├── backend/              # Python FastAPI backend
 │   ├── __init__.py
 │   ├── main.py           # FastAPI app, API endpoints
+│   ├── watchlist_scraper.py  # TradingView watchlist scraper (crawl4ai)
+│   ├── market_overview.py    # Market overview data assembler (groups/themes)
 │   └── tickers/          # Ticker data modules
 │       ├── __init__.py
 │       └── crcl.py       # USDC/CRCL data fetching
@@ -31,6 +33,7 @@ src/
     │   ├── index.css     # Tailwind CSS
     │   └── components/
     │       ├── Sidebar.tsx
+    │       ├── MarketOverview.tsx   # Market overview card grid (default view)
     │       ├── MarketView.tsx      # Market news with sub-tabs (Trading View, X, CFZH, Trend Spider)
     │       ├── TickerView.tsx
     │       └── MarketCapChart.tsx

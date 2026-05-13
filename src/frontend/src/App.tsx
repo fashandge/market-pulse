@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { TickerView } from './components/TickerView'
 import { MarketView } from './components/MarketView'
+import { MarketOverview } from './components/MarketOverview'
 
 function App() {
   const [selectedTab, setSelectedTab] = useState(() => {
-    return localStorage.getItem('selectedTab') || 'market'
+    return localStorage.getItem('selectedTab') || 'overview'
   })
 
   const handleSelectTab = (tab: string) => {
@@ -14,6 +15,9 @@ function App() {
   }
 
   const renderContent = () => {
+    if (selectedTab === 'overview') {
+      return <MarketOverview />
+    }
     if (selectedTab === 'market') {
       return <MarketView />
     }

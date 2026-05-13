@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Market Overview — Card Grid Mockup</title>
+<style>
+  :root {
+    --sol-base3: #fdf6e3;
+    --sol-base2: #eee8d5;
+    --sol-base1: #93a1a1;
+    --sol-base00: #657b83;
+    --sol-base01: #586e75;
+    --sol-blue: #268bd2;
+    --sol-cyan: #2aa198;
+    --sol-green: #859900;
+    --sol-red: #dc322f;
+    --sol-yellow: #b58900;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--sol-base3);
+    color: var(--sol-base00);
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 208px;
+    min-height: 100vh;
+    background: var(--sol-base2);
+    border-right: 1px solid rgba(147, 161, 161, 0.3);
+    padding: 16px;
+    flex-shrink: 0;
+  }
+  .sidebar h1 { font-size: 1.125rem; font-weight: 600; color: var(--sol-base01); margin-bottom: 16px; }
+  .sidebar .nav-btn {
+    display: block; width: 100%; text-align: left; padding: 8px 12px; border-radius: 8px;
+    font-size: 0.875rem; font-weight: 500; border: none; cursor: pointer; background: none;
+    color: var(--sol-base00); transition: all 0.2s; margin-bottom: 4px;
+  }
+  .sidebar .nav-btn:hover { background: var(--sol-base3); }
+  .sidebar .nav-btn.active { background: rgba(38, 139, 210, 0.15); color: var(--sol-blue); }
+
+  /* ── Main content area ── */
+  .main-area {
+    flex: 1;
+    padding: 20px 24px;
+    overflow-y: auto;
+  }
+  .main-area > h2 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--sol-base01);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 16px;
+  }
+
+  /* ── Sections with dividers ── */
+  .section-group {
+    margin-bottom: 8px;
+  }
+  .section-group + .section-group {
+    border-top: 1px solid rgba(147, 161, 161, 0.25);
+    padding-top: 12px;
+  }
+  .section-label {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--sol-blue);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+  }
+
+  /* ── Card grid ── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 10px;
+    align-items: start;
+  }
+
+  /* ── Group card ── */
+  .group-card {
+    background: var(--sol-base2);
+    border: 1px solid rgba(147, 161, 161, 0.15);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 10px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+  }
+  .card-header:hover { background: rgba(147, 161, 161, 0.08); }
+  .card-left {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .card-arrow {
+    font-size: 0.7rem;
+    color: var(--sol-base1);
+    transition: transform 0.2s;
+  }
+  .card-header.expanded .card-arrow { transform: rotate(90deg); }
+  .card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--sol-base01);
+  }
+  .card-avg {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  /* ── Ticker rows inside card ── */
+  .card-body { padding: 0 4px 5px; }
+  .t-row {
+    display: grid;
+    grid-template-columns: 78px 66px 82px;
+    align-items: center;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: background 0.12s;
+    cursor: default;
+    position: relative;
+  }
+  .t-row:hover { background: rgba(38, 139, 210, 0.07); }
+  .t-sym {
+    font-size: 1.035rem;
+    font-weight: 600;
+    color: var(--sol-base01);
+  }
+  .t-chg {
+    font-size: 1rem;
+    font-weight: 600;
+    text-align: right;
+  }
+  .t-price {
+    font-size: 1rem;
+    text-align: right;
+    color: var(--sol-base00);
+  }
+
+  .up { color: var(--sol-green); }
+  .down { color: var(--sol-red); }
+
+  /* Hover tooltip */
+  .t-tip {
+    display: none;
+    position: absolute;
+    top: -32px;
+    right: 0;
+    background: var(--sol-base01);
+    color: var(--sol-base3);
+    padding: 4px 8px;
+    border-radius: 5px;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    z-index: 10;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  }
+  .t-tip::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    right: 14px;
+    width: 6px; height: 6px;
+    background: var(--sol-base01);
+    transform: rotate(45deg);
+  }
+  .t-row:hover .t-tip { display: block; }
+</style>
+</head>
+<body>
+
+<!-- ── Sidebar ── -->
+<div class="sidebar">
+  <h1>Market Pulse</h1>
+  <nav>
+    <button class="nav-btn">Market News</button>
+    <button class="nav-btn active">Market Overview</button>
+    <button class="nav-btn">CRCL</button>
+  </nav>
+</div>
+
+<!-- ── Main Area ── -->
+<div class="main-area">
+  <!-- ════════════════════════════════════════════ -->
+  <!-- SECTION: Overview                            -->
+  <!-- ════════════════════════════════════════════ -->
+  <div class="section-group">
+    <div class="section-label">Overview</div>
+    <div class="card-grid">
+
+      <!-- Major Indices -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Major Indices</span></div>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">NDX</span><span class="t-chg down">-0.87%</span><span class="t-price">29,064.80</span><div class="t-tip">Vol: 1.36 B</div></div>
+          <div class="t-row"><span class="t-sym">QQQ</span><span class="t-chg down">-0.85%</span><span class="t-price">707.24</span><div class="t-tip">Vol: 45.87 M &nbsp; Avg: 39.19 M</div></div>
+          <div class="t-row"><span class="t-sym">SPX</span><span class="t-chg down">-0.16%</span><span class="t-price">7,400.97</span><div class="t-tip">Vol: 3.19 B &nbsp; Avg: 3.23 B</div></div>
+          <div class="t-row"><span class="t-sym">SPY</span><span class="t-chg down">-0.15%</span><span class="t-price">738.18</span><div class="t-tip">Vol: 54.19 M &nbsp; Avg: 49.15 M</div></div>
+          <div class="t-row"><span class="t-sym">RSP</span><span class="t-chg down">-0.09%</span><span class="t-price">203.81</span><div class="t-tip">Vol: 9.58 M &nbsp; Avg: 9.3 M</div></div>
+          <div class="t-row"><span class="t-sym">DJI</span><span class="t-chg up">+0.11%</span><span class="t-price">49,765.97</span></div>
+          <div class="t-row"><span class="t-sym">NYA</span><span class="t-chg up">+0.19%</span><span class="t-price">23,015.3449</span></div>
+          <div class="t-row"><span class="t-sym">IWM</span><span class="t-chg down">-0.97%</span><span class="t-price">282.57</span><div class="t-tip">Vol: 27.4 M &nbsp; Avg: 26.28 M</div></div>
+        </div>
+      </div>
+
+      <!-- Other Indices -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Other Indices</span></div>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">VIX</span><span class="t-chg down">-2.12%</span><span class="t-price">17.99</span></div>
+          <div class="t-row"><span class="t-sym">VIX3M</span><span class="t-chg down">-0.94%</span><span class="t-price">21.04</span></div>
+          <div class="t-row"><span class="t-sym">US10Y</span><span class="t-chg up">+0.04%</span><span class="t-price">4.465%%</span></div>
+          <div class="t-row"><span class="t-sym">US20Y</span><span class="t-chg down">-0.08%</span><span class="t-price">5.019%%</span></div>
+          <div class="t-row"><span class="t-sym">US30Y</span><span class="t-chg down">-0.04%</span><span class="t-price">5.025%%</span></div>
+          <div class="t-row"><span class="t-sym">TLT</span><span class="t-chg down">-0.67%</span><span class="t-price">84.99</span><div class="t-tip">Vol: 27.68 M &nbsp; Avg: 24.42 M</div></div>
+          <div class="t-row"><span class="t-sym">DXY</span><span class="t-chg up">+0.00%</span><span class="t-price">98.288</span></div>
+          <div class="t-row"><span class="t-sym">CL1!</span><span class="t-chg down">-0.65%</span><span class="t-price">101.52</span><div class="t-tip">Vol: 7.02 K &nbsp; Avg: 251.07 K</div></div>
+        </div>
+      </div>
+
+      <!-- Futures -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Futures</span></div>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">NQ1!</span><span class="t-chg up">+0.23%</span><span class="t-price">29,235.75</span><div class="t-tip">Vol: 31.21 K &nbsp; Avg: 524.87 K</div></div>
+          <div class="t-row"><span class="t-sym">ES1!</span><span class="t-chg up">+0.09%</span><span class="t-price">7,433.50</span><div class="t-tip">Vol: 32.72 K &nbsp; Avg: 1.26 M</div></div>
+          <div class="t-row"><span class="t-sym">RTY1!</span><span class="t-chg up">+0.28%</span><span class="t-price">2,858.3</span><div class="t-tip">Vol: 4.16 K &nbsp; Avg: 159.71 K</div></div>
+        </div>
+      </div>
+
+      <!-- Gold / Silver -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Gold / Silver</span></div>
+          <span class="card-avg down">-0.9%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">GOLD</span><span class="t-chg down">-0.23%</span><span class="t-price">4,703.580</span><div class="t-tip">Vol: 0 &nbsp; Avg: 0</div></div>
+          <div class="t-row"><span class="t-sym">GLD</span><span class="t-chg down">-0.40%</span><span class="t-price">432.93</span><div class="t-tip">Vol: 6.66 M &nbsp; Avg: 6.11 M</div></div>
+          <div class="t-row"><span class="t-sym">GC1!</span><span class="t-chg up">+0.66%</span><span class="t-price">4,717.8</span><div class="t-tip">Vol: 11.71 K &nbsp; Avg: 110.9 K</div></div>
+          <div class="t-row"><span class="t-sym">GVZ</span><span class="t-chg down">-1.16%</span><span class="t-price">27.16</span></div>
+          <div class="t-row"><span class="t-sym">GDX</span><span class="t-chg down">-0.47%</span><span class="t-price">97.14</span><div class="t-tip">Vol: 22.28 M &nbsp; Avg: 21.15 M</div></div>
+          <div class="t-row"><span class="t-sym">SILVER</span><span class="t-chg up">+0.29%</span><span class="t-price">86.7796</span><div class="t-tip">Vol: 0 &nbsp; Avg: 0</div></div>
+          <div class="t-row"><span class="t-sym">SLV</span><span class="t-chg up">+0.71%</span><span class="t-price">78.55</span><div class="t-tip">Vol: 31 M &nbsp; Avg: 23.51 M</div></div>
+          <div class="t-row"><span class="t-sym">VXSLV</span><span class="t-chg down">-1.34%</span><span class="t-price">66.92</span></div>
+          <div class="t-row"><span class="t-sym">SIL</span><span class="t-chg up">+0.75%</span><span class="t-price">102.71</span><div class="t-tip">Vol: 2.1 M &nbsp; Avg: 2.21 M</div></div>
+          <div class="t-row"><span class="t-sym">SLVR</span><span class="t-chg up">+1.92%</span><span class="t-price">71.10</span><div class="t-tip">Vol: 225.38 K &nbsp; Avg: 209.63 K</div></div>
+          <div class="t-row"><span class="t-sym">COPX</span><span class="t-chg up">+3.63%</span><span class="t-price">90.77</span><div class="t-tip">Vol: 10.52 M &nbsp; Avg: 4.66 M</div></div>
+        </div>
+      </div>
+
+      <!-- Crypto -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Crypto</span></div>
+          <span class="card-avg down">-2.1%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">BTCUSD</span><span class="t-chg up">+0.64%</span><span class="t-price">81,010</span><div class="t-tip">Vol: 32 &nbsp; Avg: 898</div></div>
+          <div class="t-row"><span class="t-sym">IBIT</span><span class="t-chg down">-1.44%</span><span class="t-price">45.80</span><div class="t-tip">Vol: 27.41 M &nbsp; Avg: 35.81 M</div></div>
+          <div class="t-row"><span class="t-sym">DVOL</span><span class="t-chg down">-0.57%</span><span class="t-price">38.33</span></div>
+          <div class="t-row"><span class="t-sym">ETHUSD</span><span class="t-chg up">+0.67%</span><span class="t-price">2,289.77</span><div class="t-tip">Vol: 6.09 K &nbsp; Avg: 93.65 K</div></div>
+          <div class="t-row"><span class="t-sym">ETHA</span><span class="t-chg down">-2.43%</span><span class="t-price">17.24</span><div class="t-tip">Vol: 22.5 M &nbsp; Avg: 19.79 M</div></div>
+          <div class="t-row"><span class="t-sym">ETHDVOL</span><span class="t-chg down">-0.84%</span><span class="t-price">52.88</span></div>
+          <div class="t-row"><span class="t-sym">ETHU</span><span class="t-chg down">-4.77%</span><span class="t-price">25.73</span><div class="t-tip">Vol: 3.51 M &nbsp; Avg: 3.45 M</div></div>
+          <div class="t-row"><span class="t-sym">CRCL</span><span class="t-chg down">-6.16%</span><span class="t-price">123.65</span><div class="t-tip">Vol: 29.5 M &nbsp; Avg: 21.98 M</div></div>
+        </div>
+      </div>
+
+      <!-- Critical Sectors -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Critical Sectors</span></div>
+          <span class="card-avg down">-4.2%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">SMH</span><span class="t-chg down">-2.61%</span><span class="t-price">561.25</span><div class="t-tip">Vol: 17.72 M &nbsp; Avg: 10.03 M</div></div>
+          <div class="t-row"><span class="t-sym">DRAM</span><span class="t-chg down">-6.86%</span><span class="t-price">51.30</span><div class="t-tip">Vol: 69.8 M &nbsp; Avg: 36.01 M</div></div>
+          <div class="t-row"><span class="t-sym">IGV</span><span class="t-chg down">-1.38%</span><span class="t-price">89.44</span><div class="t-tip">Vol: 25.3 M &nbsp; Avg: 19.83 M</div></div>
+          <div class="t-row"><span class="t-sym">AIPO</span><span class="t-chg down">-1.84%</span><span class="t-price">32.63</span><div class="t-tip">Vol: 2.03 M &nbsp; Avg: 1.49 M</div></div>
+          <div class="t-row"><span class="t-sym">URA</span><span class="t-chg down">-5.03%</span><span class="t-price">54.35</span><div class="t-tip">Vol: 6.03 M &nbsp; Avg: 4.23 M</div></div>
+          <div class="t-row"><span class="t-sym">OIH</span><span class="t-chg up">+1.41%</span><span class="t-price">437.24</span><div class="t-tip">Vol: 222.26 K &nbsp; Avg: 385.49 K</div></div>
+          <div class="t-row"><span class="t-sym">XLF</span><span class="t-chg up">+0.78%</span><span class="t-price">51.58</span><div class="t-tip">Vol: 44.19 M &nbsp; Avg: 34.57 M</div></div>
+          <div class="t-row"><span class="t-sym">XBI</span><span class="t-chg up">+0.12%</span><span class="t-price">134.91</span><div class="t-tip">Vol: 5.99 M &nbsp; Avg: 8.88 M</div></div>
+          <div class="t-row"><span class="t-sym">ITA</span><span class="t-chg down">-0.27%</span><span class="t-price">225.39</span><div class="t-tip">Vol: 661.13 K &nbsp; Avg: 955.84 K</div></div>
+        </div>
+      </div>
+
+      <!-- Other ETFs -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Other ETFs</span></div>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">GRID</span><span class="t-chg down">-2.34%</span><span class="t-price">195.13</span><div class="t-tip">Vol: 882.88 K &nbsp; Avg: 848.71 K</div></div>
+          <div class="t-row"><span class="t-sym">PAVE</span><span class="t-chg down">-0.91%</span><span class="t-price">56.52</span><div class="t-tip">Vol: 1.2 M &nbsp; Avg: 1.7 M</div></div>
+          <div class="t-row"><span class="t-sym">CHAT</span><span class="t-chg down">-2.99%</span><span class="t-price">84.24</span><div class="t-tip">Vol: 815.41 K &nbsp; Avg: 797.07 K</div></div>
+          <div class="t-row"><span class="t-sym">AIQ</span><span class="t-chg down">-2.91%</span><span class="t-price">61.02</span><div class="t-tip">Vol: 2.36 M &nbsp; Avg: 1.94 M</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- SECTION: Critical Themes                     -->
+  <!-- ════════════════════════════════════════════ -->
+  <div class="section-group">
+    <div class="section-label">Critical Themes</div>
+    <div class="card-grid">
+
+      <!-- Big Tech -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Big Tech</span></div>
+          <span class="card-avg down">-0.8%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">NVDA</span><span class="t-chg up">+0.61%</span><span class="t-price">220.78</span><div class="t-tip">Vol: 159.18 M &nbsp; Avg: 152.89 M</div></div>
+          <div class="t-row"><span class="t-sym">GOOGL</span><span class="t-chg down">-0.33%</span><span class="t-price">387.35</span><div class="t-tip">Vol: 26.02 M &nbsp; Avg: 32.17 M</div></div>
+          <div class="t-row"><span class="t-sym">AAPL</span><span class="t-chg up">+0.72%</span><span class="t-price">294.80</span><div class="t-tip">Vol: 45.75 M &nbsp; Avg: 54.2 M</div></div>
+          <div class="t-row"><span class="t-sym">MSFT</span><span class="t-chg down">-1.18%</span><span class="t-price">407.77</span><div class="t-tip">Vol: 38.59 M &nbsp; Avg: 36.72 M</div></div>
+          <div class="t-row"><span class="t-sym">AMZN</span><span class="t-chg down">-1.18%</span><span class="t-price">265.82</span><div class="t-tip">Vol: 36.78 M &nbsp; Avg: 50.53 M</div></div>
+          <div class="t-row"><span class="t-sym">META</span><span class="t-chg up">+0.69%</span><span class="t-price">603.00</span><div class="t-tip">Vol: 11.35 M &nbsp; Avg: 19.69 M</div></div>
+          <div class="t-row"><span class="t-sym">TSLA</span><span class="t-chg down">-2.60%</span><span class="t-price">433.45</span><div class="t-tip">Vol: 60.57 M &nbsp; Avg: 57.23 M</div></div>
+        </div>
+      </div>
+
+      <!-- Memory & Storage -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Memory & Storage</span></div>
+          <span class="card-avg down">-1.5%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">MU</span><span class="t-chg down">-3.61%</span><span class="t-price">766.58</span><div class="t-tip">Vol: 73.74 M &nbsp; Avg: 53.63 M</div></div>
+          <div class="t-row"><span class="t-sym">SNDK</span><span class="t-chg down">-6.17%</span><span class="t-price">1,452.02</span><div class="t-tip">Vol: 17.14 M &nbsp; Avg: 17.72 M</div></div>
+          <div class="t-row"><span class="t-sym">WDC</span><span class="t-chg down">-5.25%</span><span class="t-price">488.74</span><div class="t-tip">Vol: 7.77 M &nbsp; Avg: 9.88 M</div></div>
+          <div class="t-row"><span class="t-sym">PSTG</span><span class="t-chg down">-1.20%</span><span class="t-price">58.10</span><div class="t-tip">Vol: 3.2M &nbsp; Avg: 4.0M</div></div>
+          <div class="t-row"><span class="t-sym">000660</span><span class="t-chg up">+3.92%</span><span class="t-price">1,907,000KRW</span><div class="t-tip">Vol: 2.73 M &nbsp; Avg: 5.31 M</div></div>
+          <div class="t-row"><span class="t-sym">005930</span><span class="t-chg up">+0.63%</span><span class="t-price">281,000KRW</span><div class="t-tip">Vol: 15.77 M &nbsp; Avg: 31.44 M</div></div>
+        </div>
+      </div>
+
+      <!-- Networking & Optical -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Networking & Optical</span></div>
+          <span class="card-avg down">-0.9%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">CIEN</span><span class="t-chg down">-0.74%</span><span class="t-price">577.15</span><div class="t-tip">Vol: 1.6 M &nbsp; Avg: 2 M</div></div>
+          <div class="t-row"><span class="t-sym">ANET</span><span class="t-chg up">+4.48%</span><span class="t-price">142.54</span><div class="t-tip">Vol: 12.8 M &nbsp; Avg: 14.84 M</div></div>
+          <div class="t-row"><span class="t-sym">LITE</span><span class="t-chg down">-5.77%</span><span class="t-price">992.37</span><div class="t-tip">Vol: 7.56 M &nbsp; Avg: 6.93 M</div></div>
+          <div class="t-row"><span class="t-sym">COHR</span><span class="t-chg down">-1.50%</span><span class="t-price">374.01</span><div class="t-tip">Vol: 5.99 M &nbsp; Avg: 7.51 M</div></div>
+          <div class="t-row"><span class="t-sym">NOK</span><span class="t-chg down">-5.39%</span><span class="t-price">13.17</span><div class="t-tip">Vol: 104.24 M &nbsp; Avg: 125.71 M</div></div>
+          <div class="t-row"><span class="t-sym">VIAV</span><span class="t-chg down">-2.79%</span><span class="t-price">53.40</span><div class="t-tip">Vol: 4.87 M &nbsp; Avg: 8.25 M</div></div>
+          <div class="t-row"><span class="t-sym">LWLG</span><span class="t-chg down">-5.52%</span><span class="t-price">15.93</span><div class="t-tip">Vol: 7.21 M &nbsp; Avg: 10.43 M</div></div>
+          <div class="t-row"><span class="t-sym">GLW</span><span class="t-chg down">-4.41%</span><span class="t-price">198.24</span><div class="t-tip">Vol: 23.12 M &nbsp; Avg: 17.4 M</div></div>
+          <div class="t-row"><span class="t-sym">AXTI</span><span class="t-chg down">-2.31%</span><span class="t-price">122.90</span><div class="t-tip">Vol: 7.13 M &nbsp; Avg: 12.05 M</div></div>
+        </div>
+      </div>
+
+      <!-- AI Chips & Foundry -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">AI Chips & Foundry</span></div>
+          <span class="card-avg down">-1.9%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">NVDA</span><span class="t-chg up">+0.61%</span><span class="t-price">220.78</span><div class="t-tip">Vol: 159.18 M &nbsp; Avg: 152.89 M</div></div>
+          <div class="t-row"><span class="t-sym">AMD</span><span class="t-chg down">-2.29%</span><span class="t-price">448.29</span><div class="t-tip">Vol: 39.14 M &nbsp; Avg: 50.33 M</div></div>
+          <div class="t-row"><span class="t-sym">TSM</span><span class="t-chg down">-1.79%</span><span class="t-price">397.28</span><div class="t-tip">Vol: 18.12 M &nbsp; Avg: 14.01 M</div></div>
+          <div class="t-row"><span class="t-sym">INTC</span><span class="t-chg down">-6.82%</span><span class="t-price">120.61</span><div class="t-tip">Vol: 172.52 M &nbsp; Avg: 173.16 M</div></div>
+          <div class="t-row"><span class="t-sym">MRVL</span><span class="t-chg down">-3.71%</span><span class="t-price">164.50</span><div class="t-tip">Vol: 21.37 M &nbsp; Avg: 20.27 M</div></div>
+          <div class="t-row"><span class="t-sym">ARM</span><span class="t-chg down">-2.22%</span><span class="t-price">207.92</span><div class="t-tip">Vol: 7.84 M &nbsp; Avg: 11.11 M</div></div>
+          <div class="t-row"><span class="t-sym">QCOM</span><span class="t-chg down">-11.46%</span><span class="t-price">210.31</span><div class="t-tip">Vol: 38.59 M &nbsp; Avg: 38.02 M</div></div>
+        </div>
+      </div>
+
+      <!-- Data Center Power -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Data Center Power</span></div>
+          <span class="card-avg up">+1.2%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">GEV</span><span class="t-chg down">-0.10%</span><span class="t-price">1,071.98</span><div class="t-tip">Vol: 2.1 M &nbsp; Avg: 2.39 M</div></div>
+          <div class="t-row"><span class="t-sym">ETN</span><span class="t-chg down">-4.17%</span><span class="t-price">401.53</span><div class="t-tip">Vol: 2.95 M &nbsp; Avg: 3.29 M</div></div>
+          <div class="t-row"><span class="t-sym">POWL</span><span class="t-chg down">-4.35%</span><span class="t-price">308.05</span><div class="t-tip">Vol: 878.26 K &nbsp; Avg: 852.93 K</div></div>
+          <div class="t-row"><span class="t-sym">CPSH</span><span class="t-chg down">-1.16%</span><span class="t-price">4.27</span><div class="t-tip">Vol: 310.61 K &nbsp; Avg: 493.26 K</div></div>
+          <div class="t-row"><span class="t-sym">PWR</span><span class="t-chg down">-1.99%</span><span class="t-price">765.81</span><div class="t-tip">Vol: 1.34 M &nbsp; Avg: 1.49 M</div></div>
+          <div class="t-row"><span class="t-sym">HUBB</span><span class="t-chg down">-0.85%</span><span class="t-price">485.98</span><div class="t-tip">Vol: 698.39 K &nbsp; Avg: 786.07 K</div></div>
+          <div class="t-row"><span class="t-sym">HPS.A</span><span class="t-chg up">+2.50%</span><span class="t-price">337.16</span><div class="t-tip">Vol: 68.7 K &nbsp; Avg: 77.86 K</div></div>
+          <div class="t-row"><span class="t-sym">VRT</span><span class="t-chg down">-0.21%</span><span class="t-price">367.13</span><div class="t-tip">Vol: 6.56 M &nbsp; Avg: 5.35 M</div></div>
+        </div>
+      </div>
+
+      <!-- BTC Mining & GPU Cloud -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">BTC Mining & GPU Cloud</span></div>
+          <span class="card-avg down">-3.2%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">IREN</span><span class="t-chg up">+2.56%</span><span class="t-price">56.56</span><div class="t-tip">Vol: 76.1 M &nbsp; Avg: 60.64 M</div></div>
+          <div class="t-row"><span class="t-sym">CIFR</span><span class="t-chg down">-1.08%</span><span class="t-price">20.06</span><div class="t-tip">Vol: 23.46 M &nbsp; Avg: 28.01 M</div></div>
+          <div class="t-row"><span class="t-sym">NBIS</span><span class="t-chg down">-3.76%</span><span class="t-price">179.11</span><div class="t-tip">Vol: 11.72 M &nbsp; Avg: 15.54 M</div></div>
+          <div class="t-row"><span class="t-sym">CRWV</span><span class="t-chg down">-6.06%</span><span class="t-price">107.75</span><div class="t-tip">Vol: 32.88 M &nbsp; Avg: 31.19 M</div></div>
+          <div class="t-row"><span class="t-sym">CLSK</span><span class="t-chg down">-5.80%</span><span class="t-price">13.47</span><div class="t-tip">Vol: 32 M &nbsp; Avg: 22.22 M</div></div>
+          <div class="t-row"><span class="t-sym">HUT</span><span class="t-chg up">+5.01%</span><span class="t-price">107.31</span><div class="t-tip">Vol: 4.58 M &nbsp; Avg: 6.01 M</div></div>
+        </div>
+      </div>
+
+      <!-- Semicon Equipment -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Semicon Equipment</span></div>
+          <span class="card-avg down">-1.7%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">LRCX</span><span class="t-chg down">-2.30%</span><span class="t-price">289.24</span><div class="t-tip">Vol: 9.34 M &nbsp; Avg: 9.84 M</div></div>
+          <div class="t-row"><span class="t-sym">AMAT</span><span class="t-chg down">-2.80%</span><span class="t-price">431.20</span><div class="t-tip">Vol: 9.32 M &nbsp; Avg: 6.89 M</div></div>
+          <div class="t-row"><span class="t-sym">KLAC</span><span class="t-chg down">-1.83%</span><span class="t-price">1,811.35</span><div class="t-tip">Vol: 1.03 M &nbsp; Avg: 1.19 M</div></div>
+          <div class="t-row"><span class="t-sym">TER</span><span class="t-chg down">-2.23%</span><span class="t-price">358.45</span><div class="t-tip">Vol: 5.65 M &nbsp; Avg: 5.28 M</div></div>
+          <div class="t-row"><span class="t-sym">FORM</span><span class="t-chg down">-12.80%</span><span class="t-price">132.02</span><div class="t-tip">Vol: 4.2 M &nbsp; Avg: 2.67 M</div></div>
+          <div class="t-row"><span class="t-sym">6857</span><span class="t-chg down">-2.42%</span><span class="t-price">28,010JPY</span><div class="t-tip">Vol: 2.53 M &nbsp; Avg: 12.15 M</div></div>
+        </div>
+      </div>
+
+      <!-- Clean Energy & Materials -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Clean Energy</span></div>
+          <span class="card-avg down">-0.4%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">BE</span><span class="t-chg down">-1.14%</span><span class="t-price">280.69</span><div class="t-tip">Vol: 7.48 M &nbsp; Avg: 11.22 M</div></div>
+          <div class="t-row"><span class="t-sym">MP</span><span class="t-chg down">-2.70%</span><span class="t-price">65.59</span><div class="t-tip">Vol: 5.82 M &nbsp; Avg: 6.73 M</div></div>
+          <div class="t-row"><span class="t-sym">USAR</span><span class="t-chg down">-2.85%</span><span class="t-price">25.55</span><div class="t-tip">Vol: 14.63 M &nbsp; Avg: 19.73 M</div></div>
+          <div class="t-row"><span class="t-sym">ZAP</span><span class="t-chg down">-1.40%</span><span class="t-price">2.15</span><div class="t-tip">Vol: 85K &nbsp; Avg: 120K</div></div>
+          <div class="t-row"><span class="t-sym">ENR</span><span class="t-chg down">-5.05%</span><span class="t-price">169.48EUR</span><div class="t-tip">Vol: 2.53 M &nbsp; Avg: 2.62 M</div></div>
+          <div class="t-row"><span class="t-sym">BHP</span><span class="t-chg up">+2.94%</span><span class="t-price">61.54AUD</span><div class="t-tip">Vol: 3.76 M &nbsp; Avg: 7.83 M</div></div>
+        </div>
+      </div>
+
+      <!-- Nuclear & Uranium -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Nuclear & Uranium</span></div>
+          <span class="card-avg up">+1.1%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">CCJ</span><span class="t-chg down">-2.67%</span><span class="t-price">116.93</span><div class="t-tip">Vol: 3.89 M &nbsp; Avg: 3.16 M</div></div>
+          <div class="t-row"><span class="t-sym">LEU</span><span class="t-chg down">-5.10%</span><span class="t-price">202.34</span><div class="t-tip">Vol: 767.92 K &nbsp; Avg: 905.58 K</div></div>
+          <div class="t-row"><span class="t-sym">UUUU</span><span class="t-chg down">-4.95%</span><span class="t-price">20.95</span><div class="t-tip">Vol: 10.25 M &nbsp; Avg: 11.6 M</div></div>
+          <div class="t-row"><span class="t-sym">NLR</span><span class="t-chg down">-3.95%</span><span class="t-price">139.90</span><div class="t-tip">Vol: 842.92 K &nbsp; Avg: 509.75 K</div></div>
+          <div class="t-row"><span class="t-sym">URA</span><span class="t-chg down">-5.03%</span><span class="t-price">54.35</span><div class="t-tip">Vol: 6.03 M &nbsp; Avg: 4.23 M</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- SECTION: Other Themes                    -->
+  <!-- ════════════════════════════════════════════ -->
+  <div class="section-group">
+    <div class="section-label">Other Themes</div>
+    <div class="card-grid">
+
+      <!-- Enterprise SaaS -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Enterprise SaaS</span></div>
+          <span class="card-avg down">-0.6%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">ORCL</span><span class="t-chg down">-3.62%</span><span class="t-price">186.83</span><div class="t-tip">Vol: 22.12 M &nbsp; Avg: 24.46 M</div></div>
+          <div class="t-row"><span class="t-sym">OKTA</span><span class="t-chg down">-3.22%</span><span class="t-price">79.06</span><div class="t-tip">Vol: 2.33 M &nbsp; Avg: 2.65 M</div></div>
+          <div class="t-row"><span class="t-sym">CRM</span><span class="t-chg down">-0.55%</span><span class="t-price">278.30</span><div class="t-tip">Vol: 5.8M &nbsp; Avg: 7.2M</div></div>
+          <div class="t-row"><span class="t-sym">INTU</span><span class="t-chg down">-0.30%</span><span class="t-price">612.40</span><div class="t-tip">Vol: 1.5M &nbsp; Avg: 2.0M</div></div>
+          <div class="t-row"><span class="t-sym">NOW</span><span class="t-chg down">-0.90%</span><span class="t-price">845.10</span><div class="t-tip">Vol: 1.2M &nbsp; Avg: 1.6M</div></div>
+        </div>
+      </div>
+
+      <!-- Consumer Tech -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Consumer Tech</span></div>
+          <span class="card-avg up">+0.3%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">HOOD</span><span class="t-chg down">-3.11%</span><span class="t-price">78.27</span><div class="t-tip">Vol: 17.1 M &nbsp; Avg: 29.61 M</div></div>
+          <div class="t-row"><span class="t-sym">DASH</span><span class="t-chg down">-1.36%</span><span class="t-price">155.19</span><div class="t-tip">Vol: 4.97 M &nbsp; Avg: 5.67 M</div></div>
+          <div class="t-row"><span class="t-sym">APP</span><span class="t-chg up">+2.56%</span><span class="t-price">490.69</span><div class="t-tip">Vol: 4.69 M &nbsp; Avg: 5.04 M</div></div>
+          <div class="t-row"><span class="t-sym">RDDT</span><span class="t-chg down">-4.49%</span><span class="t-price">152.35</span><div class="t-tip">Vol: 4.7 M &nbsp; Avg: 6.7 M</div></div>
+          <div class="t-row"><span class="t-sym">APPS</span><span class="t-chg down">-0.80%</span><span class="t-price">12.40</span><div class="t-tip">Vol: 1.8M &nbsp; Avg: 2.2M</div></div>
+          <div class="t-row"><span class="t-sym">GRMN</span><span class="t-chg down">-2.23%</span><span class="t-price">236.97</span><div class="t-tip">Vol: 490.37 K &nbsp; Avg: 832.91 K</div></div>
+        </div>
+      </div>
+
+      <!-- Pharma & Biotech -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Pharma & Biotech</span></div>
+          <span class="card-avg up">+0.5%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">JNJ</span><span class="t-chg up">+1.28%</span><span class="t-price">224.26</span><div class="t-tip">Vol: 8.63 M &nbsp; Avg: 7.15 M</div></div>
+          <div class="t-row"><span class="t-sym">MRK</span><span class="t-chg up">+0.98%</span><span class="t-price">112.37</span><div class="t-tip">Vol: 9.12 M &nbsp; Avg: 9.16 M</div></div>
+          <div class="t-row"><span class="t-sym">KRYS</span><span class="t-chg down">-0.82%</span><span class="t-price">310.31</span><div class="t-tip">Vol: 316.29 K &nbsp; Avg: 378.85 K</div></div>
+          <div class="t-row"><span class="t-sym">LLY</span><span class="t-chg up">+2.37%</span><span class="t-price">989.87</span><div class="t-tip">Vol: 3.04 M &nbsp; Avg: 4.07 M</div></div>
+          <div class="t-row"><span class="t-sym">TARS</span><span class="t-chg up">+0.30%</span><span class="t-price">59.83</span><div class="t-tip">Vol: 682.8 K &nbsp; Avg: 826.06 K</div></div>
+          <div class="t-row"><span class="t-sym">GILD</span><span class="t-chg up">+1.06%</span><span class="t-price">134.94</span><div class="t-tip">Vol: 6.03 M &nbsp; Avg: 6.62 M</div></div>
+          <div class="t-row"><span class="t-sym">LIFE</span><span class="t-chg down">-13.87%</span><span class="t-price">25.65</span><div class="t-tip">Vol: 955.38 K &nbsp; Avg: 759.39 K</div></div>
+        </div>
+      </div>
+
+      <!-- Industrial & Infra -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Industrial & Infra</span></div>
+          <span class="card-avg up">+0.2%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">CRML</span><span class="t-chg down">-2.15%</span><span class="t-price">11.83</span><div class="t-tip">Vol: 9.37 M &nbsp; Avg: 15.97 M</div></div>
+          <div class="t-row"><span class="t-sym">ROK</span><span class="t-chg down">-0.35%</span><span class="t-price">455.08</span><div class="t-tip">Vol: 666.79 K &nbsp; Avg: 956.53 K</div></div>
+          <div class="t-row"><span class="t-sym">CAT</span><span class="t-chg down">-1.58%</span><span class="t-price">912.14</span><div class="t-tip">Vol: 2.35 M &nbsp; Avg: 2.86 M</div></div>
+          <div class="t-row"><span class="t-sym">SEI</span><span class="t-chg up">+2.10%</span><span class="t-price">76.23</span><div class="t-tip">Vol: 2.3 M &nbsp; Avg: 2.44 M</div></div>
+          <div class="t-row"><span class="t-sym">FLR</span><span class="t-chg up">+2.38%</span><span class="t-price">44.73</span><div class="t-tip">Vol: 4.49 M &nbsp; Avg: 3.88 M</div></div>
+          <div class="t-row"><span class="t-sym">STRL</span><span class="t-chg down">-1.94%</span><span class="t-price">851.35</span><div class="t-tip">Vol: 716.61 K &nbsp; Avg: 867.31 K</div></div>
+          <div class="t-row"><span class="t-sym">FLEX</span><span class="t-chg down">-3.71%</span><span class="t-price">139.69</span><div class="t-tip">Vol: 8.02 M &nbsp; Avg: 8.16 M</div></div>
+        </div>
+      </div>
+
+      <!-- Utilities -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Utilities</span></div>
+          <span class="card-avg up">+0.8%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">NEE</span><span class="t-chg down">-0.26%</span><span class="t-price">94.59</span><div class="t-tip">Vol: 6.92 M &nbsp; Avg: 8.61 M</div></div>
+          <div class="t-row"><span class="t-sym">PPL</span><span class="t-chg up">+0.30%</span><span class="t-price">36.35</span><div class="t-tip">Vol: 6.64 M &nbsp; Avg: 10.46 M</div></div>
+          <div class="t-row"><span class="t-sym">VST</span><span class="t-chg down">-3.41%</span><span class="t-price">146.87</span><div class="t-tip">Vol: 4.9 M &nbsp; Avg: 5.36 M</div></div>
+          <div class="t-row"><span class="t-sym">FE</span><span class="t-chg up">+0.25%</span><span class="t-price">44.71</span><div class="t-tip">Vol: 4.41 M &nbsp; Avg: 8.15 M</div></div>
+        </div>
+      </div>
+
+      <!-- Oil & Gas -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Oil & Gas</span></div>
+          <span class="card-avg up">+2.3%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">OCO</span><span class="t-chg up">+10.11%</span><span class="t-price">0.490</span><div class="t-tip">Vol: 888.24 K &nbsp; Avg: 383.46 K</div></div>
+          <div class="t-row"><span class="t-sym">XOM</span><span class="t-chg up">+0.63%</span><span class="t-price">150.63</span><div class="t-tip">Vol: 16.44 M &nbsp; Avg: 17.36 M</div></div>
+          <div class="t-row"><span class="t-sym">BKR</span><span class="t-chg up">+0.99%</span><span class="t-price">65.24</span><div class="t-tip">Vol: 6.47 M &nbsp; Avg: 7.53 M</div></div>
+          <div class="t-row"><span class="t-sym">SU</span><span class="t-chg down">-3.40%</span><span class="t-price">265.30EUR</span><div class="t-tip">Vol: 891.97 K &nbsp; Avg: 1.08 M</div></div>
+        </div>
+      </div>
+
+      <!-- AI Software -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">AI Software</span></div>
+          <span class="card-avg down">-1.4%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">PLTR</span><span class="t-chg down">-0.65%</span><span class="t-price">136.00</span><div class="t-tip">Vol: 38.78 M &nbsp; Avg: 48.69 M</div></div>
+          <div class="t-row"><span class="t-sym">PATH</span><span class="t-chg down">-6.10%</span><span class="t-price">10.01</span><div class="t-tip">Vol: 30.62 M &nbsp; Avg: 29.25 M</div></div>
+          <div class="t-row"><span class="t-sym">TEM</span><span class="t-chg down">-3.12%</span><span class="t-price">46.95</span><div class="t-tip">Vol: 6.41 M &nbsp; Avg: 7.12 M</div></div>
+        </div>
+      </div>
+
+      <!-- Cybersecurity -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Cybersecurity</span></div>
+          <span class="card-avg down">-0.7%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">CRWD</span><span class="t-chg up">+0.72%</span><span class="t-price">546.18</span><div class="t-tip">Vol: 3.55 M &nbsp; Avg: 2.8 M</div></div>
+          <div class="t-row"><span class="t-sym">PANW</span><span class="t-chg up">+0.91%</span><span class="t-price">215.60</span><div class="t-tip">Vol: 8.3 M &nbsp; Avg: 7.04 M</div></div>
+          <div class="t-row"><span class="t-sym">FTNT</span><span class="t-chg down">-1.36%</span><span class="t-price">113.87</span><div class="t-tip">Vol: 4.91 M &nbsp; Avg: 7 M</div></div>
+        </div>
+      </div>
+
+      <!-- Hospitality -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Hospitality</span></div>
+          <span class="card-avg up">+0.4%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">HLT</span><span class="t-chg down">-0.62%</span><span class="t-price">313.57</span><div class="t-tip">Vol: 1.27 M &nbsp; Avg: 1.79 M</div></div>
+          <div class="t-row"><span class="t-sym">HTHT</span><span class="t-chg up">+2.34%</span><span class="t-price">48.54</span><div class="t-tip">Vol: 2.09 M &nbsp; Avg: 1.72 M</div></div>
+        </div>
+      </div>
+
+      <!-- Defense -->
+      <div class="group-card">
+        <div class="card-header expanded">
+          <div class="card-left"><span class="card-arrow">▶</span><span class="card-title">Defense</span></div>
+          <span class="card-avg up">+0.6%</span>
+        </div>
+        <div class="card-body">
+          <div class="t-row"><span class="t-sym">LMT</span><span class="t-chg up">+1.71%</span><span class="t-price">521.00</span><div class="t-tip">Vol: 1.16 M &nbsp; Avg: 1.48 M</div></div>
+          <div class="t-row"><span class="t-sym">KTOS</span><span class="t-chg up">+0.60%</span><span class="t-price">57.33</span><div class="t-tip">Vol: 5.1 M &nbsp; Avg: 4.02 M</div></div>
+          <div class="t-row"><span class="t-sym">ITA</span><span class="t-chg down">-0.27%</span><span class="t-price">225.39</span><div class="t-tip">Vol: 661K &nbsp; Avg: 944K</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /main-area -->
+
+<script>
+  document.querySelectorAll('.card-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const isExpanded = header.classList.contains('expanded');
+      header.classList.toggle('expanded');
+      const body = header.nextElementSibling;
+      if (body && body.classList.contains('card-body')) {
+        body.style.display = isExpanded ? 'none' : '';
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

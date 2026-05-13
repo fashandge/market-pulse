@@ -53,18 +53,22 @@ Market Pulse is a web dashboard for monitoring market and individual stock/crypt
 ## Data Flow
 
 ```
-CoinMarketCap API                    News Summaries (3 sources)         TrendSpider Posts
-       ↓                             - NDX: ~/projects/news/data/market_news/ndx/{date}/summary/
-   FastAPI Backend (port 8000)       - CFZH: ~/projects/news/data/cfzh_forum_summaries/
-   - Fetches data                    - X: ~/projects/news/data/x_market_news/
-   - Converts UTC → LA time          - TrendSpider: ~/projects/news/data/trendspider/
-   - Computes changes                ↓
-       ↓                             - Summaries: reads latest .md for today
-   React Frontend (port 5173)        - TrendSpider: reads JSONL, returns posts with photos
-   - Filters data by time range      ↓
-   - Renders Plotly chart            - Sub-tabs: Trading View, X, CFZH, Trend Spider
-   - Displays changes table          - Summaries rendered as markdown (react-markdown)
-                                     - TrendSpider rendered as card feed with images
+TradingView Watchlist                CoinMarketCap API                News Summaries + TrendSpider
+(crawl4ai with persistent profile)        ↓                          (NDX, CFZH, X, TrendSpider)
+       ↓                            FastAPI Backend (port 8000)            ↓
+   watchlist_scraper.py              - Fetches data                  - Reads .md/.jsonl files
+   - Scrapes ~150 tickers            - Converts UTC → LA time        - Returns summaries/posts
+   - Extracts price/change/volume    - Computes changes                    ↓
+       ↓                                   ↓                         React Frontend (port 5173)
+   market_overview.py                React Frontend (port 5173)      - Sub-tabs: TV, X, CFZH, TS
+   - Groups by theme/sector          - Filters by time range         - Markdown rendering
+   - Computes avg change/vol ratio   - Renders Plotly chart
+   - 60s cache                       - Displays changes table
+       ↓
+   MarketOverview.tsx (default view)
+   - Card grid by section
+   - Clickable tickers → TradingView charts
+   - Hover tooltips with volume data
 ```
 
 ## API Endpoints
@@ -77,15 +81,24 @@ CoinMarketCap API                    News Summaries (3 sources)         TrendSpi
 | `/api/market/cfzh-summary` | GET | Returns today's CFZH forum summary |
 | `/api/market/x-summary` | GET | Returns today's X market news summary |
 | `/api/market/trendspider-posts` | GET | Returns up to 50 recent TrendSpider posts (JSONL) |
+| `/api/market/overview` | GET | Returns market overview: tickers grouped by theme with prices, changes, volume (cached 60s) |
 
 ## Frontend Components
 
 ```
 App.tsx
 ├── Sidebar.tsx
+│   - Market Overview tab → MarketOverview (default)
 │   - Market News tab → MarketView
 │   - Tickers section (collapsible)
 │     └── CRCL tab → TickerView
+│
+├── MarketOverview.tsx
+│   ├── Sections: Overview | Critical Themes | Other Themes
+│   ├── Card grid (auto-fill, collapsible groups)
+│   ├── Ticker rows: symbol (linked to TradingView) | %chg | price
+│   ├── Hover tooltip: raw change, volume, avg volume
+│   └── Group headers: avg change%, avg volume ratio
 │
 ├── MarketView.tsx
 │   ├── Sub-tabs: Trading View | X | CFZH | Trend Spider

@@ -1,13 +1,16 @@
 """FastAPI backend for the market dashboard."""
 
 import json
-from datetime import date
+import time
+from datetime import date, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.backend.tickers import crcl
+from src.backend import market_overview, watchlist_scraper
 
 NEWS_BASE_PATH = Path.home() / "projects/news/data/market_news"
 CFZH_PATH = Path.home() / "projects/news/data/cfzh_forum_summaries"
@@ -23,6 +26,28 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+_overview_cache: dict = {"data": None, "timestamp": 0.0}
+OVERVIEW_CACHE_TTL = 60
+
+
+@app.get("/api/market/overview")
+def get_market_overview():
+    """Get market overview with all watched tickers grouped by theme."""
+    now = time.time()
+    if _overview_cache["data"] and now - _overview_cache["timestamp"] < OVERVIEW_CACHE_TTL:
+        return _overview_cache["data"]
+
+    scraped = watchlist_scraper.scrape_watchlist()
+    sections = market_overview.build_overview(scraped)
+    la_tz = ZoneInfo("America/Los_Angeles")
+    updated_at = datetime.now(la_tz).strftime("%H:%M (%b %d, %Y)")
+
+    result = {"sections": sections, "updated_at": updated_at}
+    _overview_cache["data"] = result
+    _overview_cache["timestamp"] = now
+    return result
 
 
 @app.get("/api/tickers/crcl/market-cap")

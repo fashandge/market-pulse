@@ -16,6 +16,17 @@ export function Sidebar({ selectedTab, onSelectTab }: SidebarProps) {
 
       <nav className="space-y-1">
         <button
+          onClick={() => onSelectTab('overview')}
+          className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+            selectedTab === 'overview'
+              ? 'bg-sol-blue/15 text-sol-blue'
+              : 'text-sol-base00 hover:bg-sol-base3'
+          }`}
+        >
+          Market Overview
+        </button>
+
+        <button
           onClick={() => onSelectTab('market')}
           className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
             selectedTab === 'market'
