@@ -64,6 +64,7 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
   const [showTip, setShowTip] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const hasTip = ticker.volume || ticker.avg_volume || ticker.change_abs
+  const highVol = ticker.volume && ticker.avg_volume && parseVolume(ticker.volume) > parseVolume(ticker.avg_volume)
 
   return (
     <div
@@ -82,7 +83,7 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
       >
         {ticker.symbol}
       </a>
-      <span className="text-right font-semibold">
+      <span className={`text-right ${highVol ? 'font-extrabold' : 'font-semibold'}`}>
         <ChangeDisplay value={ticker.change_pct} />
       </span>
       <span className="text-right text-sol-base00">{formatPrice(ticker.price)}</span>

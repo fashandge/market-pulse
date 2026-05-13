@@ -21,6 +21,10 @@ GROUPS_AVG_OVERRIDE: dict[str, dict] = {
         "avg_symbols": ["LRCX", "AMAT", "KLAC", "TER", "FORM"],
         "avg_note": "Avg computed for US stocks only",
     },
+    "Data Center Power": {
+        "avg_symbols": ["BE", "VRT", "GEV", "ETN", "POWL", "CPSH", "PWR", "HUBB", "HPS.A"],
+        "avg_note": "Avg computed for US/CA stocks only",
+    },
 }
 
 CRITICAL_THEME_GROUPS = [
