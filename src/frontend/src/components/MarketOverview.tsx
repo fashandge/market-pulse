@@ -168,18 +168,30 @@ function GroupCard({ group }: { group: Group }) {
 export function MarketOverview() {
   const [data, setData] = useState<OverviewResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetch('http://localhost:8000/api/market/overview')
+  const fetchData = (force = false) => {
+    const url = force
+      ? 'http://localhost:8000/api/market/overview?force=1'
+      : 'http://localhost:8000/api/market/overview'
+    return fetch(url)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         return res.json()
       })
       .then(setData)
       .catch((err) => setError(err.message))
-      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    fetchData().finally(() => setLoading(false))
   }, [])
+
+  const handleRefresh = () => {
+    setRefreshing(true)
+    fetchData(true).finally(() => setRefreshing(false))
+  }
 
   if (loading) {
     return <div className="text-sol-base1 p-4">Loading market overview...</div>
@@ -191,8 +203,29 @@ export function MarketOverview() {
 
   return (
     <div>
-      <div className="text-sm text-sol-base1 mb-4">
-        Last updated: {data.updated_at}
+      <div className="text-sm text-sol-base1 mb-4 flex items-center gap-2">
+        <span>Last updated: {data.updated_at}</span>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="text-sol-base1 hover:text-sol-blue transition-colors disabled:opacity-50"
+          title="Force refresh"
+        >
+          <svg
+            className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M21 2v6h-6" />
+            <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+            <path d="M3 22v-6h6" />
+            <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+          </svg>
+        </button>
       </div>
       {data.sections.map((section, idx) => (
         <div key={section.name} className={idx > 0 ? 'mt-6' : 'mb-2'}>

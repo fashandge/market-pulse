@@ -29,14 +29,14 @@ app.add_middleware(
 
 
 _overview_cache: dict = {"data": None, "timestamp": 0.0}
-OVERVIEW_CACHE_TTL = 60
+OVERVIEW_CACHE_TTL = 900
 
 
 @app.get("/api/market/overview")
-def get_market_overview():
+def get_market_overview(force: int = 0):
     """Get market overview with all watched tickers grouped by theme."""
     now = time.time()
-    if _overview_cache["data"] and now - _overview_cache["timestamp"] < OVERVIEW_CACHE_TTL:
+    if not force and _overview_cache["data"] and now - _overview_cache["timestamp"] < OVERVIEW_CACHE_TTL:
         return _overview_cache["data"]
 
     scraped = watchlist_scraper.scrape_watchlist()
