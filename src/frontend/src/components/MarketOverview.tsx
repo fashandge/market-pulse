@@ -42,6 +42,17 @@ function parseVolume(v: string): number {
   return num
 }
 
+function formatPrice(raw: string): string {
+  if (!raw || raw === '—') return raw
+  const suffix = raw.replace(/[\d,.\-\s]/g, '')
+  const numStr = raw.replace(/[^0-9.\-]/g, '')
+  const num = parseFloat(numStr)
+  if (isNaN(num)) return raw
+  const decimals = num >= 1000 ? 0 : 2
+  const formatted = num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: decimals })
+  return suffix ? `${formatted}${suffix}` : formatted
+}
+
 function ChangeDisplay({ value }: { value: string | number | null }) {
   if (value === null || value === '—') return <span className="text-sol-base1">—</span>
   const str = typeof value === 'number' ? `${value >= 0 ? '+' : ''}${value}%` : String(value)
@@ -74,7 +85,7 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
       <span className="text-right font-semibold">
         <ChangeDisplay value={ticker.change_pct} />
       </span>
-      <span className="text-right text-sol-base00">{ticker.price}</span>
+      <span className="text-right text-sol-base00">{formatPrice(ticker.price)}</span>
       {hasTip && showTip && (
         <div
           className="fixed bg-sol-base3 text-sol-base01 border border-sol-base1/30 px-2 py-1 rounded text-[0.9rem] whitespace-nowrap z-50 shadow-lg pointer-events-none"
@@ -184,10 +195,12 @@ export function MarketOverview() {
         Last updated: {data.updated_at}
       </div>
       {data.sections.map((section, idx) => (
-        <div
-          key={section.name}
-          className={idx > 0 ? 'border-t border-sol-base1/25 pt-3 mt-2' : 'mb-2'}
-        >
+        <div key={section.name} className={idx > 0 ? 'mt-6' : 'mb-2'}>
+          {idx > 0 && (
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1 h-px bg-gradient-to-r from-transparent via-sol-base1/40 to-transparent" />
+            </div>
+          )}
           <div className="text-[1.1rem] font-bold text-sol-blue uppercase tracking-wide mb-2.5">
             {section.name}
           </div>

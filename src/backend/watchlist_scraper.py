@@ -129,7 +129,7 @@ def scrape_watchlist(
             volume = _clean_vol(vals[3]) if len(vals) >= 4 else ""
             avg_volume = _clean_vol(vals[4]) if len(vals) >= 5 else ""
 
-            if symbol in ("US10Y", "US20Y", "US30Y"):
+            if symbol in ("US10Y", "US20Y", "US30Y") and "%" not in price:
                 price = price + "%"
 
             result[symbol] = {
