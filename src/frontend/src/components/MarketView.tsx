@@ -24,17 +24,17 @@ const SOURCE_TABS: SourceTab[] = ['trading-view', 'x', 'cfzh', 'trendspider']
 const SOURCE_CONFIG: Record<string, { label: string; endpoint: string; noDataMessage: string }> = {
   'trading-view': {
     label: 'Trading View',
-    endpoint: 'http://localhost:8000/api/market/ndx-summary',
+    endpoint: '/api/market/ndx-summary',
     noDataMessage: 'No Trading View summary generated for',
   },
   cfzh: {
     label: 'CFZH',
-    endpoint: 'http://localhost:8000/api/market/cfzh-summary',
+    endpoint: '/api/market/cfzh-summary',
     noDataMessage: 'No CFZH forum summary generated for',
   },
   x: {
     label: 'X',
-    endpoint: 'http://localhost:8000/api/market/x-summary',
+    endpoint: '/api/market/x-summary',
     noDataMessage: 'No X market news summary generated for',
   },
 }
@@ -70,7 +70,7 @@ export function MarketView() {
     setError(null)
 
     if (activeSource === 'trendspider') {
-      fetch('http://localhost:8000/api/market/trendspider-posts')
+      fetch('/api/market/trendspider-posts')
         .then((res) => res.json())
         .then((data: TrendSpiderResponse) => {
           setTrendSpiderPosts(data.posts)

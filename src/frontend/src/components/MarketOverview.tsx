@@ -174,8 +174,8 @@ export function MarketOverview() {
 
   const fetchData = (force = false) => {
     const url = force
-      ? 'http://localhost:8000/api/market/overview?force=1'
-      : 'http://localhost:8000/api/market/overview'
+      ? '/api/market/overview?force=1'
+      : '/api/market/overview'
     return fetch(url)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
