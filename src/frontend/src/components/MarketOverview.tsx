@@ -228,7 +228,7 @@ function GroupCard({ group }: { group: Group }) {
 
   return (
     <div style={{
-      background: '#ECE4CE',
+      background: '#EEE8D5',
       border: 'none',
       boxShadow: '0 1px 0 rgba(45,42,36,0.04), 0 4px 14px -8px rgba(45,42,36,0.10)',
       borderRadius: 14,
