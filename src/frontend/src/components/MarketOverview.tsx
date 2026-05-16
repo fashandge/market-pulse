@@ -296,7 +296,7 @@ function GroupCard({ group }: { group: Group }) {
                 <span style={{
                   fontSize: 9.5,
                   color: group.avg_vol_ratio > 1 ? (groupUp ? '#5A8A35' : '#B53A2C') : '#8A8478',
-                  fontWeight: group.avg_vol_ratio > 1 ? 600 : 500,
+                  fontWeight: group.avg_vol_ratio > 1 ? 700 : 500,
                   fontVariantNumeric: 'tabular-nums',
                   letterSpacing: '0.02em',
                 }}>
@@ -406,9 +406,9 @@ export function MarketOverview() {
       {data.sections.map((section, idx) => (
         <div key={section.name} style={{ marginTop: idx === 0 ? 0 : 28 }}>
           <div style={{
-            fontSize: 10, letterSpacing: '0.18em',
+            fontSize: 12.5, letterSpacing: '0.14em',
             textTransform: 'uppercase' as const,
-            color: '#8A8478', fontWeight: 700,
+            color: '#5B5547', fontWeight: 700,
             marginBottom: 12,
             display: 'flex', alignItems: 'center', gap: 10,
           }}>
