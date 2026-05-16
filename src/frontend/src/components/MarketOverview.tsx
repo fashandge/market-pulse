@@ -365,15 +365,9 @@ export function MarketOverview() {
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         marginBottom: 22,
       }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-          <h2 style={{
-            fontSize: 20, fontWeight: 600, letterSpacing: '-0.01em',
-            color: '#2D2A24', margin: 0,
-          }}>Market Overview</h2>
-          <span style={{ fontSize: 11, color: '#8A8478', letterSpacing: '0.04em' }}>
-            {data.updated_at}
-          </span>
-        </div>
+        <span style={{ fontSize: 11, color: '#8A8478', letterSpacing: '0.04em' }}>
+          {data.updated_at}
+        </span>
         <button
           onClick={handleRefresh}
           disabled={refreshing}
