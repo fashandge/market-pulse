@@ -136,8 +136,8 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
         gap: 10,
         padding: `5px 0 5px ${highVol ? 8 : 0}px`,
         marginLeft: highVol ? -8 : 0,
-        borderLeft: highVol ? '2px solid #268BD2' : 'none',
-        background: highVol ? 'linear-gradient(90deg, #268BD214, transparent 50%)' : 'transparent',
+        borderLeft: highVol ? `2px solid ${chgVal >= 0 ? '#5A8A35' : '#B53A2C'}` : 'none',
+        background: highVol ? `linear-gradient(90deg, ${chgVal >= 0 ? '#5A8A35' : '#B53A2C'}1f, transparent 55%)` : 'transparent',
         fontVariantNumeric: 'tabular-nums',
         cursor: 'default',
         transition: 'background 0.15s',
@@ -158,16 +158,19 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
         >
           {ticker.symbol}
         </a>
-        {highVol && ratio != null && (
+        {highVol && ratio != null && (() => {
+          const chipColor = chgVal >= 0 ? '#5A8A35' : '#B53A2C'
+          return (
           <span style={{
-            fontSize: 9.5, fontWeight: 700, color: '#268BD2',
-            background: '#268BD222', padding: '1px 5px',
+            fontSize: 9.5, fontWeight: 700, color: chipColor,
+            background: `${chipColor}22`, padding: '1px 5px',
             borderRadius: 4, whiteSpace: 'nowrap', lineHeight: 1.2,
             fontVariantNumeric: 'tabular-nums',
           }}>
             {ratio < 1.1 ? ratio.toFixed(2) : ratio.toFixed(1)}×
           </span>
-        )}
+          )
+        })()}
       </div>
 
       {/* Dot visualization */}
@@ -206,7 +209,7 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
           fontVariantNumeric: 'tabular-nums',
         }}>
           {ticker.volume && <>Vol <span style={{
-            color: highVol ? '#268BD2' : 'inherit',
+            color: highVol ? (chgVal >= 0 ? '#5A8A35' : '#B53A2C') : 'inherit',
             fontWeight: highVol ? 700 : 400,
           }}>{ticker.volume}</span></>}
           {ticker.volume && ticker.avg_volume && <span style={{ color: '#8A8478', margin: '0 6px' }}>·</span>}
@@ -214,7 +217,7 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
           {ratio != null && (
             <span style={{
               marginLeft: 8,
-              color: highVol ? '#268BD2' : '#8A8478',
+              color: highVol ? (chgVal >= 0 ? '#5A8A35' : '#B53A2C') : '#8A8478',
               fontWeight: highVol ? 700 : 500,
             }}>
               → {ratio.toFixed(2)}×
@@ -292,7 +295,7 @@ function GroupCard({ group }: { group: Group }) {
               <div className="relative group/volratio">
                 <span style={{
                   fontSize: 9.5,
-                  color: group.avg_vol_ratio > 1 ? '#268BD2' : '#8A8478',
+                  color: group.avg_vol_ratio > 1 ? (groupUp ? '#5A8A35' : '#B53A2C') : '#8A8478',
                   fontWeight: group.avg_vol_ratio > 1 ? 600 : 500,
                   fontVariantNumeric: 'tabular-nums',
                   letterSpacing: '0.02em',
