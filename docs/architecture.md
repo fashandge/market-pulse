@@ -95,9 +95,10 @@ App.tsx
 │
 ├── MarketOverview.tsx
 │   ├── Sections: Overview | Critical Themes | Other Themes
-│   ├── Card grid (auto-fill, collapsible groups)
-│   ├── Ticker rows: symbol (linked to TradingView) | %chg | price
-│   ├── Hover tooltip: raw change, volume, avg volume
+│   ├── Card grid (auto-fill, soft-shadow cards, collapsible groups)
+│   ├── Ticker rows: symbol | dot-on-axis %chg viz | %chg | price
+│   ├── High-volume highlight: blue accent rail, vol ratio chip, bolder text
+│   ├── Hover tooltip: volume, avg volume, vol ratio, raw change
 │   └── Group headers: avg change%, avg volume ratio
 │
 ├── MarketView.tsx

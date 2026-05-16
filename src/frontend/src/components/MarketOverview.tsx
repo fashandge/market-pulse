@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 
 const TV_CHART_ID = '5JanKmS6'
+const BAR_MAX = 7
 
 interface Ticker {
   symbol: string
@@ -53,53 +54,180 @@ function formatPrice(raw: string): string {
   return suffix ? `${formatted}${suffix}` : formatted
 }
 
-function ChangeDisplay({ value }: { value: string | number | null }) {
-  if (value === null || value === '—') return <span className="text-sol-base1">—</span>
-  const str = typeof value === 'number' ? `${value >= 0 ? '+' : ''}${value}%` : String(value)
-  const isUp = !str.startsWith('-')
-  return <span className={isUp ? 'text-sol-green' : 'text-sol-red'}>{str}</span>
+function fmtPct(val: number | null): string {
+  if (val === null) return '—'
+  const sign = val >= 0 ? '+' : ''
+  return `${sign}${val.toFixed(2)}%`
+}
+
+function volRatio(ticker: Ticker): number | null {
+  if (!ticker.volume || !ticker.avg_volume) return null
+  const vol = parseVolume(ticker.volume)
+  const avg = parseVolume(ticker.avg_volume)
+  if (avg === 0) return null
+  return vol / avg
+}
+
+function DotAxis({ chg, highVol }: { chg: number; highVol: boolean }) {
+  const isUp = chg >= 0
+  const pct = Math.min(Math.abs(chg) / BAR_MAX, 1)
+  const halfW = pct * 50
+  const dotPos = isUp ? 50 + halfW : 50 - halfW
+  const dotSize = highVol ? 10 : 8
+  const color = isUp ? '#5A8A35' : '#B53A2C'
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: 18 }}>
+      {/* Axis line */}
+      <div style={{
+        position: 'absolute', left: 0, right: 0, top: '50%',
+        height: 1, background: 'rgba(45,42,36,0.22)', opacity: 0.55,
+      }} />
+      {/* Left tick */}
+      <div style={{
+        position: 'absolute', left: 0, top: 'calc(50% - 3px)',
+        width: 1, height: 6, background: 'rgba(45,42,36,0.22)', opacity: 0.4,
+      }} />
+      {/* Center tick */}
+      <div style={{
+        position: 'absolute', left: '50%', top: 'calc(50% - 4px)',
+        width: 1, height: 8, background: 'rgba(45,42,36,0.22)', opacity: 0.8,
+      }} />
+      {/* Right tick */}
+      <div style={{
+        position: 'absolute', right: 0, top: 'calc(50% - 3px)',
+        width: 1, height: 6, background: 'rgba(45,42,36,0.22)', opacity: 0.4,
+      }} />
+      {/* Dot */}
+      <div style={{
+        position: 'absolute',
+        left: `calc(${dotPos}% - ${dotSize / 2}px)`,
+        top: `calc(50% - ${dotSize / 2}px)`,
+        width: dotSize, height: dotSize,
+        borderRadius: '50%',
+        background: color,
+        boxShadow: `0 0 0 ${highVol ? 2 : 1.5}px #ECE4CE, 0 1px 3px ${color}44`,
+      }} />
+    </div>
+  )
 }
 
 function TickerRow({ ticker }: { ticker: Ticker }) {
   const [showTip, setShowTip] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const hasTip = ticker.volume || ticker.avg_volume || ticker.change_abs
-  const highVol = ticker.volume && ticker.avg_volume && parseVolume(ticker.volume) > parseVolume(ticker.avg_volume)
+  const ratio = volRatio(ticker)
+  const highVol = ratio != null && ratio > 1
+
+  const chgStr = ticker.change_pct
+  const chgNum = parseFloat(chgStr?.replace(/[+%]/g, '') || '0')
+  const isNeg = chgStr?.startsWith('-')
+  const chgVal = isNeg ? -Math.abs(chgNum) : chgNum
 
   return (
     <div
-      className="grid items-center py-0.5 px-1.5 rounded hover:bg-sol-blue/7 cursor-default"
-      style={{ gridTemplateColumns: '78px 66px 82px' }}
       onMouseEnter={(e) => { setMousePos({ x: e.clientX, y: e.clientY }); setShowTip(true) }}
       onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
       onMouseLeave={() => setShowTip(false)}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '70px 1fr 56px 64px',
+        alignItems: 'center',
+        gap: 10,
+        padding: `5px 0 5px ${highVol ? 8 : 0}px`,
+        marginLeft: highVol ? -8 : 0,
+        borderLeft: highVol ? '2px solid #268BD2' : 'none',
+        background: highVol ? 'linear-gradient(90deg, #268BD214, transparent 50%)' : 'transparent',
+        fontVariantNumeric: 'tabular-nums',
+        cursor: 'default',
+        transition: 'background 0.15s',
+      }}
     >
-      <a
-        href={`https://www.tradingview.com/chart/${TV_CHART_ID}/?symbol=${encodeURIComponent(ticker.formal_symbol)}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-[1.035rem] font-semibold text-sol-base01 hover:text-sol-blue"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {ticker.symbol}
-      </a>
-      <span className={`text-right ${highVol ? 'font-extrabold' : 'font-semibold'}`}>
-        <ChangeDisplay value={ticker.change_pct} />
-      </span>
-      <span className="text-right text-sol-base00">{formatPrice(ticker.price)}</span>
-      {hasTip && showTip && (
-        <div
-          className="fixed bg-sol-base3 text-sol-base01 border border-sol-base1/30 px-2 py-1 rounded text-[0.9rem] whitespace-nowrap z-50 shadow-lg pointer-events-none"
-          style={{ left: mousePos.x + 12, top: mousePos.y - 28 }}
+      {/* Symbol + vol chip */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, minWidth: 0 }}>
+        <a
+          href={`https://www.tradingview.com/chart/${TV_CHART_ID}/?symbol=${encodeURIComponent(ticker.formal_symbol)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            fontSize: 12.5, fontWeight: highVol ? 700 : 600,
+            color: '#2D2A24', letterSpacing: '0.02em',
+            textDecoration: 'none',
+          }}
+          className="hover:!text-sol-blue"
         >
-          {ticker.change_abs && <><span className={ticker.change_abs.startsWith('-') ? 'text-sol-red' : 'text-sol-green'}>{!ticker.change_abs.startsWith('-') && !ticker.change_abs.startsWith('+') ? '+' : ''}{ticker.change_abs}</span></>}
-          {ticker.change_abs && ticker.volume && <>&nbsp;&nbsp;</>}
-          {ticker.volume && (() => {
-            const volHigh = ticker.avg_volume && parseVolume(ticker.volume) > parseVolume(ticker.avg_volume)
-            return <>Vol: <span className={volHigh ? 'font-bold text-sol-blue' : ''}>{ticker.volume}</span></>
-          })()}
-          {ticker.volume && ticker.avg_volume && <>&nbsp;&nbsp;Avg: {ticker.avg_volume}</>}
-          {!ticker.volume && ticker.avg_volume && <>Avg Vol: {ticker.avg_volume}</>}
+          {ticker.symbol}
+        </a>
+        {highVol && ratio != null && (
+          <span style={{
+            fontSize: 9.5, fontWeight: 700, color: '#268BD2',
+            background: '#268BD222', padding: '1px 5px',
+            borderRadius: 4, whiteSpace: 'nowrap', lineHeight: 1.2,
+            fontVariantNumeric: 'tabular-nums',
+          }}>
+            {ratio < 1.1 ? ratio.toFixed(2) : ratio.toFixed(1)}×
+          </span>
+        )}
+      </div>
+
+      {/* Dot visualization */}
+      <DotAxis chg={chgVal} highVol={highVol} />
+
+      {/* Change % */}
+      <div style={{
+        fontSize: 12, fontWeight: highVol ? 700 : 600,
+        color: chgVal >= 0 ? '#5A8A35' : '#B53A2C',
+        textAlign: 'right', whiteSpace: 'nowrap',
+        fontVariantNumeric: 'tabular-nums',
+      }}>
+        {ticker.change_pct}
+      </div>
+
+      {/* Price */}
+      <div style={{
+        fontSize: 11.5, textAlign: 'right',
+        color: highVol ? '#2D2A24' : '#5B5547',
+        fontWeight: highVol ? 600 : 400,
+      }}>
+        {formatPrice(ticker.price)}
+      </div>
+
+      {/* Tooltip */}
+      {hasTip && showTip && (
+        <div style={{
+          position: 'fixed',
+          left: mousePos.x + 12, top: mousePos.y - 30,
+          background: '#FDF6E3', color: '#2D2A24',
+          border: '1px solid rgba(45,42,36,0.25)',
+          padding: '6px 10px', borderRadius: 6,
+          fontSize: 11, whiteSpace: 'nowrap',
+          zIndex: 1000, pointerEvents: 'none',
+          boxShadow: '0 6px 20px rgba(45,42,36,0.18)',
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {ticker.volume && <>Vol <span style={{
+            color: highVol ? '#268BD2' : 'inherit',
+            fontWeight: highVol ? 700 : 400,
+          }}>{ticker.volume}</span></>}
+          {ticker.volume && ticker.avg_volume && <span style={{ color: '#8A8478', margin: '0 6px' }}>·</span>}
+          {ticker.avg_volume && <>Avg {ticker.avg_volume}</>}
+          {ratio != null && (
+            <span style={{
+              marginLeft: 8,
+              color: highVol ? '#268BD2' : '#8A8478',
+              fontWeight: highVol ? 700 : 500,
+            }}>
+              → {ratio.toFixed(2)}×
+            </span>
+          )}
+          {ticker.change_abs && (
+            <>
+              <span style={{ color: '#8A8478', margin: '0 6px' }}>·</span>
+              <span style={{ color: ticker.change_abs.startsWith('-') ? '#B53A2C' : '#5A8A35' }}>
+                {!ticker.change_abs.startsWith('-') && !ticker.change_abs.startsWith('+') ? '+' : ''}{ticker.change_abs}
+              </span>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -108,43 +236,72 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
 
 function GroupCard({ group }: { group: Group }) {
   const [expanded, setExpanded] = useState(true)
+  const groupUp = group.avg_change !== null && group.avg_change >= 0
 
   return (
-    <div className="bg-sol-base2 border border-sol-base1/15 rounded-lg overflow-visible">
+    <div style={{
+      background: '#ECE4CE',
+      border: 'none',
+      boxShadow: '0 1px 0 rgba(45,42,36,0.04), 0 4px 14px -8px rgba(45,42,36,0.10)',
+      borderRadius: 14,
+      padding: '14px 16px 8px',
+    }}>
+      {/* Header */}
       <div
-        className="flex items-center justify-between py-1.5 px-2.5 cursor-pointer select-none hover:bg-sol-base1/8 transition-colors"
         onClick={() => setExpanded(!expanded)}
+        style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+          padding: '0 0 10px', marginBottom: 4,
+          borderBottom: '1px solid rgba(45,42,36,0.07)',
+          cursor: 'pointer', userSelect: 'none',
+        }}
       >
-        <div className="flex items-center gap-1.5">
-          <span
-            className="text-[0.7rem] text-sol-base1 transition-transform duration-200"
-            style={{ transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
-          >
-            ▶
-          </span>
-          <span className="text-[1rem] font-bold uppercase tracking-wide text-sol-base01">
-            {group.name}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{
+            fontSize: 8, color: '#8A8478',
+            transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
+            transition: 'transform 0.18s',
+            display: 'inline-block',
+          }}>▶</span>
+          <div style={{
+            fontSize: 11.5, letterSpacing: '0.14em',
+            textTransform: 'uppercase' as const,
+            fontWeight: 700, color: '#2D2A24',
+          }}>{group.name}</div>
         </div>
         {group.avg_change !== null && (
-          <div className="text-right">
-            <span className="text-[1rem] font-bold relative group/avg">
-              <ChangeDisplay value={group.avg_change} />
+          <div style={{ textAlign: 'right' }}>
+            <div className="relative group/avg" style={{ display: 'inline-block' }}>
+              <span style={{
+                fontSize: 12.5, fontWeight: 700,
+                color: groupUp ? '#5A8A35' : '#B53A2C',
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                {fmtPct(group.avg_change)}
+              </span>
               {group.avg_note && (
                 <>
-                  <sup className="text-[0.6rem] text-sol-base1 ml-0.5">*</sup>
+                  <sup style={{ fontSize: '0.6rem', color: '#8A8478', marginLeft: 2 }}>*</sup>
                   <span className="hidden group-hover/avg:block absolute -top-7 right-0 bg-sol-base3 text-sol-base01 border border-sol-base1/30 px-2 py-1 rounded text-[0.8rem] whitespace-nowrap z-10 shadow-lg font-normal normal-case tracking-normal">
                     {group.avg_note}
                   </span>
                 </>
               )}
-            </span>
+            </div>
             {group.avg_vol_ratio != null && (
-              <div className={`text-[0.75rem] relative group/volratio ${group.avg_vol_ratio > 1 ? 'font-bold text-sol-blue' : 'text-sol-base1'}`}>
-                {group.avg_vol_ratio.toFixed(2)}x vol
+              <div className="relative group/volratio">
+                <span style={{
+                  fontSize: 9.5,
+                  color: group.avg_vol_ratio > 1 ? '#268BD2' : '#8A8478',
+                  fontWeight: group.avg_vol_ratio > 1 ? 600 : 500,
+                  fontVariantNumeric: 'tabular-nums',
+                  letterSpacing: '0.02em',
+                }}>
+                  {group.avg_vol_ratio.toFixed(2)}× vol
+                </span>
                 {group.avg_note && (
                   <>
-                    <sup className="text-[0.5rem] text-sol-base1 ml-0.5">*</sup>
+                    <sup style={{ fontSize: '0.5rem', color: '#8A8478', marginLeft: 2 }}>*</sup>
                     <span className="hidden group-hover/volratio:block absolute -top-7 right-0 bg-sol-base3 text-sol-base01 border border-sol-base1/30 px-2 py-1 rounded text-[0.8rem] whitespace-nowrap z-10 shadow-lg font-normal">
                       {group.avg_note}
                     </span>
@@ -155,13 +312,9 @@ function GroupCard({ group }: { group: Group }) {
           </div>
         )}
       </div>
-      {expanded && (
-        <div className="px-1 pb-1.5">
-          {group.tickers.map((t) => (
-            <TickerRow key={t.symbol} ticker={t} />
-          ))}
-        </div>
-      )}
+      {expanded && group.tickers.map((t) => (
+        <TickerRow key={t.symbol} ticker={t} />
+      ))}
     </div>
   )
 }
@@ -204,47 +357,77 @@ export function MarketOverview() {
 
   return (
     <div>
-      <div className="text-sm text-sol-base1 mb-4 flex items-center gap-2">
-        <span>Last updated: {data.updated_at}</span>
+      {/* Header */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        marginBottom: 22,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+          <h2 style={{
+            fontSize: 20, fontWeight: 600, letterSpacing: '-0.01em',
+            color: '#2D2A24', margin: 0,
+          }}>Market Overview</h2>
+          <span style={{ fontSize: 11, color: '#8A8478', letterSpacing: '0.04em' }}>
+            {data.updated_at}
+          </span>
+        </div>
         <button
           onClick={handleRefresh}
           disabled={refreshing}
-          className="text-sol-base1 hover:text-sol-blue transition-colors disabled:opacity-50"
-          title="Force refresh"
+          style={{
+            background: 'transparent', border: 'none',
+            color: '#8A8478', padding: '4px 6px', fontSize: 11,
+            cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+            fontFamily: 'inherit',
+            opacity: refreshing ? 0.5 : 0.7,
+            transition: 'opacity 0.15s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = refreshing ? '0.5' : '0.7' }}
         >
           <svg
-            className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            width="14" height="14" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+            style={{ animation: refreshing ? 'mb-spin 0.9s linear infinite' : 'none' }}
           >
             <path d="M21 2v6h-6" />
             <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
             <path d="M3 22v-6h6" />
             <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
           </svg>
+          {refreshing ? 'Refreshing…' : 'Refresh'}
         </button>
       </div>
+
+      {/* Sections */}
       {data.sections.map((section, idx) => (
-        <div key={section.name} className={idx > 0 ? 'mt-6' : 'mb-2'}>
-          {idx > 0 && (
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex-1 h-px bg-gradient-to-r from-transparent via-sol-base1/40 to-transparent" />
-            </div>
-          )}
-          <div className="text-[1.1rem] font-bold text-sol-blue uppercase tracking-wide mb-2.5">
+        <div key={section.name} style={{ marginTop: idx === 0 ? 0 : 28 }}>
+          <div style={{
+            fontSize: 10, letterSpacing: '0.18em',
+            textTransform: 'uppercase' as const,
+            color: '#8A8478', fontWeight: 700,
+            marginBottom: 12,
+            display: 'flex', alignItems: 'center', gap: 10,
+          }}>
             {section.name}
+            <div style={{ flex: 1, height: 1, background: 'rgba(45,42,36,0.07)' }} />
           </div>
-          <div className="grid gap-2.5 items-start" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: 14,
+            alignItems: 'start',
+          }}>
             {section.groups.map((group) => (
               <GroupCard key={group.name} group={group} />
             ))}
           </div>
         </div>
       ))}
+
+      <style>{`
+        @keyframes mb-spin { from {transform:rotate(0)} to {transform:rotate(360deg)} }
+      `}</style>
     </div>
   )
 }
