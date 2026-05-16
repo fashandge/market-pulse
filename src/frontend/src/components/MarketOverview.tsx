@@ -68,46 +68,31 @@ function volRatio(ticker: Ticker): number | null {
   return vol / avg
 }
 
-function DotAxis({ chg, highVol }: { chg: number; highVol: boolean }) {
+function MagnitudeBar({ chg }: { chg: number }) {
   const isUp = chg >= 0
-  const pct = Math.min(Math.abs(chg) / BAR_MAX, 1)
+  const pctRaw = Math.min(Math.abs(chg) / BAR_MAX, 1)
+  const pct = Math.max(0.04, Math.pow(pctRaw, 0.55))
   const halfW = pct * 50
-  const dotPos = isUp ? 50 + halfW : 50 - halfW
-  const dotSize = highVol ? 10 : 8
-  const color = isUp ? '#5A8A35' : '#B53A2C'
+  const softColor = isUp ? 'rgba(90,138,53,0.18)' : 'rgba(181,58,44,0.18)'
+  const barColor = isUp ? '#7CA84A' : '#C7503F'
+  const fill = isUp
+    ? `linear-gradient(90deg, ${softColor}, ${barColor})`
+    : `linear-gradient(270deg, ${softColor}, ${barColor})`
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: 18 }}>
-      {/* Axis line */}
-      <div style={{
-        position: 'absolute', left: 0, right: 0, top: '50%',
-        height: 1, background: 'rgba(45,42,36,0.22)', opacity: 0.55,
-      }} />
-      {/* Left tick */}
-      <div style={{
-        position: 'absolute', left: 0, top: 'calc(50% - 3px)',
-        width: 1, height: 6, background: 'rgba(45,42,36,0.22)', opacity: 0.4,
-      }} />
-      {/* Center tick */}
-      <div style={{
-        position: 'absolute', left: '50%', top: 'calc(50% - 4px)',
-        width: 1, height: 8, background: 'rgba(45,42,36,0.22)', opacity: 0.8,
-      }} />
-      {/* Right tick */}
-      <div style={{
-        position: 'absolute', right: 0, top: 'calc(50% - 3px)',
-        width: 1, height: 6, background: 'rgba(45,42,36,0.22)', opacity: 0.4,
-      }} />
-      {/* Dot */}
-      <div style={{
-        position: 'absolute',
-        left: `calc(${dotPos}% - ${dotSize / 2}px)`,
-        top: `calc(50% - ${dotSize / 2}px)`,
-        width: dotSize, height: dotSize,
-        borderRadius: '50%',
-        background: color,
-        boxShadow: `0 0 0 ${highVol ? 2 : 1.5}px #ECE4CE, 0 1px 3px ${color}44`,
-      }} />
+    <div style={{ position: 'relative', width: '100%', height: 18, display: 'flex', alignItems: 'center' }}>
+      <div style={{ position: 'relative', width: '100%', height: 4, background: 'rgba(45,42,36,0.08)', borderRadius: 2 }}>
+        {/* Center axis */}
+        <div style={{ position: 'absolute', left: '50%', top: -3, bottom: -3, width: 1, background: 'rgba(45,42,36,0.22)' }} />
+        {/* Bar */}
+        <div style={{
+          position: 'absolute', top: 0, bottom: 0,
+          left: isUp ? '50%' : `${50 - halfW}%`,
+          width: `${halfW}%`,
+          borderRadius: 2,
+          background: fill,
+        }} />
+      </div>
     </div>
   )
 }
@@ -173,8 +158,8 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
         })()}
       </div>
 
-      {/* Dot visualization */}
-      <DotAxis chg={chgVal} highVol={highVol} />
+      {/* Magnitude bar */}
+      <MagnitudeBar chg={chgVal} />
 
       {/* Change % */}
       <div style={{
