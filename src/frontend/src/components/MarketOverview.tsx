@@ -135,7 +135,7 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
           target="_blank"
           rel="noopener noreferrer"
           style={{
-            fontSize: 14, fontWeight: highVol ? 700 : 600,
+            fontSize: 14.5, fontWeight: highVol ? 700 : 600,
             color: '#2D2A24', letterSpacing: '0.02em',
             textDecoration: 'none',
           }}
@@ -147,7 +147,7 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
           const chipColor = chgVal >= 0 ? '#5A8A35' : '#B53A2C'
           return (
           <span style={{
-            fontSize: 10.5, fontWeight: 700, color: chipColor,
+            fontSize: 11, fontWeight: 700, color: chipColor,
             background: `${chipColor}22`, padding: '1px 5px',
             borderRadius: 4, whiteSpace: 'nowrap', lineHeight: 1.2,
             fontVariantNumeric: 'tabular-nums',
@@ -163,7 +163,7 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
 
       {/* Change % */}
       <div style={{
-        fontSize: 13, fontWeight: highVol ? 700 : 600,
+        fontSize: 13.5, fontWeight: highVol ? 700 : 600,
         color: chgVal >= 0 ? '#5A8A35' : '#B53A2C',
         textAlign: 'right', whiteSpace: 'nowrap',
         fontVariantNumeric: 'tabular-nums',
@@ -173,7 +173,7 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
 
       {/* Price */}
       <div style={{
-        fontSize: 12.5, textAlign: 'right',
+        fontSize: 13, textAlign: 'right',
         color: highVol ? '#2D2A24' : '#5B5547',
         fontWeight: highVol ? 600 : 400,
       }}>
@@ -188,7 +188,7 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
           background: '#FDF6E3', color: '#2D2A24',
           border: '1px solid rgba(45,42,36,0.25)',
           padding: '6px 10px', borderRadius: 6,
-          fontSize: 12, whiteSpace: 'nowrap',
+          fontSize: 12.5, whiteSpace: 'nowrap',
           zIndex: 1000, pointerEvents: 'none',
           boxShadow: '0 6px 20px rgba(45,42,36,0.18)',
           fontVariantNumeric: 'tabular-nums',
@@ -246,13 +246,13 @@ function GroupCard({ group }: { group: Group }) {
       >
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
           <span style={{
-            fontSize: 9, color: '#8A8478',
+            fontSize: 9.5, color: '#8A8478',
             transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
             transition: 'transform 0.18s',
             display: 'inline-block',
           }}>▶</span>
           <div style={{
-            fontSize: 12.5, letterSpacing: '0.14em',
+            fontSize: 13, letterSpacing: '0.14em',
             textTransform: 'uppercase' as const,
             fontWeight: 700, color: '#2D2A24',
           }}>{group.name}</div>
@@ -261,7 +261,7 @@ function GroupCard({ group }: { group: Group }) {
           <div style={{ textAlign: 'right' }}>
             <div className="relative group/avg" style={{ display: 'inline-block' }}>
               <span style={{
-                fontSize: 14, fontWeight: 700,
+                fontSize: 14.5, fontWeight: 700,
                 color: groupUp ? '#5A8A35' : '#B53A2C',
                 fontVariantNumeric: 'tabular-nums',
               }}>
@@ -269,7 +269,7 @@ function GroupCard({ group }: { group: Group }) {
               </span>
               {group.avg_note && (
                 <>
-                  <sup style={{ fontSize: '0.65rem', color: '#8A8478', marginLeft: 2 }}>*</sup>
+                  <sup style={{ fontSize: '0.68rem', color: '#8A8478', marginLeft: 2 }}>*</sup>
                   <span className="hidden group-hover/avg:block absolute -top-7 right-0 bg-sol-base3 text-sol-base01 border border-sol-base1/30 px-2 py-1 rounded text-[0.8rem] whitespace-nowrap z-10 shadow-lg font-normal normal-case tracking-normal">
                     {group.avg_note}
                   </span>
@@ -279,7 +279,7 @@ function GroupCard({ group }: { group: Group }) {
             {group.avg_vol_ratio != null && (
               <div className="relative group/volratio">
                 <span style={{
-                  fontSize: 10.5,
+                  fontSize: 11,
                   color: group.avg_vol_ratio > 1 ? (groupUp ? '#5A8A35' : '#B53A2C') : '#8A8478',
                   fontWeight: group.avg_vol_ratio > 1 ? 700 : 500,
                   fontVariantNumeric: 'tabular-nums',
@@ -289,7 +289,7 @@ function GroupCard({ group }: { group: Group }) {
                 </span>
                 {group.avg_note && (
                   <>
-                    <sup style={{ fontSize: '0.55rem', color: '#8A8478', marginLeft: 2 }}>*</sup>
+                    <sup style={{ fontSize: '0.58rem', color: '#8A8478', marginLeft: 2 }}>*</sup>
                     <span className="hidden group-hover/volratio:block absolute -top-7 right-0 bg-sol-base3 text-sol-base01 border border-sol-base1/30 px-2 py-1 rounded text-[0.8rem] whitespace-nowrap z-10 shadow-lg font-normal">
                       {group.avg_note}
                     </span>
@@ -350,7 +350,7 @@ export function MarketOverview() {
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         marginBottom: 22,
       }}>
-        <span style={{ fontSize: 12, color: '#8A8478', letterSpacing: '0.04em' }}>
+        <span style={{ fontSize: 12.5, color: '#8A8478', letterSpacing: '0.04em' }}>
           {data.updated_at}
         </span>
         <button
@@ -358,7 +358,7 @@ export function MarketOverview() {
           disabled={refreshing}
           style={{
             background: 'transparent', border: 'none',
-            color: '#8A8478', padding: '4px 6px', fontSize: 12,
+            color: '#8A8478', padding: '4px 6px', fontSize: 12.5,
             cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
             fontFamily: 'inherit',
             opacity: refreshing ? 0.5 : 0.7,
@@ -385,7 +385,7 @@ export function MarketOverview() {
       {data.sections.map((section, idx) => (
         <div key={section.name} style={{ marginTop: idx === 0 ? 0 : 28 }}>
           <div style={{
-            fontSize: 14, letterSpacing: '0.14em',
+            fontSize: 14.5, letterSpacing: '0.14em',
             textTransform: 'uppercase' as const,
             color: '#5B5547', fontWeight: 700,
             marginBottom: 12,

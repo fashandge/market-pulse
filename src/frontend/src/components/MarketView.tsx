@@ -135,7 +135,7 @@ export function MarketView() {
               </div>
             )}
             <div className="px-5 py-4">
-              <p className="text-sol-base01 whitespace-pre-wrap text-sm leading-relaxed">
+              <p className="text-sol-base01 whitespace-pre-wrap text-base leading-relaxed">
                 {post.text.replace(/\s*https?:\/\/\S+\s*$/, '')}
               </p>
               {(() => {
@@ -143,12 +143,12 @@ export function MarketView() {
                 const time = formatTime(post.t)
                 if (urlMatch) {
                   return (
-                    <a href={urlMatch[1]} target="_blank" rel="noopener noreferrer" className="text-sol-base1 text-xs mt-3 block hover:underline">
+                    <a href={urlMatch[1]} target="_blank" rel="noopener noreferrer" className="text-sol-base1 text-sm mt-3 block hover:underline">
                       {time}
                     </a>
                   )
                 }
-                return <p className="text-sol-base1 text-xs mt-3">{time}</p>
+                return <p className="text-sol-base1 text-sm mt-3">{time}</p>
               })()}
             </div>
           </div>
