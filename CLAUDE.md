@@ -71,3 +71,4 @@ Open http://localhost:5173
 - Backend API endpoints are under `/api/tickers/{ticker}/` and `/api/market/`
 - UI uses Solarized Light color theme (defined in `index.css` as `--color-sol-*` variables)
 - Temp files (screenshots, logs, etc.) go in `tmp/` folder
+- Market Overview groups in `market_overview.py` — when adding tickers, reference the `theme` column in `~/projects/stock_picker/data/ticker.csv` as a guide for group placement (tickers may appear in multiple groups)

@@ -18,7 +18,7 @@ GROUPS_AVG_OVERRIDE: dict[str, dict] = {
         "avg_note": "Avg computed for US stocks only",
     },
     "Semicon Equipment": {
-        "avg_symbols": ["LRCX", "AMAT", "KLAC", "TER", "FORM"],
+        "avg_symbols": ["LRCX", "AMAT", "KLAC", "TER", "FORM", "AMKR"],
         "avg_note": "Avg computed for US stocks only",
     },
     "Data Center Power": {
@@ -30,11 +30,11 @@ GROUPS_AVG_OVERRIDE: dict[str, dict] = {
 CRITICAL_THEME_GROUPS = [
     ("Big Tech", ["NVDA", "GOOGL", "AAPL", "MSFT", "AMZN", "META", "TSLA"]),
     ("Memory & Storage", ["MU", "SNDK", "WDC", "P", "000660", "005930"]),
-    ("Networking & Optical", ["LITE", "COHR", "GLW", "CIEN", "ANET", "NOK", "VIAV", "LWLG", "AXTI"]),
+    ("Networking & Optical", ["LITE", "COHR", "GLW", "CIEN", "ANET", "NOK", "VIAV", "LWLG", "AXTI", "ONDS", "CRDO"]),
     ("AI Chips & Foundry", ["NVDA", "AMD", "INTC", "TSM", "MRVL", "QCOM", "ARM"]),
     ("Data Center Power", ["BE", "VRT", "GEV", "ETN", "POWL", "CPSH", "PWR", "HUBB", "HPS.A", "SU", "ENR"]),
     ("BTC Mining & GPU Cloud", ["IREN", "CIFR", "NBIS", "CRWV", "CLSK", "HUT"]),
-    ("Semicon Equipment", ["LRCX", "AMAT", "KLAC", "TER", "FORM", "6857"]),
+    ("Semicon Equipment", ["LRCX", "AMAT", "KLAC", "TER", "FORM", "6857", "AMKR"]),
     ("Clean Energy", ["MP", "USAR", "BHP"]),
     ("Nuclear & Uranium", ["CCJ", "LEU", "UUUU", "NLR", "URA"]),
 ]
@@ -43,7 +43,7 @@ OTHER_THEME_GROUPS = [
     ("Enterprise SaaS", ["ORCL", "OKTA"]),
     ("Consumer Tech", ["HOOD", "DASH", "APP", "RDDT", "GRMN"]),
     ("Pharma & Biotech", ["JNJ", "MRK", "KRYS", "LLY", "TARS", "GILD", "LIFE"]),
-    ("Industrial & Infra", ["CRML", "ROK", "CAT", "SEI", "FLR", "STRL", "FLEX"]),
+    ("Industrial & Infra", ["CRML", "ROK", "CAT", "SEI", "FLR", "STRL", "FLEX", "MTZ"]),
     ("Utilities", ["NEE", "PPL", "VST", "FE"]),
     ("Oil & Gas", ["OCO", "XOM", "BKR"]),
     ("AI Software", ["PLTR", "PATH", "TEM"]),
