@@ -33,7 +33,7 @@ CRITICAL_THEME_GROUPS = [
     ("Networking & Optical", ["LITE", "COHR", "GLW", "CIEN", "ANET", "NOK", "VIAV", "LWLG", "AXTI", "ONDS", "CRDO"]),
     ("AI Chips & Foundry", ["NVDA", "AMD", "INTC", "TSM", "MRVL", "QCOM", "ARM"]),
     ("Data Center Power", ["BE", "VRT", "GEV", "ETN", "POWL", "CPSH", "PWR", "HUBB", "HPS.A", "SU", "ENR"]),
-    ("BTC Mining & GPU Cloud", ["IREN", "CIFR", "NBIS", "CRWV", "CLSK", "HUT"]),
+    ("BTC Mining & GPU Cloud", ["IREN", "CIFR", "NBIS", "CRWV", "CLSK", "HUT", "RIOT"]),
     ("Semicon Equipment", ["LRCX", "AMAT", "KLAC", "TER", "FORM", "6857", "AMKR"]),
     ("Clean Energy", ["MP", "USAR", "BHP"]),
     ("Nuclear & Uranium", ["CCJ", "LEU", "UUUU", "NLR", "URA"]),
