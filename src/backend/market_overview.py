@@ -30,7 +30,7 @@ GROUPS_AVG_OVERRIDE: dict[str, dict] = {
 CRITICAL_THEME_GROUPS = [
     ("Big Tech", ["NVDA", "GOOGL", "AAPL", "MSFT", "AMZN", "META", "TSLA"]),
     ("Memory & Storage", ["MU", "SNDK", "WDC", "P", "000660", "005930"]),
-    ("Networking & Optical", ["LITE", "COHR", "GLW", "CIEN", "ANET", "NOK", "VIAV", "LWLG", "AXTI", "ONDS", "CRDO"]),
+    ("Networking & Optical", ["LITE", "COHR", "GLW", "CIEN", "ANET", "NOK", "VIAV", "LWLG", "AXTI", "ONDS", "CRDO", "TSEM"]),
     ("AI Chips & Foundry", ["NVDA", "AMD", "INTC", "TSM", "MRVL", "QCOM", "ARM"]),
     ("Data Center Power", ["BE", "VRT", "GEV", "ETN", "POWL", "CPSH", "PWR", "HUBB", "HPS.A", "SU", "ENR"]),
     ("BTC Mining & GPU Cloud", ["IREN", "CIFR", "NBIS", "CRWV", "CLSK", "HUT", "RIOT"]),
