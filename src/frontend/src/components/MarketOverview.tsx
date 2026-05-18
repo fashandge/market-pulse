@@ -387,7 +387,7 @@ export function MarketOverview() {
           <div style={{
             fontSize: 14.5, letterSpacing: '0.14em',
             textTransform: 'uppercase' as const,
-            color: '#5B5547', fontWeight: 700,
+            color: '#3E3A30', fontWeight: 700,
             marginBottom: 12,
             display: 'flex', alignItems: 'center', gap: 10,
           }}>
