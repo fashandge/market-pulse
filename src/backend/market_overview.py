@@ -41,8 +41,8 @@ CRITICAL_THEME_GROUPS = [
 
 OTHER_THEME_GROUPS = [
     ("Enterprise SaaS", ["ORCL", "OKTA"]),
-    ("Consumer Tech", ["HOOD", "DASH", "APP", "RDDT", "GRMN"]),
-    ("Pharma & Biotech", ["JNJ", "MRK", "KRYS", "LLY", "TARS", "GILD", "LIFE"]),
+    ("Consumer Tech", ["HOOD", "DASH", "APP", "RDDT", "GRMN", "LIFE"]),
+    ("Pharma & Biotech", ["JNJ", "MRK", "KRYS", "LLY", "TARS", "GILD"]),
     ("Industrial & Infra", ["CRML", "ROK", "CAT", "SEI", "FLR", "STRL", "FLEX", "MTZ"]),
     ("Utilities", ["NEE", "PPL", "VST", "FE"]),
     ("Oil & Gas", ["OCO", "XOM", "BKR"]),
