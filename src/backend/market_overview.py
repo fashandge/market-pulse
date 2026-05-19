@@ -2,14 +2,27 @@
 
 from __future__ import annotations
 
-OVERVIEW_GROUPS = [
-    ("Major Indices", ["NDX", "QQQ", "SPX", "SPY", "RSP", "DJI", "NYA", "IWM"]),
-    ("Other Indices", ["VIX", "VIX3M", "US10Y", "US20Y", "US30Y", "TLT", "DXY", "CL1!"]),
-    ("Futures", ["NQ1!", "ES1!", "RTY1!"]),
-    ("Gold / Silver / Copper", ["GOLD", "GLD", "GC1!", "GVZ", "GDX", "SILVER", "SLV", "VXSLV", "SIL", "SLVR", "COPX"]),
-    ("Crypto", ["BTCUSD", "IBIT", "DVOL", "ETHUSD", "ETHA", "ETHDVOL", "ETHU", "CRCL"]),
-    ("Critical Sectors", ["SMH", "DRAM", "AIPO", "URA", "IGV", "OIH", "XLF", "XBI", "ITA"]),
-    ("Other ETFs", ["GRID", "PAVE", "CHAT", "AIQ"]),
+import csv
+from pathlib import Path
+
+TICKER_CSV = Path.home() / "projects/stock_picker/data/ticker.csv"
+
+SECTIONS = [
+    ("Overview", False, [
+        "Major Indices", "Other Indices", "Futures",
+        "Gold / Silver / Copper", "Crypto",
+        "Critical Sectors", "Other ETFs",
+    ]),
+    ("Critical Themes", True, [
+        "Big Tech", "Memory & Storage", "Networking & Optical",
+        "AI Chips & Foundry", "Data Center Power", "BTC Mining & GPU Cloud",
+        "Semicon Equipment", "Clean Energy", "Nuclear & Uranium",
+    ]),
+    ("Other Themes", True, [
+        "Enterprise SaaS", "Consumer Tech", "Pharma & Biotech",
+        "Industrial & Infra", "Utilities", "Oil & Gas",
+        "AI Software", "Cybersecurity", "Hospitality", "Defense",
+    ]),
 ]
 
 GROUPS_AVG_OVERRIDE: dict[str, dict] = {
@@ -27,36 +40,14 @@ GROUPS_AVG_OVERRIDE: dict[str, dict] = {
     },
 }
 
-CRITICAL_THEME_GROUPS = [
-    ("Big Tech", ["NVDA", "GOOGL", "AAPL", "MSFT", "AMZN", "META", "TSLA"]),
-    ("Memory & Storage", ["MU", "SNDK", "WDC", "P", "000660", "005930"]),
-    ("Networking & Optical", ["LITE", "COHR", "GLW", "CIEN", "ANET", "NOK", "VIAV", "LWLG", "AXTI", "ONDS", "CRDO", "TSEM"]),
-    ("AI Chips & Foundry", ["NVDA", "AMD", "INTC", "TSM", "MRVL", "QCOM", "ARM"]),
-    ("Data Center Power", ["BE", "VRT", "GEV", "ETN", "POWL", "CPSH", "PWR", "HUBB", "HPS.A", "SU", "ENR"]),
-    ("BTC Mining & GPU Cloud", ["IREN", "CIFR", "NBIS", "CRWV", "CLSK", "HUT", "RIOT"]),
-    ("Semicon Equipment", ["LRCX", "AMAT", "KLAC", "TER", "FORM", "6857", "AMKR"]),
-    ("Clean Energy", ["MP", "USAR", "BHP"]),
-    ("Nuclear & Uranium", ["CCJ", "LEU", "UUUU", "NLR", "URA"]),
-]
 
-OTHER_THEME_GROUPS = [
-    ("Enterprise SaaS", ["ORCL", "OKTA"]),
-    ("Consumer Tech", ["HOOD", "DASH", "APP", "RDDT", "GRMN", "LIFE"]),
-    ("Pharma & Biotech", ["JNJ", "MRK", "KRYS", "LLY", "TARS", "GILD"]),
-    ("Industrial & Infra", ["CRML", "ROK", "CAT", "SEI", "FLR", "STRL", "FLEX", "MTZ"]),
-    ("Utilities", ["NEE", "PPL", "VST", "FE"]),
-    ("Oil & Gas", ["OCO", "XOM", "BKR"]),
-    ("AI Software", ["PLTR", "PATH", "TEM"]),
-    ("Cybersecurity", ["CRWD", "PANW", "FTNT"]),
-    ("Hospitality", ["HLT", "HTHT"]),
-    ("Defense", ["LMT", "KTOS", "ITA"]),
-]
-
-SECTIONS = [
-    ("Overview", OVERVIEW_GROUPS, False),
-    ("Critical Themes", CRITICAL_THEME_GROUPS, True),
-    ("Other Themes", OTHER_THEME_GROUPS, True),
-]
+def _load_all_groups() -> dict[str, list[str]]:
+    groups: dict[str, list[tuple[float, str]]] = {}
+    with open(TICKER_CSV) as f:
+        for row in csv.DictReader(f):
+            order = float(row["display_order"]) if row.get("display_order") else float("inf")
+            groups.setdefault(row["theme"], []).append((order, row["ticker"]))
+    return {name: [t for _, t in sorted(entries)] for name, entries in groups.items()}
 
 
 def _parse_volume(vol_str: str) -> float | None:
@@ -103,10 +94,14 @@ def _compute_avg_change(symbols: list[str], data: dict) -> float | None:
 
 
 def build_overview(scraped_data: dict) -> list[dict]:
+    all_groups = _load_all_groups()
     sections = []
-    for section_name, groups_def, show_avg in SECTIONS:
+    for section_name, show_avg, group_names in SECTIONS:
         groups = []
-        for group_name, symbols in groups_def:
+        for group_name in group_names:
+            symbols = all_groups.get(group_name, [])
+            if not symbols:
+                continue
             override = GROUPS_AVG_OVERRIDE.get(group_name, {})
             avg_symbols = override.get("avg_symbols", symbols)
             avg_change = _compute_avg_change(avg_symbols, scraped_data) if show_avg else None
