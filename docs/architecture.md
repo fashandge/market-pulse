@@ -103,6 +103,7 @@ App.tsx
 │   └── Group headers: avg change%, avg volume ratio
 │
 ├── MarketView.tsx
+│   ├── Persists selected sub-tab in sessionStorage (per browser tab)
 │   ├── Sub-tabs: Trading View | X | CFZH | Trend Spider
 │   ├── Summary tabs: markdown (react-markdown + remark-gfm)
 │   └── Trend Spider tab: card feed with images and timestamps

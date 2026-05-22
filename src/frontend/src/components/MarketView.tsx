@@ -47,12 +47,19 @@ const TAB_LABELS: Record<SourceTab, string> = {
 }
 
 export function MarketView() {
-  const [activeSource, setActiveSource] = useState<SourceTab>('trading-view')
+  const [activeSource, setActiveSource] = useState<SourceTab>(() => {
+    return (sessionStorage.getItem('marketNewsTab') as SourceTab) || 'trading-view'
+  })
   const [summary, setSummary] = useState<SummaryResponse | null>(null)
   const [trendSpiderPosts, setTrendSpiderPosts] = useState<TrendSpiderPost[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+
+  const handleSelectSource = (source: SourceTab) => {
+    setActiveSource(source)
+    sessionStorage.setItem('marketNewsTab', source)
+  }
 
   const closeLightbox = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') setLightboxUrl(null)
@@ -199,7 +206,7 @@ export function MarketView() {
         {SOURCE_TABS.map((source) => (
           <button
             key={source}
-            onClick={() => setActiveSource(source)}
+            onClick={() => handleSelectSource(source)}
             className={`px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
               activeSource === source
                 ? 'text-sol-blue border-b-2 border-sol-blue'
