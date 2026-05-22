@@ -6,11 +6,11 @@ import { MarketOverview } from './components/MarketOverview'
 
 function App() {
   const [selectedTab, setSelectedTab] = useState(() => {
-    return localStorage.getItem('selectedTab') || 'overview'
+    return sessionStorage.getItem('selectedTab') || 'overview'
   })
 
   const handleSelectTab = (tab: string) => {
-    localStorage.setItem('selectedTab', tab)
+    sessionStorage.setItem('selectedTab', tab)
     setSelectedTab(tab)
   }
 

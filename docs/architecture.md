@@ -87,6 +87,7 @@ TradingView Watchlist                CoinMarketCap API                News Summa
 
 ```
 App.tsx
+├── Persists selected navigation tab in sessionStorage (per browser tab)
 ├── Sidebar.tsx
 │   - Market Overview tab → MarketOverview (default)
 │   - Market News tab → MarketView
