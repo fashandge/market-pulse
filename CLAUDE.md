@@ -71,4 +71,4 @@ Open http://localhost:5173
 - Backend API endpoints are under `/api/tickers/{ticker}/` and `/api/market/`
 - UI uses Solarized Light color theme (defined in `index.css` as `--color-sol-*` variables)
 - Temp files (screenshots, logs, etc.) go in `tmp/` folder
-- Market Overview loads all ticker groups from `~/projects/stock_picker/data/ticker.csv` at runtime. To add/reorder tickers, edit the CSV (theme, display_order columns). Section assignment and group ordering are in `SECTIONS` in `market_overview.py`. Tickers may appear in multiple themes (e.g., NVDA in both Big Tech and AI Chips & Foundry).
+- Market Overview loads ticker groups from `~/projects/stock_picker/data/ticker.csv` at runtime. To add/reorder tickers within a theme, edit the CSV (`theme`, `display_order` columns). Curated section/group ordering lives in `SECTIONS` in `market_overview.py`; new CSV themes not listed there are automatically appended to `Other Themes`. Tickers may appear in multiple themes (e.g., NVDA in both Big Tech and AI Chips & Foundry).

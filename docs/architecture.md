@@ -63,7 +63,7 @@ TradingView Watchlist                CoinMarketCap API                News Summa
    market_overview.py                React Frontend (port 5173)      - Sub-tabs: TV, X, CFZH, TS
    - Groups by theme/sector          - Filters by time range         - Markdown rendering
    - Computes avg change/vol ratio   - Renders Plotly chart
-   - 60s cache                       - Displays changes table
+   - 15 min cache                    - Displays changes table
        ↓
    MarketOverview.tsx (default view)
    - Card grid by section
@@ -81,7 +81,7 @@ TradingView Watchlist                CoinMarketCap API                News Summa
 | `/api/market/cfzh-summary` | GET | Returns today's CFZH forum summary |
 | `/api/market/x-summary` | GET | Returns today's X market news summary |
 | `/api/market/trendspider-posts` | GET | Returns up to 50 recent TrendSpider posts (JSONL) |
-| `/api/market/overview` | GET | Returns market overview: tickers grouped by theme with prices, changes, volume (cached 60s) |
+| `/api/market/overview` | GET | Returns market overview: tickers grouped by theme with prices, changes, volume (cached 15 min; `force=1` refreshes) |
 
 ## Frontend Components
 

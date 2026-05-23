@@ -15,7 +15,8 @@ SECTIONS = [
     ]),
     ("Critical Themes", True, [
         "Big Tech", "Memory & Storage", "Networking & Optical",
-        "AI Chips & Foundry", "Data Center Power", "BTC Mining & GPU Cloud",
+        "AI Chips & Foundry", "AI Servers", "Data Center Power",
+        "BTC Mining & GPU Cloud",
         "Semicon Equipment", "Clean Energy", "Nuclear & Uranium",
     ]),
     ("Other Themes", True, [
@@ -35,10 +36,16 @@ GROUPS_AVG_OVERRIDE: dict[str, dict] = {
         "avg_note": "Avg computed for US stocks only",
     },
     "Data Center Power": {
-        "avg_symbols": ["BE", "VRT", "GEV", "ETN", "POWL", "CPSH", "PWR", "HUBB", "HPS.A"],
+        "avg_symbols": [
+            "BE", "VRT", "GEV", "ETN", "POWL", "CPSH", "PWR", "HUBB", "HPS.A",
+        ],
         "avg_note": "Avg computed for US/CA stocks only",
     },
 }
+
+
+def _known_group_names() -> set[str]:
+    return {group for _, _, groups in SECTIONS for group in groups}
 
 
 def _load_all_groups() -> dict[str, list[str]]:
@@ -93,8 +100,54 @@ def _compute_avg_change(symbols: list[str], data: dict) -> float | None:
     return round(sum(values) / len(values), 2)
 
 
+def _build_group_data(
+    group_name: str, symbols: list[str], scraped_data: dict, show_avg: bool
+) -> dict:
+    override = GROUPS_AVG_OVERRIDE.get(group_name, {})
+    avg_symbols = override.get("avg_symbols", symbols)
+    avg_change = _compute_avg_change(avg_symbols, scraped_data) if show_avg else None
+    avg_note = override.get("avg_note", "") if show_avg else ""
+    tickers = []
+    for sym in symbols:
+        d = scraped_data.get(sym)
+        if d:
+            tickers.append({
+                "symbol": sym,
+                "price": d["price"],
+                "change_pct": d["change_pct"],
+                "change_abs": d.get("change_abs", ""),
+                "volume": d["volume"],
+                "avg_volume": d["avg_volume"],
+                "formal_symbol": d.get("formal_symbol", sym),
+            })
+        else:
+            tickers.append({
+                "symbol": sym,
+                "price": "—",
+                "change_pct": "—",
+                "change_abs": "",
+                "volume": "",
+                "avg_volume": "",
+                "formal_symbol": sym,
+            })
+    avg_vol_ratio = _compute_avg_vol_ratio(avg_symbols, scraped_data) if show_avg else None
+    group_data: dict = {
+        "name": group_name,
+        "avg_change": avg_change,
+        "tickers": tickers,
+    }
+    if avg_vol_ratio is not None:
+        group_data["avg_vol_ratio"] = avg_vol_ratio
+    if avg_note:
+        group_data["avg_note"] = avg_note
+    return group_data
+
+
 def build_overview(scraped_data: dict) -> list[dict]:
     all_groups = _load_all_groups()
+    unmapped_group_names = [
+        name for name in all_groups if name not in _known_group_names()
+    ]
     sections = []
     for section_name, show_avg, group_names in SECTIONS:
         groups = []
@@ -102,43 +155,13 @@ def build_overview(scraped_data: dict) -> list[dict]:
             symbols = all_groups.get(group_name, [])
             if not symbols:
                 continue
-            override = GROUPS_AVG_OVERRIDE.get(group_name, {})
-            avg_symbols = override.get("avg_symbols", symbols)
-            avg_change = _compute_avg_change(avg_symbols, scraped_data) if show_avg else None
-            avg_note = override.get("avg_note", "") if show_avg else ""
-            tickers = []
-            for sym in symbols:
-                d = scraped_data.get(sym)
-                if d:
-                    tickers.append({
-                        "symbol": sym,
-                        "price": d["price"],
-                        "change_pct": d["change_pct"],
-                        "change_abs": d.get("change_abs", ""),
-                        "volume": d["volume"],
-                        "avg_volume": d["avg_volume"],
-                        "formal_symbol": d.get("formal_symbol", sym),
-                    })
-                else:
-                    tickers.append({
-                        "symbol": sym,
-                        "price": "—",
-                        "change_pct": "—",
-                        "change_abs": "",
-                        "volume": "",
-                        "avg_volume": "",
-                        "formal_symbol": sym,
-                    })
-            avg_vol_ratio = _compute_avg_vol_ratio(avg_symbols, scraped_data) if show_avg else None
-            group_data: dict = {
-                "name": group_name,
-                "avg_change": avg_change,
-                "tickers": tickers,
-            }
-            if avg_vol_ratio is not None:
-                group_data["avg_vol_ratio"] = avg_vol_ratio
-            if avg_note:
-                group_data["avg_note"] = avg_note
-            groups.append(group_data)
+            groups.append(_build_group_data(group_name, symbols, scraped_data, show_avg))
+        if section_name == "Other Themes":
+            for group_name in unmapped_group_names:
+                groups.append(
+                    _build_group_data(
+                        group_name, all_groups[group_name], scraped_data, show_avg
+                    )
+                )
         sections.append({"name": section_name, "groups": groups})
     return sections
