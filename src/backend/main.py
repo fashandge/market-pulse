@@ -16,6 +16,7 @@ NEWS_BASE_PATH = Path.home() / "projects/news/data/market_news"
 CFZH_PATH = Path.home() / "projects/news/data/cfzh_forum_summaries"
 X_MARKET_NEWS_PATH = Path.home() / "projects/news/data/x_market_news"
 TRENDSPIDER_PATH = Path.home() / "projects/news/data/trendspider"
+ZHIHU_DAILY_BRIEFS_PATH = Path.home() / "projects/news/data/zhihu/daily_briefs"
 
 app = FastAPI(title="Market Dashboard API")
 
@@ -160,3 +161,18 @@ def get_trendspider_posts():
         post.pop("id", None)
 
     return {"posts": posts}
+
+
+@app.get("/api/market/ai-news-brief")
+def get_ai_news_brief():
+    """Return the latest Zhihu AI news daily brief."""
+    files = sorted(ZHIHU_DAILY_BRIEFS_PATH.glob("zhihu_brief_*.jsonl"), reverse=True)
+    today_la = datetime.now(ZoneInfo("America/Los_Angeles")).date().isoformat()
+    if not files:
+        return {"date": None, "is_stale": True, "articles": []}
+    latest = files[0]
+    date_str = latest.stem.split("_")[-1]
+    brief_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+    articles = [json.loads(line) for line in latest.read_text().splitlines() if line.strip()]
+    articles.sort(key=lambda a: a.get("rank", 9999))
+    return {"date": brief_date, "is_stale": brief_date < today_la, "articles": articles}

@@ -53,14 +53,14 @@ Market Pulse is a web dashboard for monitoring market and individual stock/crypt
 ## Data Flow
 
 ```
-TradingView Watchlist                CoinMarketCap API                News Summaries + TrendSpider
-(crawl4ai with persistent profile)        ↓                          (NDX, CFZH, X, TrendSpider)
+TradingView Watchlist                CoinMarketCap API                News Summaries + Feeds
+(crawl4ai with persistent profile)        ↓                          (NDX, CFZH, X, TrendSpider, Zhihu AI)
        ↓                            FastAPI Backend (port 8000)            ↓
    watchlist_scraper.py              - Fetches data                  - Reads .md/.jsonl files
    - Scrapes ~150 tickers            - Converts UTC → LA time        - Returns summaries/posts
    - Extracts price/change/volume    - Computes changes                    ↓
        ↓                                   ↓                         React Frontend (port 5173)
-   market_overview.py                React Frontend (port 5173)      - Sub-tabs: TV, X, CFZH, TS
+   market_overview.py                React Frontend (port 5173)      - Sub-tabs: TV, X, CFZH, TS, AI
    - Groups by theme/sector          - Filters by time range         - Markdown rendering
    - Computes avg change/vol ratio   - Renders Plotly chart
    - 15 min cache                    - Displays changes table
@@ -81,6 +81,7 @@ TradingView Watchlist                CoinMarketCap API                News Summa
 | `/api/market/cfzh-summary` | GET | Returns today's CFZH forum summary |
 | `/api/market/x-summary` | GET | Returns today's X market news summary |
 | `/api/market/trendspider-posts` | GET | Returns up to 50 recent TrendSpider posts (JSONL) |
+| `/api/market/ai-news-brief` | GET | Returns the latest Zhihu AI news daily brief (`date`, `is_stale`, `articles[]`) from `~/projects/news/data/zhihu/daily_briefs/zhihu_brief_YYYYMMDD.jsonl` |
 | `/api/market/overview` | GET | Returns market overview: tickers grouped by theme with prices, changes, volume (cached 15 min; `force=1` refreshes) |
 
 ## Frontend Components
@@ -104,9 +105,10 @@ App.tsx
 │
 ├── MarketView.tsx
 │   ├── Persists selected sub-tab in sessionStorage (per browser tab)
-│   ├── Sub-tabs: Trading View | X | CFZH | Trend Spider
+│   ├── Sub-tabs: Trading View | X | CFZH | Trend Spider | AI News
 │   ├── Summary tabs: markdown (react-markdown + remark-gfm)
-│   └── Trend Spider tab: card feed with images and timestamps
+│   ├── Trend Spider tab: card feed with images and timestamps
+│   └── AI News tab: card feed of latest Zhihu daily brief (category pill, title, snippet); stale-date banner when today's brief is missing
 │
 └── TickerView.tsx
     ├── Header (ticker name, market cap link)
