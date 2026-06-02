@@ -18,9 +18,10 @@ tmp/
 # Playwright
 .playwright-mcp/
 
-# IDE
+# IDE / tooling
 .idea/
 .vscode/
+.antigravitycli/
 
 # OS
 .DS_Store
