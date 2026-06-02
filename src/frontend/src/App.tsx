@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar'
 import { TickerView } from './components/TickerView'
 import { MarketView } from './components/MarketView'
 import { MarketOverview } from './components/MarketOverview'
+import { AiNewsView } from './components/AiNewsView'
 
 function App() {
   const [selectedTab, setSelectedTab] = useState(() => {
@@ -20,6 +21,9 @@ function App() {
     }
     if (selectedTab === 'market') {
       return <MarketView />
+    }
+    if (selectedTab === 'ai-news') {
+      return <AiNewsView />
     }
 
     return <TickerView ticker={selectedTab} />

@@ -2,7 +2,7 @@
 
 import json
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -122,6 +122,29 @@ def get_cfzh_summary():
     return {"date": formatted_date, "content": content}
 
 
+@app.get("/api/market/cfzh-summaries")
+def get_cfzh_summaries():
+    """Get the latest CFZH forum summary for today and the previous 3 days."""
+    today = date.today()
+    summaries = []
+    for days_ago in range(4):
+        d = today - timedelta(days=days_ago)
+        date_str = d.strftime("%Y%m%d")
+        formatted_date = d.strftime("%B %d, %Y")
+        pattern = f"cfzh_summary_{date_str}_*.md"
+        md_files = sorted(CFZH_PATH.glob(pattern), reverse=True)
+        if not md_files:
+            summaries.append({"date": formatted_date, "content": None})
+            continue
+        latest = md_files[0]
+        content = latest.read_text()
+        time_part = latest.stem.split("_")[-1]
+        generated_time = f"{time_part[:2]}:{time_part[2:]}"
+        content = f"Generated {generated_time} ({formatted_date})\n\n{content}"
+        summaries.append({"date": formatted_date, "content": content})
+    return {"summaries": summaries}
+
+
 @app.get("/api/market/x-summary")
 def get_x_summary():
     """Get the latest X market news summary for today."""
@@ -163,16 +186,19 @@ def get_trendspider_posts():
     return {"posts": posts}
 
 
-@app.get("/api/market/ai-news-brief")
-def get_ai_news_brief():
-    """Return the latest Zhihu AI news daily brief."""
-    files = sorted(ZHIHU_DAILY_BRIEFS_PATH.glob("zhihu_brief_*.jsonl"), reverse=True)
+@app.get("/api/market/ai-news-briefs")
+def get_ai_news_briefs():
+    """Return the past 7 days of Zhihu AI news daily briefs."""
+    files = sorted(ZHIHU_DAILY_BRIEFS_PATH.glob("zhihu_brief_*.jsonl"), reverse=True)[:7]
     today_la = datetime.now(ZoneInfo("America/Los_Angeles")).date().isoformat()
-    if not files:
-        return {"date": None, "is_stale": True, "articles": []}
-    latest = files[0]
-    date_str = latest.stem.split("_")[-1]
-    brief_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
-    articles = [json.loads(line) for line in latest.read_text().splitlines() if line.strip()]
-    articles.sort(key=lambda a: a.get("rank", 9999))
-    return {"date": brief_date, "is_stale": brief_date < today_la, "articles": articles}
+
+    briefs = []
+    for f in files:
+        date_str = f.stem.split("_")[-1]
+        brief_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+        articles = [json.loads(line) for line in f.read_text().splitlines() if line.strip()]
+        articles.sort(key=lambda a: a.get("rank", 9999))
+        briefs.append({"date": brief_date, "articles": articles})
+
+    today_available = bool(briefs) and briefs[0]["date"] == today_la
+    return {"today_available": today_available, "briefs": briefs}

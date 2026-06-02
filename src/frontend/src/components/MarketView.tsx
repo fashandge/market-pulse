@@ -7,6 +7,10 @@ interface SummaryResponse {
   content: string | null
 }
 
+interface CfzhSummariesResponse {
+  summaries: SummaryResponse[]
+}
+
 interface TrendSpiderPost {
   text: string
   media: string[]
@@ -17,23 +21,9 @@ interface TrendSpiderResponse {
   posts: TrendSpiderPost[]
 }
 
-interface AiNewsArticle {
-  title: string
-  category: string
-  snippet: string
-  url?: string
-  rank?: number
-}
+type SourceTab = 'trading-view' | 'cfzh' | 'x' | 'trendspider'
 
-interface AiNewsResponse {
-  date: string | null
-  is_stale: boolean
-  articles: AiNewsArticle[]
-}
-
-type SourceTab = 'trading-view' | 'cfzh' | 'x' | 'trendspider' | 'ai-news'
-
-const SOURCE_TABS: SourceTab[] = ['trading-view', 'x', 'cfzh', 'trendspider', 'ai-news']
+const SOURCE_TABS: SourceTab[] = ['trading-view', 'x', 'cfzh', 'trendspider']
 
 const SOURCE_CONFIG: Record<string, { label: string; endpoint: string; noDataMessage: string }> = {
   'trading-view': {
@@ -58,16 +48,16 @@ const TAB_LABELS: Record<SourceTab, string> = {
   x: 'X',
   cfzh: 'CFZH',
   trendspider: 'Trend Spider',
-  'ai-news': 'AI News',
 }
 
 export function MarketView() {
   const [activeSource, setActiveSource] = useState<SourceTab>(() => {
-    return (sessionStorage.getItem('marketNewsTab') as SourceTab) || 'trading-view'
+    const stored = sessionStorage.getItem('marketNewsTab') as SourceTab
+    return stored && SOURCE_TABS.includes(stored) ? stored : 'trading-view'
   })
   const [summary, setSummary] = useState<SummaryResponse | null>(null)
+  const [cfzhSummaries, setCfzhSummaries] = useState<SummaryResponse[]>([])
   const [trendSpiderPosts, setTrendSpiderPosts] = useState<TrendSpiderPost[]>([])
-  const [aiNews, setAiNews] = useState<AiNewsResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
@@ -103,11 +93,11 @@ export function MarketView() {
           setError(err.message)
           setLoading(false)
         })
-    } else if (activeSource === 'ai-news') {
-      fetch('/api/market/ai-news-brief')
+    } else if (activeSource === 'cfzh') {
+      fetch('/api/market/cfzh-summaries')
         .then((res) => res.json())
-        .then((data: AiNewsResponse) => {
-          setAiNews(data)
+        .then((data: CfzhSummariesResponse) => {
+          setCfzhSummaries(data.summaries)
           setLoading(false)
         })
         .catch((err) => {
@@ -191,58 +181,6 @@ export function MarketView() {
     )
   }
 
-  const renderAiNewsContent = () => {
-    if (!aiNews || aiNews.articles.length === 0) {
-      return (
-        <div className="flex items-center justify-center h-64 text-sol-base1">
-          No AI news brief available yet.
-        </div>
-      )
-    }
-
-    return (
-      <div className="flex flex-col items-center gap-4">
-        {aiNews.is_stale && (
-          <div className="w-full max-w-xl rounded-lg border border-sol-yellow/40 bg-sol-yellow/10 px-4 py-3 text-sm text-sol-yellow">
-            Today's AI news brief has not been generated yet — showing brief from {aiNews.date}.
-          </div>
-        )}
-        {aiNews.articles.map((article, index) => {
-          const titleNode = article.url ? (
-            <a
-              href={article.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sol-base01 font-semibold text-lg leading-snug hover:underline"
-            >
-              {article.title}
-            </a>
-          ) : (
-            <h3 className="text-sol-base01 font-semibold text-lg leading-snug">{article.title}</h3>
-          )
-          return (
-            <div
-              key={index}
-              className="w-full max-w-xl bg-sol-base3 rounded-xl border border-sol-base2 shadow-sm px-5 py-4"
-            >
-              {article.category && (
-                <span className="inline-block rounded-full bg-sol-base2 text-sol-base01 text-xs px-2 py-0.5 mb-2">
-                  {article.category}
-                </span>
-              )}
-              <div className="mb-2">{titleNode}</div>
-              {article.snippet && (
-                <p className="text-sol-base00 whitespace-pre-wrap text-sm leading-relaxed">
-                  {article.snippet}
-                </p>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    )
-  }
-
   const renderContent = () => {
     if (loading) {
       return (
@@ -264,8 +202,38 @@ export function MarketView() {
       return renderTrendSpiderContent()
     }
 
-    if (activeSource === 'ai-news') {
-      return renderAiNewsContent()
+    if (activeSource === 'cfzh') {
+      if (cfzhSummaries.length === 0 || cfzhSummaries.every((s) => !s.content)) {
+        return (
+          <div className="flex items-center justify-center h-64 text-sol-base1">
+            No CFZH forum summaries available yet.
+          </div>
+        )
+      }
+      return (
+        <div className="flex flex-col gap-3">
+          {cfzhSummaries.map((s, i) => (
+            <details
+              key={s.date}
+              open={i === 0}
+              className="border border-sol-base2 rounded-lg overflow-hidden"
+            >
+              <summary className="px-4 py-3 bg-sol-base3 cursor-pointer font-medium text-sol-base01 hover:bg-sol-base2/50 select-none">
+                {s.date}
+              </summary>
+              <div className="px-4 py-3">
+                {s.content ? (
+                  <div className="prose prose-base max-w-none prose-headings:text-sol-base01 prose-p:text-sol-base00 prose-a:text-sol-blue prose-strong:text-sol-base01 prose-code:text-sol-cyan prose-code:bg-sol-base2 prose-code:px-1 prose-code:rounded">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{s.content}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className="text-sol-base1">No summary for {s.date}.</p>
+                )}
+              </div>
+            </details>
+          ))}
+        </div>
+      )
     }
 
     if (!summary?.content) {

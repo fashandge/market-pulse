@@ -37,6 +37,17 @@ export function Sidebar({ selectedTab, onSelectTab }: SidebarProps) {
           Market News
         </button>
 
+        <button
+          onClick={() => onSelectTab('ai-news')}
+          className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+            selectedTab === 'ai-news'
+              ? 'bg-sol-blue/15 text-sol-blue'
+              : 'text-sol-base00 hover:bg-sol-base3'
+          }`}
+        >
+          AI News
+        </button>
+
         <div>
           <button
             onClick={() => setTickersExpanded(!tickersExpanded)}
