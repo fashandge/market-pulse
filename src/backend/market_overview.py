@@ -7,6 +7,12 @@ from pathlib import Path
 
 TICKER_CSV = Path.home() / "projects/stock_picker/data/ticker.csv"
 
+# Personal holdings, shown as a single group in their own top section.
+PORTFOLIO = [
+    "MU", "AMD", "MRVL", "NOW", "DOCN", "VRT",
+    "CRCL", "NVDA", "GOOGL", "META", "TSLA",
+]
+
 SECTIONS = [
     ("Overview", False, [
         "Major Indices", "Other Indices", "Futures",
@@ -164,4 +170,9 @@ def build_overview(scraped_data: dict) -> list[dict]:
                     )
                 )
         sections.append({"name": section_name, "groups": groups})
+        if section_name == "Overview":
+            portfolio_group = _build_group_data(
+                "Portfolio", PORTFOLIO, scraped_data, show_avg=True
+            )
+            sections.append({"name": "Portfolio", "groups": [portfolio_group]})
     return sections
