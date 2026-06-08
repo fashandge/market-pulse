@@ -9,8 +9,8 @@ TICKER_CSV = Path.home() / "projects/stock_picker/data/ticker.csv"
 
 # Personal holdings, shown as a single group in their own top section.
 PORTFOLIO = [
-    "MU", "AMD", "MRVL", "NOW", "DOCN", "VRT",
-    "CRCL", "NVDA", "GOOGL", "META", "TSLA",
+    "MU", "AMD", "MRVL",
+    "NVDA", "GOOGL", "META", "TSLA",
 ]
 
 SECTIONS = [
