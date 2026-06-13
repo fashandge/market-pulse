@@ -38,6 +38,17 @@ export function Sidebar({ selectedTab, onSelectTab }: SidebarProps) {
         </button>
 
         <button
+          onClick={() => onSelectTab('china-news')}
+          className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+            selectedTab === 'china-news'
+              ? 'bg-sol-blue/15 text-sol-blue'
+              : 'text-sol-base00 hover:bg-sol-base3'
+          }`}
+        >
+          China Market News
+        </button>
+
+        <button
           onClick={() => onSelectTab('ai-news')}
           className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
             selectedTab === 'ai-news'

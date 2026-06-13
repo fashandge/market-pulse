@@ -105,10 +105,16 @@ App.tsx
 │
 ├── MarketView.tsx
 │   ├── Persists selected sub-tab in sessionStorage (per browser tab)
-│   ├── Sub-tabs: Trading View | X | CFZH | Trend Spider | AI News
+│   ├── Sub-tabs: Trading View | X | CFZH | Trend Spider | Charts
 │   ├── Summary tabs: markdown (react-markdown + remark-gfm)
 │   ├── Trend Spider tab: card feed with images and timestamps
-│   └── AI News tab: card feed of latest Zhihu daily brief (category pill, title, snippet); stale-date banner when today's brief is missing
+│   └── Charts tab: TickerSearch (search full duckdb universe) + WeeklyCharts
+│       (lightweight-charts v5; 7 synced panes: candles+SMA5/10/40, volume+4wk avg,
+│        MACD, RSI, OBV, ROC, KDJ; 1Y/2Y/5Y/Max range). Data from /api/tickers/{t}/weekly-chart
+│
+├── TickerSearch.tsx — debounced /api/tickers/search dropdown (symbol + name)
+│
+├── WeeklyCharts.tsx — multi-pane weekly TA charts from the investment duckdb
 │
 └── TickerView.tsx
     ├── Header (ticker name, market cap link)

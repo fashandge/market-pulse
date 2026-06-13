@@ -4,6 +4,7 @@ import { TickerView } from './components/TickerView'
 import { MarketView } from './components/MarketView'
 import { MarketOverview } from './components/MarketOverview'
 import { AiNewsView } from './components/AiNewsView'
+import { ChinaNewsView } from './components/ChinaNewsView'
 
 function App() {
   const [selectedTab, setSelectedTab] = useState(() => {
@@ -21,6 +22,9 @@ function App() {
     }
     if (selectedTab === 'market') {
       return <MarketView />
+    }
+    if (selectedTab === 'china-news') {
+      return <ChinaNewsView />
     }
     if (selectedTab === 'ai-news') {
       return <AiNewsView />

@@ -10,8 +10,8 @@ Market Pulse - A web dashboard for monitoring market and individual stock/crypto
 
 - **Frontend**: React + Vite + TypeScript + Tailwind CSS v4 (Solarized Light theme)
 - **Backend**: FastAPI (Python)
-- **Charts**: Plotly (react-plotly.js)
-- **Data Sources**: CoinMarketCap API, TradingView watchlist (crawl4ai), news summaries (NDX, CFZH forum, X market news), TrendSpider posts, Zhihu AI news daily briefs
+- **Charts**: Plotly (react-plotly.js) for market-cap; TradingView Lightweight Charts v5 for weekly TA charts
+- **Data Sources**: CoinMarketCap API, TradingView watchlist (crawl4ai), news summaries (NDX, CFZH forum, X market news), TrendSpider posts, Zhihu AI news daily briefs, weekly OHLCV + precomputed indicators from the `investment` project duckdb (`~/projects/investment/data/stocks/stocks.duckdb`)
 
 ## Project Structure
 
@@ -24,7 +24,8 @@ src/
 │   ├── market_overview.py    # Market overview data assembler (groups/themes)
 │   └── tickers/          # Ticker data modules
 │       ├── __init__.py
-│       └── crcl.py       # USDC/CRCL data fetching
+│       ├── crcl.py       # USDC/CRCL data fetching
+│       └── weekly.py     # Weekly OHLCV + indicators (reads investment duckdb, read-only)
 │
 └── frontend/             # React + Vite frontend
     ├── src/
@@ -34,7 +35,9 @@ src/
     │   └── components/
     │       ├── Sidebar.tsx
     │       ├── MarketOverview.tsx   # Market overview card grid (default view)
-    │       ├── MarketView.tsx      # Market news with sub-tabs (Trading View, X, CFZH, Trend Spider, AI News)
+    │       ├── MarketView.tsx      # Market news with sub-tabs (Trading View, X, CFZH, Trend Spider, Charts)
+    │       ├── TickerSearch.tsx    # Ticker search box (queries /api/tickers/search)
+    │       ├── WeeklyCharts.tsx    # Weekly TA charts (lightweight-charts) for the Charts sub-tab
     │       ├── TickerView.tsx
     │       └── MarketCapChart.tsx
     ├── index.html

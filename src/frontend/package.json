@@ -12,6 +12,7 @@
   "dependencies": {
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.2.4",
+    "lightweight-charts": "^5.2.0",
     "plotly.js": "^3.5.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",

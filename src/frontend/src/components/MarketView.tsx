@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { TickerSearch } from './TickerSearch'
+import { WeeklyCharts } from './WeeklyCharts'
 
 interface SummaryResponse {
   date: string
@@ -21,9 +23,9 @@ interface TrendSpiderResponse {
   posts: TrendSpiderPost[]
 }
 
-type SourceTab = 'trading-view' | 'cfzh' | 'x' | 'trendspider'
+type SourceTab = 'trading-view' | 'cfzh' | 'x' | 'trendspider' | 'charts'
 
-const SOURCE_TABS: SourceTab[] = ['trading-view', 'x', 'cfzh', 'trendspider']
+const SOURCE_TABS: SourceTab[] = ['trading-view', 'x', 'cfzh', 'trendspider', 'charts']
 
 const SOURCE_CONFIG: Record<string, { label: string; endpoint: string; noDataMessage: string }> = {
   'trading-view': {
@@ -48,6 +50,7 @@ const TAB_LABELS: Record<SourceTab, string> = {
   x: 'X',
   cfzh: 'CFZH',
   trendspider: 'Trend Spider',
+  charts: 'Charts',
 }
 
 export function MarketView() {
@@ -61,10 +64,16 @@ export function MarketView() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+  const [chartTicker, setChartTicker] = useState<string>(() => sessionStorage.getItem('chartsTicker') || '')
 
   const handleSelectSource = (source: SourceTab) => {
     setActiveSource(source)
     sessionStorage.setItem('marketNewsTab', source)
+  }
+
+  const handleSelectTicker = (symbol: string) => {
+    setChartTicker(symbol)
+    sessionStorage.setItem('chartsTicker', symbol)
   }
 
   const closeLightbox = useCallback((e: KeyboardEvent) => {
@@ -82,7 +91,10 @@ export function MarketView() {
     setLoading(true)
     setError(null)
 
-    if (activeSource === 'trendspider') {
+    if (activeSource === 'charts') {
+      // The charts tab self-fetches inside WeeklyCharts; nothing to load here.
+      setLoading(false)
+    } else if (activeSource === 'trendspider') {
       fetch('/api/market/trendspider-posts')
         .then((res) => res.json())
         .then((data: TrendSpiderResponse) => {
@@ -198,6 +210,21 @@ export function MarketView() {
       )
     }
 
+    if (activeSource === 'charts') {
+      return (
+        <div className="space-y-4">
+          <TickerSearch onSelect={handleSelectTicker} selected={chartTicker} />
+          {chartTicker ? (
+            <WeeklyCharts ticker={chartTicker} />
+          ) : (
+            <div className="flex items-center justify-center h-64 text-sol-base1">
+              Search for a ticker to view its weekly charts.
+            </div>
+          )}
+        </div>
+      )
+    }
+
     if (activeSource === 'trendspider') {
       return renderTrendSpiderContent()
     }
@@ -252,7 +279,7 @@ export function MarketView() {
   }
 
   return (
-    <div className="max-w-3xl">
+    <div className={activeSource === 'charts' ? 'max-w-6xl' : 'max-w-3xl'}>
       <div className="flex gap-1 mb-6 border-b border-sol-base1/30">
         {SOURCE_TABS.map((source) => (
           <button

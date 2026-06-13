@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.backend.tickers import crcl
+from src.backend.tickers import crcl, weekly
 from src.backend import market_overview, watchlist_scraper
 
 NEWS_BASE_PATH = Path.home() / "projects/news/data/market_news"
@@ -49,6 +49,18 @@ def get_market_overview(force: int = 0):
     _overview_cache["data"] = result
     _overview_cache["timestamp"] = now
     return result
+
+
+@app.get("/api/tickers/search")
+def search_tickers(q: str = "", limit: int = 20):
+    """Search the weekly-chart ticker universe by symbol."""
+    return {"results": weekly.search_tickers(q, limit)}
+
+
+@app.get("/api/tickers/{ticker}/weekly-chart")
+def get_weekly_chart(ticker: str):
+    """Weekly OHLCV + technical indicators for a ticker (full history)."""
+    return weekly.get_weekly_chart(ticker.upper())
 
 
 @app.get("/api/tickers/crcl/market-cap")
@@ -184,6 +196,41 @@ def get_trendspider_posts():
         post.pop("id", None)
 
     return {"posts": posts}
+
+
+@app.get("/api/market/china-news")
+def get_china_news(region: str = "china"):
+    """Get the latest available daily summary for China A-share or Hong Kong markets.
+
+    Returns the most recent day's summary. ``is_today`` is False when today's
+    summary has not been generated yet, so the frontend can show a warning.
+    """
+    folder = "hk" if region == "hk" else "china"
+    base = NEWS_BASE_PATH / folder
+
+    date_dirs = (
+        sorted((d for d in base.glob("*") if d.is_dir() and d.name.isdigit()), reverse=True)
+        if base.exists()
+        else []
+    )
+    if not date_dirs:
+        return {"region": region, "date": None, "is_today": False, "content": None}
+
+    latest_dir = date_dirs[0]
+    news_date = datetime.strptime(latest_dir.name, "%Y%m%d").date()
+    formatted_date = news_date.strftime("%B %d, %Y")
+    is_today = news_date == date.today()
+
+    summary_dir = latest_dir / "summary"
+    md_files = sorted(summary_dir.glob("*.md"), reverse=True) if summary_dir.exists() else []
+    content = md_files[0].read_text() if md_files else None
+
+    return {
+        "region": region,
+        "date": formatted_date,
+        "is_today": is_today,
+        "content": content,
+    }
 
 
 @app.get("/api/market/ai-news-briefs")
