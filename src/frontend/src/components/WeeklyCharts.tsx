@@ -60,15 +60,56 @@ const lineOpts = (color: string) => ({
   lastValueVisible: false,
 })
 
-const paneLabel = (chart: IChartApi, paneIndex: number, text: string) => {
-  const panes = chart.panes()
-  if (paneIndex >= panes.length) return
-  createTextWatermark(panes[paneIndex], {
-    horzAlign: 'left',
-    vertAlign: 'top',
-    lines: [{ text, color: 'rgba(88,110,117,0.55)', fontSize: 12, fontFamily: 'inherit', fontStyle: '' }],
-  })
+// Per-pane legend rendered as a top-left text watermark; updated live on hover.
+const TITLE_COLOR = 'rgba(88,110,117,0.55)'
+const seg = (text: string, color: string) => ({
+  text,
+  color,
+  fontSize: 12,
+  fontFamily: 'inherit',
+  fontStyle: '',
+})
+
+const f2 = (v: number | null) => (v == null ? '–' : v.toFixed(2))
+const fVol = (v: number | null) => {
+  if (v == null) return '–'
+  const a = Math.abs(v)
+  if (a >= 1e9) return (v / 1e9).toFixed(2) + 'B'
+  if (a >= 1e6) return (v / 1e6).toFixed(2) + 'M'
+  if (a >= 1e3) return (v / 1e3).toFixed(1) + 'K'
+  return String(Math.round(v))
 }
+
+// Build the watermark lines for each pane from a single week's row.
+const legendLines = (r: WeeklyRow, ticker: string) => [
+  [
+    seg(`${ticker} · Weekly  ·  ${r.week_start}`, TITLE_COLOR),
+    seg(`O ${f2(r.open)}  H ${f2(r.high)}  L ${f2(r.low)}  C ${f2(r.close)}`, C.base01),
+    seg(`SMA5 ${f2(r.sma_5)}`, C.blue),
+    seg(`SMA10 ${f2(r.sma_10)}`, C.cyan),
+    seg(`SMA40 ${f2(r.sma_40)}`, C.yellow),
+  ],
+  [
+    seg('Volume + 4wk avg', TITLE_COLOR),
+    seg(`Vol ${fVol(r.volume)}`, C.base01),
+    seg(`4wk ${fVol(r.vol_avg_4)}`, C.violet),
+  ],
+  [
+    seg('MACD (12,26,9)', TITLE_COLOR),
+    seg(`MACD ${f2(r.macd)}`, C.blue),
+    seg(`Signal ${f2(r.macd_signal)}`, C.orange),
+    seg(`Hist ${f2(r.macd_hist)}`, C.base01),
+  ],
+  [seg('RSI 14', TITLE_COLOR), seg(`RSI ${f2(r.rsi_14)}`, C.violet)],
+  [seg('OBV', TITLE_COLOR), seg(`OBV ${fVol(r.obv)}`, C.cyan)],
+  [seg('ROC 12', TITLE_COLOR), seg(`ROC ${f2(r.roc_12)}`, C.yellow)],
+  [
+    seg('KDJ (9,3,3)', TITLE_COLOR),
+    seg(`K ${f2(r.kdj_k)}`, C.blue),
+    seg(`D ${f2(r.kdj_d)}`, C.orange),
+    seg(`J ${f2(r.kdj_j)}`, C.magenta),
+  ],
+]
 
 function applyRange(chart: IChartApi, rows: WeeklyRow[], key: RangeKey) {
   const ts = chart.timeScale()
@@ -149,7 +190,9 @@ export function WeeklyCharts({ ticker }: { ticker: string }) {
     const candle = chart.addSeries(
       CandlestickSeries,
       {
-        upColor: C.green,
+        // Hollow candle style: up candles have a transparent (hollow) body
+        // with a colored border; down candles stay filled.
+        upColor: 'rgba(0, 0, 0, 0)',
         downColor: C.red,
         borderUpColor: C.green,
         borderDownColor: C.red,
@@ -222,14 +265,24 @@ export function WeeklyCharts({ ticker }: { ticker: string }) {
     const stretch = [3.2, 1, 1.2, 1, 1, 1, 1.2]
     panes.forEach((p, i) => p.setStretchFactor(stretch[i] ?? 1))
 
-    // Pane labels.
-    paneLabel(chart, 0, `${ticker} · Weekly  ·  SMA 5/10/40`)
-    paneLabel(chart, 1, 'Volume + 4wk avg')
-    paneLabel(chart, 2, 'MACD (12,26,9)')
-    paneLabel(chart, 3, 'RSI 14')
-    paneLabel(chart, 4, 'OBV')
-    paneLabel(chart, 5, 'ROC 12')
-    paneLabel(chart, 6, 'KDJ (9,3,3)')
+    // Per-pane legends: a top-left watermark per pane, refreshed on hover.
+    // Default to the most recent week when the crosshair isn't over a bar.
+    const lastRow = rows[rows.length - 1]
+    const watermarks = legendLines(lastRow, ticker).map((lines, i) =>
+      i < panes.length
+        ? createTextWatermark(panes[i], { horzAlign: 'left', vertAlign: 'top', lines })
+        : null,
+    )
+
+    const rowByTime = new Map(rows.map((r) => [r.week_start, r]))
+    const updateLegend = (r: WeeklyRow) => {
+      const all = legendLines(r, ticker)
+      watermarks.forEach((w, i) => w?.applyOptions({ lines: all[i] }))
+    }
+    chart.subscribeCrosshairMove((param) => {
+      const r = (param.time != null && rowByTime.get(String(param.time))) || lastRow
+      updateLegend(r)
+    })
 
     applyRange(chart, rows, range)
 

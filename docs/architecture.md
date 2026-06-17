@@ -114,7 +114,9 @@ App.tsx
 │
 ├── TickerSearch.tsx — debounced /api/tickers/search dropdown (symbol + name)
 │
-├── WeeklyCharts.tsx — multi-pane weekly TA charts from the investment duckdb
+├── WeeklyCharts.tsx — multi-pane weekly TA charts from the investment duckdb.
+│   Each pane shows a top-left color-coded legend (per-pane watermark) of the
+│   crosshair-hovered week's values, defaulting to the latest week when not hovering
 │
 └── TickerView.tsx
     ├── Header (ticker name, market cap link)
