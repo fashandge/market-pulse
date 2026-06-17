@@ -128,7 +128,7 @@ export function WeeklyCharts({ ticker }: { ticker: string }) {
   const [rows, setRows] = useState<WeeklyRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [range, setRange] = useState<RangeKey>('2Y')
+  const [range, setRange] = useState<RangeKey>('1Y')
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
 
