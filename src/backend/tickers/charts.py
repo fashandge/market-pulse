@@ -1,8 +1,13 @@
-"""Weekly OHLCV + technical indicators for charting.
+"""Weekly + daily OHLCV + technical indicators for charting.
 
-Reads (read-only) from the ``investment`` project's duckdb, which already has
-weekly bars joined 1:1 with precomputed indicators (SMA, MACD, RSI, OBV, ROC,
-KDJ). We only read and serve -- no indicator math here.
+Reads (read-only) from the ``investment`` project's duckdb. We only read and
+serve -- no indicator math here.
+
+- Weekly: ``weekly_bars_adjusted`` joined 1:1 with ``weekly_indicators``
+  (SMA 5/10/40, MACD, RSI, OBV, ROC, KDJ).
+- Daily: ``daily_bars_adjusted`` (OHLCV) joined with ``classifier_features``
+  (EMA 8/13/21/50, SMA 100/150/200, MACD, RSI, OBV, KDJ, CCI). The 10-day
+  volume average is computed in SQL.
 """
 
 from pathlib import Path
@@ -12,12 +17,23 @@ import duckdb
 INVESTMENT_DB = Path.home() / "projects/investment/data/stocks/stocks.duckdb"
 
 # Columns served per weekly bar, in payload order.
-_BAR_COLS = ["open", "high", "low", "close", "volume", "vol_avg_4"]
-_IND_COLS = [
+_WEEKLY_BAR_COLS = ["open", "high", "low", "close", "volume", "vol_avg_4"]
+_WEEKLY_IND_COLS = [
     "sma_5", "sma_10", "sma_40",
     "macd", "macd_signal", "macd_hist",
     "rsi_14", "obv", "roc_12",
     "kdj_k", "kdj_d", "kdj_j",
+]
+
+# Columns served per daily bar, in payload order.
+_DAILY_BAR_COLS = ["open", "high", "low", "close", "volume", "vol_avg_10"]
+_DAILY_IND_COLS = [
+    "ema_8", "ema_13", "ema_21", "ema_50",
+    "sma_100", "sma_150", "sma_200",
+    "macd", "macd_signal", "macd_hist",
+    "rsi_14", "obv",
+    "kdj_k", "kdj_d", "kdj_j",
+    "cci_20",
 ]
 
 # Cached ticker universe (loaded lazily on first search).
@@ -102,7 +118,7 @@ def get_weekly_chart(ticker: str) -> dict:
     finally:
         con.close()
 
-    keys = ["week_start"] + _BAR_COLS + _IND_COLS
+    keys = ["week_start"] + _WEEKLY_BAR_COLS + _WEEKLY_IND_COLS
     data = []
     for row in rows:
         rec = dict(zip(keys, row))
@@ -111,10 +127,60 @@ def get_weekly_chart(ticker: str) -> dict:
     return {"ticker": ticker, "data": data}
 
 
+def get_daily_chart(ticker: str) -> dict:
+    """Full-history daily OHLCV + indicators for one ticker.
+
+    OHLCV comes from ``daily_bars_adjusted``; indicators from
+    ``classifier_features`` (joined on ticker+date). The 10-day volume average
+    is computed in SQL. Returns ``{"ticker": ..., "data": [ {date, open, high,
+    low, close, volume, vol_avg_10, ema_8, ...}, ... ]}`` sorted ascending by
+    date. SQL NULLs (indicator warmup) come back as JSON ``null``.
+    """
+    con = _connect()
+    try:
+        rows = con.execute(
+            """
+            SELECT
+                d.date,
+                d.open_adjusted, d.high_adjusted, d.low_adjusted, d.close_adjusted,
+                d.volume_split_adjusted,
+                AVG(d.volume_split_adjusted) OVER (
+                    ORDER BY d.date ROWS BETWEEN 9 PRECEDING AND CURRENT ROW
+                ) AS vol_avg_10,
+                f.ema_8, f.ema_13, f.ema_21, f.ema_50,
+                f.sma_100, f.sma_150, f.sma_200,
+                f.macd, f.macd_signal, f.macd_hist,
+                f.rsi_14, f.obv,
+                f.kdj_k, f.kdj_d, f.kdj_j,
+                f.cci_20
+            FROM daily_bars_adjusted d
+            JOIN classifier_features f USING (ticker, date)
+            WHERE d.ticker = ?
+            ORDER BY d.date
+            """,
+            [ticker],
+        ).fetchall()
+    finally:
+        con.close()
+
+    keys = ["date"] + _DAILY_BAR_COLS + _DAILY_IND_COLS
+    data = []
+    for row in rows:
+        rec = dict(zip(keys, row))
+        # daily_bars_adjusted.date is a TIMESTAMP; serve the date part only.
+        rec["date"] = rec["date"].date().isoformat()
+        data.append(rec)
+    return {"ticker": ticker, "data": data}
+
+
 if __name__ == "__main__":
     print("tickers:", len(list_tickers()))
     print("search 'app':", [t["symbol"] for t in search_tickers("app", 10)])
-    chart = get_weekly_chart("NVDA")
-    print("NVDA rows:", len(chart["data"]))
-    if chart["data"]:
-        print("last:", chart["data"][-1])
+    wk = get_weekly_chart("NVDA")
+    print("NVDA weekly rows:", len(wk["data"]))
+    if wk["data"]:
+        print("last weekly:", wk["data"][-1])
+    dy = get_daily_chart("NVDA")
+    print("NVDA daily rows:", len(dy["data"]))
+    if dy["data"]:
+        print("last daily:", dy["data"][-1])

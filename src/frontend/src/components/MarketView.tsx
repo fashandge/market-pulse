@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { TickerSearch } from './TickerSearch'
-import { WeeklyCharts } from './WeeklyCharts'
+import { TaCharts } from './TaCharts'
 
 interface SummaryResponse {
   date: string
@@ -92,7 +92,7 @@ export function MarketView() {
     setError(null)
 
     if (activeSource === 'charts') {
-      // The charts tab self-fetches inside WeeklyCharts; nothing to load here.
+      // The charts tab self-fetches inside TaCharts; nothing to load here.
       setLoading(false)
     } else if (activeSource === 'trendspider') {
       fetch('/api/market/trendspider-posts')
@@ -215,10 +215,10 @@ export function MarketView() {
         <div className="space-y-4">
           <TickerSearch onSelect={handleSelectTicker} selected={chartTicker} />
           {chartTicker ? (
-            <WeeklyCharts ticker={chartTicker} />
+            <TaCharts ticker={chartTicker} />
           ) : (
             <div className="flex items-center justify-center h-64 text-sol-base1">
-              Search for a ticker to view its weekly charts.
+              Search for a ticker to view its charts.
             </div>
           )}
         </div>

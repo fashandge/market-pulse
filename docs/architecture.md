@@ -83,6 +83,10 @@ TradingView Watchlist                CoinMarketCap API                News Summa
 | `/api/market/trendspider-posts` | GET | Returns up to 50 recent TrendSpider posts (JSONL) |
 | `/api/market/ai-news-brief` | GET | Returns the latest Zhihu AI news daily brief (`date`, `is_stale`, `articles[]`) from `~/projects/news/data/zhihu/daily_briefs/zhihu_brief_YYYYMMDD.jsonl` |
 | `/api/market/overview` | GET | Returns market overview: tickers grouped by theme with prices, changes, volume (cached 15 min; `force=1` refreshes) |
+| `/api/tickers/search` | GET | Symbol search over the chart ticker universe (`q`, `limit`) |
+| `/api/tickers/portfolio` | GET | Portfolio tickers (`PORTFOLIO` in `market_overview.py`) with company names, for the search dropdown quick-picks |
+| `/api/tickers/{ticker}/weekly-chart` | GET | Weekly OHLCV + indicators (full history) from `weekly_bars_adjusted` ⋈ `weekly_indicators` |
+| `/api/tickers/{ticker}/daily-chart` | GET | Daily OHLCV + indicators (full history) from `daily_bars_adjusted` ⋈ `classifier_features` (10-day vol avg computed in SQL) |
 
 ## Frontend Components
 
@@ -108,15 +112,26 @@ App.tsx
 │   ├── Sub-tabs: Trading View | X | CFZH | Trend Spider | Charts
 │   ├── Summary tabs: markdown (react-markdown + remark-gfm)
 │   ├── Trend Spider tab: card feed with images and timestamps
-│   └── Charts tab: TickerSearch (search full duckdb universe) + WeeklyCharts
-│       (lightweight-charts v5; 7 synced panes: candles+SMA5/10/40, volume+4wk avg,
-│        MACD, RSI, OBV, ROC, KDJ; 1Y/2Y/5Y/Max range). Data from /api/tickers/{t}/weekly-chart
+│   └── Charts tab: TickerSearch (search full duckdb universe) + TaCharts, with a
+│       Weekly/Daily timeframe toggle (default weekly, remembered in sessionStorage)
 │
-├── TickerSearch.tsx — debounced /api/tickers/search dropdown (symbol + name)
+├── TickerSearch.tsx — debounced /api/tickers/search dropdown (symbol + name).
+│   With an empty box it shows quick-picks: a "Recently searched" section
+│   (localStorage `recentTickers`, excludes portfolio symbols) above an always-on
+│   "Portfolio" section (/api/tickers/portfolio). Opens on any click/focus.
 │
-├── WeeklyCharts.tsx — multi-pane weekly TA charts from the investment duckdb.
+├── TaCharts.tsx — multi-pane TA charts (lightweight-charts v5) from the investment
+│   duckdb, config-driven per timeframe:
+│     • Weekly (/api/tickers/{t}/weekly-chart): candles+SMA 5/10/40, volume+4wk avg,
+│       MACD, RSI, OBV, ROC, KDJ; ranges 1Y/2Y/5Y/Max (default 1Y).
+│     • Daily (/api/tickers/{t}/daily-chart): candles+EMA 8/13/21/50 & SMA 100/150/200,
+│       volume+10d avg, MACD, RSI, OBV, KDJ, CCI 20 (no ROC); ranges 3M/6M/1Y/2Y/Max
+│       (default 3M).
 │   Each pane shows a top-left color-coded legend (per-pane watermark) of the
-│   crosshair-hovered week's values, defaulting to the latest week when not hovering
+│   crosshair-hovered bar's values, defaulting to the latest bar when not hovering.
+│   RSI pane has a soft 30–70 band fill + dashed 30/50/70 guides; KDJ pane has
+│   green/red K≥D regime bands + dashed 80/20 guides (custom lightweight-charts
+│   primitives drawn behind the series)
 │
 └── TickerView.tsx
     ├── Header (ticker name, market cap link)

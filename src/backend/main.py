@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.backend.tickers import crcl, weekly
+from src.backend.tickers import crcl, charts
 from src.backend import market_overview, watchlist_scraper
 
 NEWS_BASE_PATH = Path.home() / "projects/news/data/market_news"
@@ -53,14 +53,27 @@ def get_market_overview(force: int = 0):
 
 @app.get("/api/tickers/search")
 def search_tickers(q: str = "", limit: int = 20):
-    """Search the weekly-chart ticker universe by symbol."""
-    return {"results": weekly.search_tickers(q, limit)}
+    """Search the chart ticker universe by symbol."""
+    return {"results": charts.search_tickers(q, limit)}
+
+
+@app.get("/api/tickers/portfolio")
+def get_portfolio_tickers():
+    """Portfolio tickers (with company names when known) for the search dropdown."""
+    names = {t["symbol"]: t["name"] for t in charts.list_tickers()}
+    return {"results": [{"symbol": s, "name": names.get(s)} for s in market_overview.PORTFOLIO]}
 
 
 @app.get("/api/tickers/{ticker}/weekly-chart")
 def get_weekly_chart(ticker: str):
     """Weekly OHLCV + technical indicators for a ticker (full history)."""
-    return weekly.get_weekly_chart(ticker.upper())
+    return charts.get_weekly_chart(ticker.upper())
+
+
+@app.get("/api/tickers/{ticker}/daily-chart")
+def get_daily_chart(ticker: str):
+    """Daily OHLCV + technical indicators for a ticker (full history)."""
+    return charts.get_daily_chart(ticker.upper())
 
 
 @app.get("/api/tickers/crcl/market-cap")
