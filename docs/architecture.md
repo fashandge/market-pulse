@@ -60,12 +60,12 @@ TradingView Watchlist                CoinMarketCap API                News Summa
    - Scrapes ~150 tickers            - Converts UTC → LA time        - Returns summaries/posts
    - Extracts price/change/volume    - Computes changes                    ↓
        ↓                                   ↓                         React Frontend (port 5173)
-   market_overview.py                React Frontend (port 5173)      - Sub-tabs: TV, X, CFZH, TS, AI
+   market_overview.py                React Frontend (port 5173)      - MarketView sub-tabs: TV, X, CFZH
    - Groups by theme/sector          - Filters by time range         - Markdown rendering
    - Computes avg change/vol ratio   - Renders Plotly chart
    - 15 min cache                    - Displays changes table
        ↓
-   MarketOverview.tsx (default view)
+   MarketOverview.tsx (Overview sub-tab of OverviewView, the default view)
    - Card grid by section
    - Clickable tickers → TradingView charts
    - Hover tooltips with volume data
@@ -94,10 +94,18 @@ TradingView Watchlist                CoinMarketCap API                News Summa
 App.tsx
 ├── Persists selected navigation tab in sessionStorage (per browser tab)
 ├── Sidebar.tsx
-│   - Market Overview tab → MarketOverview (default)
+│   - Overview tab → OverviewView (default)
 │   - Market News tab → MarketView
 │   - Tickers section (collapsible)
 │     └── CRCL tab → TickerView
+│
+├── OverviewView.tsx
+│   ├── Persists selected sub-tab in sessionStorage (per browser tab)
+│   ├── Sub-tabs: Overview | Charts | Trend Spider
+│   ├── Overview tab → MarketOverview
+│   ├── Charts tab: TickerSearch (search full duckdb universe) + TaCharts, with a
+│   │   Weekly/Daily timeframe toggle (default weekly, remembered in sessionStorage)
+│   └── Trend Spider tab → TrendSpiderView
 │
 ├── MarketOverview.tsx
 │   ├── Sections: Overview | Critical Themes | Other Themes
@@ -109,11 +117,11 @@ App.tsx
 │
 ├── MarketView.tsx
 │   ├── Persists selected sub-tab in sessionStorage (per browser tab)
-│   ├── Sub-tabs: Trading View | X | CFZH | Trend Spider | Charts
-│   ├── Summary tabs: markdown (react-markdown + remark-gfm)
-│   ├── Trend Spider tab: card feed with images and timestamps
-│   └── Charts tab: TickerSearch (search full duckdb universe) + TaCharts, with a
-│       Weekly/Daily timeframe toggle (default weekly, remembered in sessionStorage)
+│   ├── Sub-tabs: Trading View | X | CFZH
+│   └── Summary tabs: markdown (react-markdown + remark-gfm)
+│
+├── TrendSpiderView.tsx — card feed of recent TrendSpider posts
+│   (/api/market/trendspider-posts) with images and timestamps
 │
 ├── TickerSearch.tsx — debounced /api/tickers/search dropdown (symbol + name).
 │   With an empty box it shows quick-picks: a "Recently searched" section

@@ -36,8 +36,10 @@ src/
     │   ├── index.css     # Tailwind CSS
     │   └── components/
     │       ├── Sidebar.tsx
-    │       ├── MarketOverview.tsx   # Market overview card grid (default view)
-    │       ├── MarketView.tsx      # Market news with sub-tabs (Trading View, X, CFZH, Trend Spider, Charts)
+    │       ├── OverviewView.tsx    # Default view; sub-tabs (Overview, Charts, Trend Spider)
+    │       ├── MarketOverview.tsx   # Market overview card grid (Overview sub-tab)
+    │       ├── MarketView.tsx      # Market news with sub-tabs (Trading View, X, CFZH)
+    │       ├── TrendSpiderView.tsx # TrendSpider post feed (Trend Spider sub-tab)
     │       ├── TickerSearch.tsx    # Ticker search box (queries /api/tickers/search)
     │       ├── TaCharts.tsx        # Weekly + daily TA charts (lightweight-charts) for the Charts sub-tab
     │       ├── TickerView.tsx
