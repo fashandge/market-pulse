@@ -22,10 +22,12 @@ src/
 │   ├── main.py           # FastAPI app, API endpoints
 │   ├── watchlist_scraper.py  # TradingView watchlist scraper (crawl4ai)
 │   ├── market_overview.py    # Market overview data assembler (groups/themes)
-│   └── tickers/          # Ticker data modules
-│       ├── __init__.py
-│       ├── crcl.py       # USDC/CRCL data fetching
-│       └── charts.py     # Weekly + daily OHLCV + indicators (reads investment duckdb, read-only)
+│   ├── tickers/          # Ticker data modules
+│   │   ├── __init__.py
+│   │   ├── crcl.py       # USDC/CRCL data fetching
+│   │   └── charts.py     # Weekly + daily OHLCV + indicators (reads investment duckdb, read-only)
+│   └── scripts/          # Shell utilities
+│       └── start_tunnel.sh   # Expose the running app on a temporary public ngrok URL
 │
 └── frontend/             # React + Vite frontend
     ├── src/
@@ -62,6 +64,21 @@ npm run dev
 ```
 
 Open http://localhost:5173
+
+### Public access (temporary tunnel)
+
+To share the running app on a temporary public URL (e.g. to view it off-machine):
+
+```bash
+src/backend/scripts/start_tunnel.sh
+```
+
+Requires `ngrok` installed with an authtoken configured (`ngrok config add-authtoken <TOKEN>`).
+It tunnels the frontend (`:5173`), which proxies `/api` to the backend, so the whole app works
+through one URL. `vite.config.ts` `allowedHosts` already whitelists the ngrok/trycloudflare/etc.
+tunnel domains (Vite 403s any other public host). The URL is public with no auth and requires this
+Mac awake with the app running. Note: some routers/ISPs block `*.trycloudflare.com` at the DNS
+level — ngrok (`*.ngrok-free.dev`) avoids that.
 
 ## Documentation
 
