@@ -91,7 +91,9 @@ which finds them by port and so works regardless of how they were started.
 To share the running app on a temporary public URL (e.g. to view it off-machine):
 
 ```bash
-src/backend/scripts/start_tunnel.sh
+src/backend/scripts/start_tunnel.sh         # start the tunnel (detached) and print the URL
+src/backend/scripts/start_tunnel.sh status  # show the current public URL (if any)
+src/backend/scripts/start_tunnel.sh stop    # stop the running tunnel
 ```
 
 Requires `ngrok` installed with an authtoken configured (`ngrok config add-authtoken <TOKEN>`).
@@ -100,6 +102,13 @@ through one URL. `vite.config.ts` `allowedHosts` already whitelists the ngrok/tr
 tunnel domains (Vite 403s any other public host). The URL is public with no auth and requires this
 Mac awake with the app running. Note: some routers/ISPs block `*.trycloudflare.com` at the DNS
 level — ngrok (`*.ngrok-free.dev`) avoids that.
+
+The tunnel starts **detached** (`nohup` + `disown`), so it keeps running after the launching
+shell exits; output goes to `tmp/ngrok.log` and the agent PID to `tmp/ngrok.pid`. Stop it with
+`start_tunnel.sh stop` (kills by PID file, falling back to any `ngrok http` process). ngrok's free
+tier hands out a **new random hostname on every start**, so the URL changes each restart — reserve
+a static domain on the ngrok dashboard and add `--url=<domain>` to the `ngrok http` line if you
+need a stable link. The tunnel still dies if the Mac sleeps.
 
 ## Documentation
 
