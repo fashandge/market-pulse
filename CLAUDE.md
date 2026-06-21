@@ -80,7 +80,8 @@ the stale `NODE_OPTIONS` before starting the servers. If you must run `uvicorn` 
 cmux shell, prefix it with `env -u NODE_OPTIONS`, or just launch from a normal terminal (Terminal /
 iTerm), whose `NODE_OPTIONS` is clean.
 
-`market-pulse-server` starts both servers **detached** (`nohup` + `disown`) and returns immediately,
+`market-pulse-server` starts both servers **detached** (`nohup` + `disown`), waits for each port to
+come up (printing a `✓ ready` line per server, or the tail of the log on a timeout), then returns —
 so they keep running after the launching shell exits. Output goes to `tmp/backend.log` and
 `tmp/frontend.log` (tail them to debug startup). Stop the servers with `market-pulse-server stop`,
 which finds them by port and so works regardless of how they were started.
