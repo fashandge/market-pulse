@@ -52,8 +52,10 @@ src/
 ## Running the App
 
 ```bash
-# Quick start (both servers in one terminal)
+# Quick start (starts both servers detached, then returns)
 market-pulse-server
+# Stop them again with:
+market-pulse-server stop
 
 # Or manually in separate terminals:
 # Terminal 1 - Backend (port 8000)
@@ -77,6 +79,11 @@ Playwright driver crash). `market-pulse-server` self-heals this: it detects a cm
 the stale `NODE_OPTIONS` before starting the servers. If you must run `uvicorn` directly from a
 cmux shell, prefix it with `env -u NODE_OPTIONS`, or just launch from a normal terminal (Terminal /
 iTerm), whose `NODE_OPTIONS` is clean.
+
+`market-pulse-server` starts both servers **detached** (`nohup` + `disown`) and returns immediately,
+so they keep running after the launching shell exits. Output goes to `tmp/backend.log` and
+`tmp/frontend.log` (tail them to debug startup). Stop the servers with `market-pulse-server stop`,
+which finds them by port and so works regardless of how they were started.
 
 ### Public access (temporary tunnel)
 
