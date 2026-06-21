@@ -67,6 +67,17 @@ npm run dev
 
 Open http://localhost:5173
 
+**Prefer `market-pulse-server` (in `~/mycmd/`) over launching `uvicorn` by hand**, especially
+when starting from inside a cmux/Claude Code terminal. cmux injects a transient
+`NODE_OPTIONS=--require=…/cmux-claude-node-options/restore-node-options.cjs` shim into the shell;
+once that temp file is cleaned up the env var dangles, so any `node` the backend spawns (the
+Playwright driver behind `watchlist_scraper`, and vite) aborts with `MODULE_NOT_FOUND`. The visible
+symptom is the **Overview sub-tab failing with `HTTP 500`** (`/api/market/overview` → scraper →
+Playwright driver crash). `market-pulse-server` self-heals this: it detects a cmux shell and drops
+the stale `NODE_OPTIONS` before starting the servers. If you must run `uvicorn` directly from a
+cmux shell, prefix it with `env -u NODE_OPTIONS`, or just launch from a normal terminal (Terminal /
+iTerm), whose `NODE_OPTIONS` is clean.
+
 ### Public access (temporary tunnel)
 
 To share the running app on a temporary public URL (e.g. to view it off-machine):
