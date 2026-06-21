@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { TickerView } from './components/TickerView'
 import { MarketView } from './components/MarketView'
-import { MarketOverview } from './components/MarketOverview'
+import { OverviewView } from './components/OverviewView'
 import { AiNewsView } from './components/AiNewsView'
 import { ChinaNewsView } from './components/ChinaNewsView'
 
@@ -18,7 +18,7 @@ function App() {
 
   const renderContent = () => {
     if (selectedTab === 'overview') {
-      return <MarketOverview />
+      return <OverviewView />
     }
     if (selectedTab === 'market') {
       return <MarketView />

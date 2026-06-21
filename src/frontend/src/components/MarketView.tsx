@@ -1,8 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { TickerSearch } from './TickerSearch'
-import { TaCharts } from './TaCharts'
 
 interface SummaryResponse {
   date: string
@@ -13,19 +11,9 @@ interface CfzhSummariesResponse {
   summaries: SummaryResponse[]
 }
 
-interface TrendSpiderPost {
-  text: string
-  media: string[]
-  t: string
-}
+type SourceTab = 'trading-view' | 'cfzh' | 'x'
 
-interface TrendSpiderResponse {
-  posts: TrendSpiderPost[]
-}
-
-type SourceTab = 'trading-view' | 'cfzh' | 'x' | 'trendspider' | 'charts'
-
-const SOURCE_TABS: SourceTab[] = ['trading-view', 'x', 'cfzh', 'trendspider', 'charts']
+const SOURCE_TABS: SourceTab[] = ['trading-view', 'x', 'cfzh']
 
 const SOURCE_CONFIG: Record<string, { label: string; endpoint: string; noDataMessage: string }> = {
   'trading-view': {
@@ -49,8 +37,6 @@ const TAB_LABELS: Record<SourceTab, string> = {
   'trading-view': 'Trading View',
   x: 'X',
   cfzh: 'CFZH',
-  trendspider: 'Trend Spider',
-  charts: 'Charts',
 }
 
 export function MarketView() {
@@ -60,52 +46,19 @@ export function MarketView() {
   })
   const [summary, setSummary] = useState<SummaryResponse | null>(null)
   const [cfzhSummaries, setCfzhSummaries] = useState<SummaryResponse[]>([])
-  const [trendSpiderPosts, setTrendSpiderPosts] = useState<TrendSpiderPost[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
-  const [chartTicker, setChartTicker] = useState<string>(() => sessionStorage.getItem('chartsTicker') || '')
 
   const handleSelectSource = (source: SourceTab) => {
     setActiveSource(source)
     sessionStorage.setItem('marketNewsTab', source)
   }
 
-  const handleSelectTicker = (symbol: string) => {
-    setChartTicker(symbol)
-    sessionStorage.setItem('chartsTicker', symbol)
-  }
-
-  const closeLightbox = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') setLightboxUrl(null)
-  }, [])
-
-  useEffect(() => {
-    if (lightboxUrl) {
-      document.addEventListener('keydown', closeLightbox)
-      return () => document.removeEventListener('keydown', closeLightbox)
-    }
-  }, [lightboxUrl, closeLightbox])
-
   useEffect(() => {
     setLoading(true)
     setError(null)
 
-    if (activeSource === 'charts') {
-      // The charts tab self-fetches inside TaCharts; nothing to load here.
-      setLoading(false)
-    } else if (activeSource === 'trendspider') {
-      fetch('/api/market/trendspider-posts')
-        .then((res) => res.json())
-        .then((data: TrendSpiderResponse) => {
-          setTrendSpiderPosts(data.posts)
-          setLoading(false)
-        })
-        .catch((err) => {
-          setError(err.message)
-          setLoading(false)
-        })
-    } else if (activeSource === 'cfzh') {
+    if (activeSource === 'cfzh') {
       fetch('/api/market/cfzh-summaries')
         .then((res) => res.json())
         .then((data: CfzhSummariesResponse) => {
@@ -130,69 +83,6 @@ export function MarketView() {
     }
   }, [activeSource])
 
-  const formatTime = (iso: string) => {
-    const d = new Date(iso)
-    return d.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    })
-  }
-
-  const renderTrendSpiderContent = () => {
-    if (trendSpiderPosts.length === 0) {
-      return (
-        <div className="flex items-center justify-center h-64 text-sol-base1">
-          No Trend Spider posts available yet.
-        </div>
-      )
-    }
-
-    return (
-      <div className="flex flex-col items-center gap-4">
-        {trendSpiderPosts.map((post, index) => (
-          <div
-            key={index}
-            className="w-full max-w-xl bg-sol-base3 rounded-xl border border-sol-base2 shadow-sm overflow-hidden"
-          >
-            {post.media.length > 0 && (
-              <div className="flex flex-col">
-                {post.media.map((url, imgIndex) => (
-                  <img
-                    key={imgIndex}
-                    src={url}
-                    alt=""
-                    className="w-full object-cover cursor-zoom-in"
-                    onClick={() => setLightboxUrl(url)}
-                  />
-                ))}
-              </div>
-            )}
-            <div className="px-5 py-4">
-              <p className="text-sol-base01 whitespace-pre-wrap text-base leading-relaxed">
-                {post.text.replace(/\s*https?:\/\/\S+\s*$/, '')}
-              </p>
-              {(() => {
-                const urlMatch = post.text.match(/\s*(https?:\/\/\S+)\s*$/)
-                const time = formatTime(post.t)
-                if (urlMatch) {
-                  return (
-                    <a href={urlMatch[1]} target="_blank" rel="noopener noreferrer" className="text-sol-base1 text-sm mt-3 block hover:underline">
-                      {time}
-                    </a>
-                  )
-                }
-                return <p className="text-sol-base1 text-sm mt-3">{time}</p>
-              })()}
-            </div>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
   const renderContent = () => {
     if (loading) {
       return (
@@ -208,25 +98,6 @@ export function MarketView() {
           Error: {error}
         </div>
       )
-    }
-
-    if (activeSource === 'charts') {
-      return (
-        <div className="space-y-4">
-          <TickerSearch onSelect={handleSelectTicker} selected={chartTicker} />
-          {chartTicker ? (
-            <TaCharts ticker={chartTicker} />
-          ) : (
-            <div className="flex items-center justify-center h-64 text-sol-base1">
-              Search for a ticker to view its charts.
-            </div>
-          )}
-        </div>
-      )
-    }
-
-    if (activeSource === 'trendspider') {
-      return renderTrendSpiderContent()
     }
 
     if (activeSource === 'cfzh') {
@@ -279,7 +150,7 @@ export function MarketView() {
   }
 
   return (
-    <div className={activeSource === 'charts' ? 'max-w-6xl' : 'max-w-3xl'}>
+    <div className="max-w-3xl">
       <div className="flex gap-1 mb-6 border-b border-sol-base1/30">
         {SOURCE_TABS.map((source) => (
           <button
@@ -296,20 +167,6 @@ export function MarketView() {
         ))}
       </div>
       {renderContent()}
-
-      {lightboxUrl && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 cursor-zoom-out"
-          onClick={() => setLightboxUrl(null)}
-        >
-          <img
-            src={lightboxUrl}
-            alt=""
-            className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
     </div>
   )
 }
