@@ -86,6 +86,7 @@ TradingView Watchlist                CoinMarketCap API                News Summa
 | `/api/tickers/search` | GET | Symbol search over the chart ticker universe (`q`, `limit`) |
 | `/api/tickers/portfolio` | GET | Portfolio tickers (`PORTFOLIO` in `market_overview.py`) with company names, for the search dropdown quick-picks |
 | `/api/tickers/{ticker}/weekly-chart` | GET | Weekly OHLCV + indicators (full history) from `weekly_bars_adjusted` ⋈ `weekly_indicators` |
+| `/api/tickers/{ticker}/monthly-chart` | GET | Monthly OHLCV + indicators (full history) from `monthly_bars_adjusted` ⋈ `monthly_indicators` (3-month vol avg computed in SQL) |
 | `/api/tickers/{ticker}/daily-chart` | GET | Daily OHLCV + indicators (full history) from `daily_bars_adjusted` ⋈ `classifier_features` (10-day vol avg computed in SQL) |
 
 ## Frontend Components
@@ -104,7 +105,7 @@ App.tsx
 │   ├── Sub-tabs: Overview | Charts | Trend Spider
 │   ├── Overview tab → MarketOverview
 │   ├── Charts tab: TickerSearch (search full duckdb universe) + TaCharts, with a
-│   │   Weekly/Daily timeframe toggle (default weekly, remembered in sessionStorage)
+│   │   Daily/Weekly/Monthly timeframe toggle (default weekly, remembered in sessionStorage)
 │   └── Trend Spider tab → TrendSpiderView
 │
 ├── MarketOverview.tsx
@@ -131,7 +132,9 @@ App.tsx
 ├── TaCharts.tsx — multi-pane TA charts (lightweight-charts v5) from the investment
 │   duckdb, config-driven per timeframe:
 │     • Weekly (/api/tickers/{t}/weekly-chart): candles+SMA 5/10/40, volume+4wk avg,
-│       MACD, RSI, OBV, ROC, KDJ; ranges 1Y/2Y/5Y/Max (default 1Y).
+│       MACD, RSI, OBV, ROC 12, KDJ; ranges 1Y/2Y/5Y/Max (default 1Y).
+│     • Monthly (/api/tickers/{t}/monthly-chart): candles+SMA 3/12 & EMA 21, volume+3mo
+│       avg, MACD, RSI, OBV, ROC 3, KDJ; ranges 1Y/2Y/5Y/10Y/Max (default 2Y).
 │     • Daily (/api/tickers/{t}/daily-chart): candles+EMA 8/13/21/50 & SMA 100/150/200,
 │       volume+10d avg, MACD, RSI, OBV, KDJ, CCI 20 (no ROC); ranges 3M/6M/1Y/2Y/Max
 │       (default 3M).

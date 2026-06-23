@@ -10,8 +10,8 @@ Market Pulse - A web dashboard for monitoring market and individual stock/crypto
 
 - **Frontend**: React + Vite + TypeScript + Tailwind CSS v4 (Solarized Light theme)
 - **Backend**: FastAPI (Python)
-- **Charts**: Plotly (react-plotly.js) for market-cap; TradingView Lightweight Charts v5 for weekly + daily TA charts
-- **Data Sources**: CoinMarketCap API, TradingView watchlist (crawl4ai), news summaries (NDX, CFZH forum, X market news), TrendSpider posts, Zhihu AI news daily briefs, and OHLCV + precomputed indicators from the `investment` project duckdb (`~/projects/investment/data/stocks/stocks.duckdb`): weekly from `weekly_bars_adjusted` + `weekly_indicators`, daily from `daily_bars_adjusted` + `classifier_features`
+- **Charts**: Plotly (react-plotly.js) for market-cap; TradingView Lightweight Charts v5 for weekly + monthly + daily TA charts
+- **Data Sources**: CoinMarketCap API, TradingView watchlist (crawl4ai), news summaries (NDX, CFZH forum, X market news), TrendSpider posts, Zhihu AI news daily briefs, and OHLCV + precomputed indicators from the `investment` project duckdb (`~/projects/investment/data/stocks/stocks.duckdb`): weekly from `weekly_bars_adjusted` + `weekly_indicators`, monthly from `monthly_bars_adjusted` + `monthly_indicators`, daily from `daily_bars_adjusted` + `classifier_features`
 
 ## Project Structure
 
@@ -25,7 +25,7 @@ src/
 │   ├── tickers/          # Ticker data modules
 │   │   ├── __init__.py
 │   │   ├── crcl.py       # USDC/CRCL data fetching
-│   │   └── charts.py     # Weekly + daily OHLCV + indicators (reads investment duckdb, read-only)
+│   │   └── charts.py     # Weekly + monthly + daily OHLCV + indicators (reads investment duckdb, read-only)
 │   └── scripts/          # Shell utilities
 │       └── start_tunnel.sh   # Expose the running app on a temporary public ngrok URL
 │
@@ -41,7 +41,7 @@ src/
     │       ├── MarketView.tsx      # Market news with sub-tabs (Trading View, X, CFZH)
     │       ├── TrendSpiderView.tsx # TrendSpider post feed (Trend Spider sub-tab)
     │       ├── TickerSearch.tsx    # Ticker search box (queries /api/tickers/search)
-    │       ├── TaCharts.tsx        # Weekly + daily TA charts (lightweight-charts) for the Charts sub-tab
+    │       ├── TaCharts.tsx        # Weekly + monthly + daily TA charts (lightweight-charts) for the Charts sub-tab
     │       ├── TickerView.tsx
     │       └── MarketCapChart.tsx
     ├── index.html

@@ -70,6 +70,12 @@ def get_weekly_chart(ticker: str):
     return charts.get_weekly_chart(ticker.upper())
 
 
+@app.get("/api/tickers/{ticker}/monthly-chart")
+def get_monthly_chart(ticker: str):
+    """Monthly OHLCV + technical indicators for a ticker (full history)."""
+    return charts.get_monthly_chart(ticker.upper())
+
+
 @app.get("/api/tickers/{ticker}/daily-chart")
 def get_daily_chart(ticker: str):
     """Daily OHLCV + technical indicators for a ticker (full history)."""

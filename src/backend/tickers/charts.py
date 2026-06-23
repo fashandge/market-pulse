@@ -1,10 +1,13 @@
-"""Weekly + daily OHLCV + technical indicators for charting.
+"""Weekly + monthly + daily OHLCV + technical indicators for charting.
 
 Reads (read-only) from the ``investment`` project's duckdb. We only read and
 serve -- no indicator math here.
 
 - Weekly: ``weekly_bars_adjusted`` joined 1:1 with ``weekly_indicators``
-  (SMA 5/10/40, MACD, RSI, OBV, ROC, KDJ).
+  (SMA 5/10/40, MACD, RSI, OBV, ROC 12, KDJ).
+- Monthly: ``monthly_bars_adjusted`` joined 1:1 with ``monthly_indicators``
+  (SMA 3/12, EMA 21, MACD, RSI, OBV, ROC 3, KDJ). The 3-month volume average
+  is computed in SQL.
 - Daily: ``daily_bars_adjusted`` (OHLCV) joined with ``classifier_features``
   (EMA 8/13/21/50, SMA 100/150/200, MACD, RSI, OBV, KDJ, CCI). The 10-day
   volume average is computed in SQL.
@@ -22,6 +25,15 @@ _WEEKLY_IND_COLS = [
     "sma_5", "sma_10", "sma_40",
     "macd", "macd_signal", "macd_hist",
     "rsi_14", "obv", "roc_12",
+    "kdj_k", "kdj_d", "kdj_j",
+]
+
+# Columns served per monthly bar, in payload order.
+_MONTHLY_BAR_COLS = ["open", "high", "low", "close", "volume", "vol_avg_3"]
+_MONTHLY_IND_COLS = [
+    "sma_3", "sma_12", "ema_21",
+    "macd", "macd_signal", "macd_hist",
+    "rsi_14", "obv", "roc_3",
     "kdj_k", "kdj_d", "kdj_j",
 ]
 
@@ -127,6 +139,48 @@ def get_weekly_chart(ticker: str) -> dict:
     return {"ticker": ticker, "data": data}
 
 
+def get_monthly_chart(ticker: str) -> dict:
+    """Full-history monthly OHLCV + indicators for one ticker.
+
+    Returns ``{"ticker": ..., "data": [ {month_start, open, high, low, close,
+    volume, vol_avg_3, sma_3, ...}, ... ]}`` sorted ascending by month. SQL
+    NULLs (indicator warmup) come back as JSON ``null`` so the frontend can
+    drop them per series.
+    """
+    con = _connect()
+    try:
+        rows = con.execute(
+            """
+            SELECT
+                b.month_start,
+                b.open_adjusted, b.high_adjusted, b.low_adjusted, b.close_adjusted,
+                b.volume_split_adjusted,
+                AVG(b.volume_split_adjusted) OVER (
+                    ORDER BY b.month_start ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+                ) AS vol_avg_3,
+                i.sma_3, i.sma_12, i.ema_21,
+                i.macd, i.macd_signal, i.macd_hist,
+                i.rsi_14, i.obv, i.roc_3,
+                i.kdj_k, i.kdj_d, i.kdj_j
+            FROM monthly_bars_adjusted b
+            JOIN monthly_indicators i USING (ticker, month_start)
+            WHERE b.ticker = ?
+            ORDER BY b.month_start
+            """,
+            [ticker],
+        ).fetchall()
+    finally:
+        con.close()
+
+    keys = ["month_start"] + _MONTHLY_BAR_COLS + _MONTHLY_IND_COLS
+    data = []
+    for row in rows:
+        rec = dict(zip(keys, row))
+        rec["month_start"] = rec["month_start"].isoformat()
+        data.append(rec)
+    return {"ticker": ticker, "data": data}
+
+
 def get_daily_chart(ticker: str) -> dict:
     """Full-history daily OHLCV + indicators for one ticker.
 
@@ -180,6 +234,10 @@ if __name__ == "__main__":
     print("NVDA weekly rows:", len(wk["data"]))
     if wk["data"]:
         print("last weekly:", wk["data"][-1])
+    mo = get_monthly_chart("NVDA")
+    print("NVDA monthly rows:", len(mo["data"]))
+    if mo["data"]:
+        print("last monthly:", mo["data"][-1])
     dy = get_daily_chart("NVDA")
     print("NVDA daily rows:", len(dy["data"]))
     if dy["data"]:

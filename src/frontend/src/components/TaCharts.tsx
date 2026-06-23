@@ -21,8 +21,8 @@ import type { CanvasRenderingTarget2D } from 'fancy-canvas'
 // set, roc_12 vs cci_20, …) so we keep it loosely typed and read by config.
 type Bar = Record<string, number | string | null>
 
-type Timeframe = 'weekly' | 'daily'
-type RangeKey = '3M' | '6M' | '1Y' | '2Y' | '5Y' | 'Max'
+type Timeframe = 'weekly' | 'monthly' | 'daily'
+type RangeKey = '3M' | '6M' | '1Y' | '2Y' | '5Y' | '10Y' | 'Max'
 type PaneKind = 'volume' | 'macd' | 'rsi' | 'obv' | 'kdj' | 'roc' | 'cci'
 
 interface MASpec {
@@ -39,10 +39,12 @@ interface TfConfig {
   volAvgKey: string
   volAvgLabel: string
   panes: PaneKind[] // indicator panes below price, in order
+  rocKey?: string // payload key for the 'roc' pane (roc_12 weekly, roc_3 monthly)
+  rocTitle?: string // pane title for the 'roc' pane (e.g. 'ROC 12')
   ranges: RangeKey[]
   defaultRange: RangeKey
   rangeBars: Partial<Record<RangeKey, number>>
-  titleSuffix: string // 'Weekly' | 'Daily'
+  titleSuffix: string // 'Weekly' | 'Monthly' | 'Daily'
 }
 
 // Solarized palette
@@ -76,10 +78,30 @@ const CONFIG: Record<Timeframe, TfConfig> = {
     volAvgKey: 'vol_avg_4',
     volAvgLabel: '4wk',
     panes: ['volume', 'macd', 'rsi', 'obv', 'roc', 'kdj'],
+    rocKey: 'roc_12',
+    rocTitle: 'ROC 12',
     ranges: ['1Y', '2Y', '5Y', 'Max'],
     defaultRange: '1Y',
     rangeBars: { '1Y': 52, '2Y': 104, '5Y': 260 },
     titleSuffix: 'Weekly',
+  },
+  monthly: {
+    endpoint: (t) => `/api/tickers/${t.toLowerCase()}/monthly-chart`,
+    timeKey: 'month_start',
+    mas: [
+      { key: 'sma_3', label: 'SMA3', color: C.green },
+      { key: 'sma_12', label: 'SMA12', color: C.violet },
+      { key: 'ema_21', label: 'EMA21', color: C.blue, dashed: true },
+    ],
+    volAvgKey: 'vol_avg_3',
+    volAvgLabel: '3mo',
+    panes: ['volume', 'macd', 'rsi', 'obv', 'roc', 'kdj'],
+    rocKey: 'roc_3',
+    rocTitle: 'ROC 3',
+    ranges: ['1Y', '2Y', '5Y', '10Y', 'Max'],
+    defaultRange: '2Y',
+    rangeBars: { '1Y': 12, '2Y': 24, '5Y': 60, '10Y': 120 },
+    titleSuffix: 'Monthly',
   },
   daily: {
     endpoint: (t) => `/api/tickers/${t.toLowerCase()}/daily-chart`,
@@ -182,7 +204,7 @@ const paneLegend = (kind: PaneKind, r: Bar, cfg: TfConfig) => {
         seg(`J ${f2(r.kdj_j)}`, C.magenta),
       ]
     case 'roc':
-      return [seg(`ROC ${f2(r.roc_12)}`, C.yellow)]
+      return [seg(`ROC ${f2(r[cfg.rocKey ?? 'roc_12'])}`, C.yellow)]
     case 'cci':
       return [seg(`CCI ${f2(r.cci_20)}`, C.violet)]
   }
@@ -196,7 +218,9 @@ const legendLines = (r: Bar, ticker: string, cfg: TfConfig) => {
     ...cfg.mas.map((m) => seg(`${m.label} ${f2(r[m.key])}`, m.color)),
   ]
   const indicators = cfg.panes.map((kind) => {
-    const title = kind === 'volume' ? `Volume + ${cfg.volAvgLabel} avg` : PANE_TITLE[kind]
+    let title: string = PANE_TITLE[kind]
+    if (kind === 'volume') title = `Volume + ${cfg.volAvgLabel} avg`
+    else if (kind === 'roc') title = cfg.rocTitle ?? PANE_TITLE.roc
     return [seg(title, TITLE_COLOR), ...paneLegend(kind, r, cfg)]
   })
   return [price, ...indicators]
@@ -394,7 +418,7 @@ function buildIndicatorPane(
     }
     case 'roc': {
       const roc = chart.addSeries(LineSeries, lineOpts(C.yellow), paneIndex)
-      roc.setData(lineData('roc_12'))
+      roc.setData(lineData(cfg.rocKey ?? 'roc_12'))
       guide(roc, 0, C.base1)
       break
     }
@@ -426,7 +450,7 @@ function applyRange(chart: IChartApi, rows: Bar[], cfg: TfConfig, key: RangeKey)
 export function TaCharts({ ticker }: { ticker: string }) {
   const [timeframe, setTimeframe] = useState<Timeframe>(() => {
     const stored = sessionStorage.getItem('chartsTimeframe')
-    return stored === 'daily' ? 'daily' : 'weekly'
+    return stored === 'daily' || stored === 'monthly' ? stored : 'weekly'
   })
   const [rows, setRows] = useState<Bar[]>([])
   const [loading, setLoading] = useState(true)
@@ -579,12 +603,17 @@ export function TaCharts({ ticker }: { ticker: string }) {
     if (chartRef.current && rows.length) applyRange(chartRef.current, rows, cfg, range)
   }, [range, rows, cfg])
 
-  const tfButton = (tf: Timeframe, label: string) => (
+  const timeframes: [Timeframe, string][] = [
+    ['daily', 'Daily'],
+    ['weekly', 'Weekly'],
+    ['monthly', 'Monthly'],
+  ]
+  const tfButton = (tf: Timeframe, label: string, i: number) => (
     <button
       key={tf}
       onClick={() => handleTimeframe(tf)}
       className={`px-4 py-1.5 text-sm font-medium transition-all duration-200 ${
-        tf === 'daily' ? 'border-l border-sol-base1/30' : ''
+        i > 0 ? 'border-l border-sol-base1/30' : ''
       } ${
         timeframe === tf
           ? 'bg-sol-blue text-white'
@@ -601,8 +630,7 @@ export function TaCharts({ ticker }: { ticker: string }) {
         <div className="flex items-center gap-3">
           <span className="text-sm text-sol-base1">Timeframe:</span>
           <div className="inline-flex rounded-lg overflow-hidden shadow-sm">
-            {tfButton('weekly', 'Weekly')}
-            {tfButton('daily', 'Daily')}
+            {timeframes.map(([tf, label], i) => tfButton(tf, label, i))}
           </div>
         </div>
         <div className="flex items-center gap-3">
