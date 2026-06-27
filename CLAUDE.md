@@ -110,6 +110,27 @@ tier hands out a **new random hostname on every start**, so the URL changes each
 a static domain on the ngrok dashboard and add `--url=<domain>` to the `ngrok http` line if you
 need a stable link. The tunnel still dies if the Mac sleeps.
 
+### Auto-start on login (LaunchAgent)
+
+A LaunchAgent keeps the app and tunnel running without manual commands:
+
+- `deploy/launchd/com.jianfuchen.market-pulse.plist` — symlinked into `~/Library/LaunchAgents/`.
+- It runs `src/backend/scripts/ensure_up.sh` (an idempotent supervisor) at login (`RunAtLoad`)
+  and re-checks every 60s (`StartInterval`). The supervisor starts the app servers
+  (`market-pulse-server`) and the ngrok tunnel (`start_tunnel.sh`) only if they are down, and is
+  silent when everything is healthy. This gives login-start **plus** crash / wake-from-sleep
+  recovery within ~a minute (a sleeping Mac drops the tunnel, but it comes back on wake).
+- It runs via `/bin/zsh` so `~/.zshenv` supplies the full PATH (node/npm live in `~/.local/bin`,
+  ngrok in `/opt/homebrew/bin`) that launchd's minimal default PATH would otherwise miss.
+- Logs: `tmp/supervisor.log` (actions only) and `tmp/launchd.{out,err}.log`.
+
+Enable/disable:
+
+```bash
+launchctl load   ~/Library/LaunchAgents/com.jianfuchen.market-pulse.plist   # enable
+launchctl unload ~/Library/LaunchAgents/com.jianfuchen.market-pulse.plist   # disable
+```
+
 ## Documentation
 
 - [Architecture & Design Decisions](docs/architecture.md)

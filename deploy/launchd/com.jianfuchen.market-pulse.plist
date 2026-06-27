@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.jianfuchen.market-pulse</string>
+
+    <!-- Run the supervisor via zsh so ~/.zshenv is sourced first (full PATH:
+         node/npm in ~/.local/bin, ngrok in /opt/homebrew/bin). -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-c</string>
+        <string>/Users/jianfuchen/projects/market-pulse/src/backend/scripts/ensure_up.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/jianfuchen/projects/market-pulse</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/jianfuchen</string>
+    </dict>
+
+    <!-- Start at login, then re-check every 60s so a crashed server or a tunnel
+         dropped by Mac sleep is brought back within a minute. Both the supervisor
+         and the scripts it calls are idempotent, so re-running is a cheap no-op
+         when everything is already healthy. -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StartInterval</key>
+    <integer>60</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/jianfuchen/projects/market-pulse/tmp/launchd.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/jianfuchen/projects/market-pulse/tmp/launchd.err.log</string>
+</dict>
+</plist>
