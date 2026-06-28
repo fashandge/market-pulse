@@ -23,15 +23,17 @@
         <string>/Users/jianfuchen</string>
     </dict>
 
-    <!-- Start at login, then re-check every 60s so a crashed server or a tunnel
-         dropped by Mac sleep is brought back within a minute. Both the supervisor
-         and the scripts it calls are idempotent, so re-running is a cheap no-op
-         when everything is already healthy. -->
+    <!-- ensure_up.sh is a long-running daemon: it loops forever, re-checking
+         every 60s and restarting whatever is down (crash / wake-from-sleep
+         recovery). It must NOT be a one-shot — under launchd, when the job's
+         main process exits, launchd kills the whole job including the detached
+         servers/tunnel it started. So we keep the supervisor itself alive with
+         KeepAlive (NOT StartInterval); the servers live as long as it does. -->
     <key>RunAtLoad</key>
     <true/>
 
-    <key>StartInterval</key>
-    <integer>60</integer>
+    <key>KeepAlive</key>
+    <true/>
 
     <key>StandardOutPath</key>
     <string>/Users/jianfuchen/projects/market-pulse/tmp/launchd.out.log</string>

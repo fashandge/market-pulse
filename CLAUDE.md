@@ -115,11 +115,16 @@ need a stable link. The tunnel still dies if the Mac sleeps.
 A LaunchAgent keeps the app and tunnel running without manual commands:
 
 - `deploy/launchd/com.jianfuchen.market-pulse.plist` — symlinked into `~/Library/LaunchAgents/`.
-- It runs `src/backend/scripts/ensure_up.sh` (an idempotent supervisor) at login (`RunAtLoad`)
-  and re-checks every 60s (`StartInterval`). The supervisor starts the app servers
-  (`market-pulse-server`) and the ngrok tunnel (`start_tunnel.sh`) only if they are down, and is
-  silent when everything is healthy. This gives login-start **plus** crash / wake-from-sleep
-  recovery within ~a minute (a sleeping Mac drops the tunnel, but it comes back on wake).
+- It runs `src/backend/scripts/ensure_up.sh`, a **long-running supervisor daemon** started at
+  login (`RunAtLoad`) and kept alive by launchd (`KeepAlive`). The daemon loops forever,
+  re-checking every 60s and (re)starting the app servers (`market-pulse-server`) and the ngrok
+  tunnel (`start_tunnel.sh`) only if they are down; it is silent in the log when everything is
+  healthy. This gives login-start **plus** crash / wake-from-sleep recovery within ~a minute (a
+  sleeping Mac drops the tunnel, but it comes back on wake).
+- It must NOT be a one-shot (`StartInterval`/`RunAtLoad`-then-exit): under launchd, when a job's
+  main process exits, launchd kills the whole job — including the `nohup`/`disown`'d backend,
+  frontend and ngrok it just started. The daemon stays running so the servers (in its process
+  group) stay up; `KeepAlive` only restarts the daemon itself if it ever dies.
 - It runs via `/bin/zsh` so `~/.zshenv` supplies the full PATH (node/npm live in `~/.local/bin`,
   ngrok in `/opt/homebrew/bin`) that launchd's minimal default PATH would otherwise miss.
 - Logs: `tmp/supervisor.log` (actions only) and `tmp/launchd.{out,err}.log`.
