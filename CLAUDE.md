@@ -11,7 +11,7 @@ Market Pulse - A web dashboard for monitoring market and individual stock/crypto
 - **Frontend**: React + Vite + TypeScript + Tailwind CSS v4 (Solarized Light theme)
 - **Backend**: FastAPI (Python)
 - **Charts**: Plotly (react-plotly.js) for market-cap; TradingView Lightweight Charts v5 for weekly + monthly + daily TA charts
-- **Data Sources**: CoinMarketCap API, TradingView watchlist (crawl4ai), news summaries (NDX, CFZH forum, X market news), TrendSpider posts, Zhihu AI news daily briefs, and OHLCV + precomputed indicators from the `investment` project duckdb (`~/projects/investment/data/stocks/stocks.duckdb`): weekly from `weekly_bars_adjusted` + `weekly_indicators`, monthly from `monthly_bars_adjusted` + `monthly_indicators`, daily from `daily_bars_adjusted` + `classifier_features`
+- **Data Sources**: CoinMarketCap API, TradingView scanner JSON API (live Overview-tab quotes, `quotes.py`) with a crawl4ai watchlist scrape as fallback for a handful of licensed-feed symbols (`watchlist_scraper.py`), news summaries (NDX, CFZH forum, X market news), TrendSpider posts, Zhihu AI news daily briefs, and OHLCV + precomputed indicators from the `investment` project duckdb (`~/projects/investment/data/stocks/stocks.duckdb`): weekly from `weekly_bars_adjusted` + `weekly_indicators`, monthly from `monthly_bars_adjusted` + `monthly_indicators`, daily from `daily_bars_adjusted` + `classifier_features`
 
 ## Project Structure
 
@@ -20,7 +20,8 @@ src/
 ├── backend/              # Python FastAPI backend
 │   ├── __init__.py
 │   ├── main.py           # FastAPI app, API endpoints
-│   ├── watchlist_scraper.py  # TradingView watchlist scraper (crawl4ai)
+│   ├── quotes.py             # Fast Overview quotes via TradingView scanner JSON API (CSV-driven EXCHANGE:SYMBOL)
+│   ├── watchlist_scraper.py  # crawl4ai watchlist scrape; now only the ~5 licensed-feed gap symbols
 │   ├── market_overview.py    # Market overview data assembler (groups/themes)
 │   ├── tickers/          # Ticker data modules
 │   │   ├── __init__.py
@@ -74,8 +75,10 @@ when starting from inside a cmux/Claude Code terminal. cmux injects a transient
 `NODE_OPTIONS=--require=…/cmux-claude-node-options/restore-node-options.cjs` shim into the shell;
 once that temp file is cleaned up the env var dangles, so any `node` the backend spawns (the
 Playwright driver behind `watchlist_scraper`, and vite) aborts with `MODULE_NOT_FOUND`. The visible
-symptom is the **Overview sub-tab failing with `HTTP 500`** (`/api/market/overview` → scraper →
-Playwright driver crash). `market-pulse-server` self-heals this: it detects a cmux shell and drops
+symptom is an **`HTTP 500` from `/api/market/overview/gaps`** (that endpoint → scraper → Playwright
+driver crash); the main `/api/market/overview` no longer scrapes (it uses the scanner API, `quotes.py`)
+so it stays up, but the ~5 licensed-feed gap tiles fail to refresh. `market-pulse-server` self-heals
+this: it detects a cmux shell and drops
 the stale `NODE_OPTIONS` before starting the servers. If you must run `uvicorn` directly from a
 cmux shell, prefix it with `env -u NODE_OPTIONS`, or just launch from a normal terminal (Terminal /
 iTerm), whose `NODE_OPTIONS` is clean.
@@ -147,4 +150,4 @@ launchctl unload ~/Library/LaunchAgents/com.jianfuchen.market-pulse.plist   # di
 - Backend API endpoints are under `/api/tickers/{ticker}/` and `/api/market/`
 - UI uses Solarized Light color theme (defined in `index.css` as `--color-sol-*` variables)
 - Temp files (screenshots, logs, etc.) go in `tmp/` folder
-- Market Overview loads ticker groups from `~/projects/stock_picker/data/ticker.csv` at runtime. To add/reorder tickers within a theme, edit the CSV (`theme`, `display_order` columns). Curated section/group ordering lives in `SECTIONS` in `market_overview.py`; new CSV themes not listed there are automatically appended to `Other Themes`. Tickers may appear in multiple themes (e.g., NVDA in both Big Tech and AI Chips & Foundry). The `Portfolio` section (shown just below `Overview`) is the exception: its single group is a hardcoded ticker list in `PORTFOLIO` in `market_overview.py`, not sourced from the CSV.
+- Market Overview loads ticker groups from `~/projects/stock_picker/data/ticker.csv` at runtime. To add/reorder tickers within a theme, edit the CSV (`theme`, `display_order` columns). The CSV's `exchange` column is the single source of truth for the scanner fetch: `quotes.py` builds each scanner symbol as `EXCHANGE:SYMBOL`, so `exchange` must be the value TradingView's scanner indexes (US ETFs use `AMEX`/`NASDAQ`/`CBOE`; index/crypto/futures use TradingView feed names like `TVC`/`CRYPTO`/`CME_MINI`). A symbol with no free scanner data is listed in `SCANNER_UNAVAILABLE` and served from the scrape instead. Curated section/group ordering lives in `SECTIONS` in `market_overview.py`; new CSV themes not listed there are automatically appended to `Other Themes`. Tickers may appear in multiple themes (e.g., NVDA in both Big Tech and AI Chips & Foundry). The `Portfolio` section (shown just below `Overview`) is the exception: its single group is a hardcoded ticker list in `PORTFOLIO` in `market_overview.py`, not sourced from the CSV.

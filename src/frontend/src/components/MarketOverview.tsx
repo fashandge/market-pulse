@@ -326,13 +326,58 @@ export function MarketOverview() {
       .catch((err) => setError(err.message))
   }
 
+  // The licensed-feed tiles (futures/vol indices) come from a slower scrape via
+  // a separate endpoint, so they don't block the fast tiles. We patch only
+  // their numeric fields in place — unchanged values produce no visible change,
+  // so a quick re-refresh never flashes.
+  const fetchGaps = (force = false) => {
+    const url = force
+      ? '/api/market/overview/gaps?force=1'
+      : '/api/market/overview/gaps'
+    return fetch(url)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((res) => {
+        const q: Record<string, Ticker> | undefined = res?.quotes
+        if (!q) return
+        setData((prev) => {
+          if (!prev) return prev
+          const sections = prev.sections.map((sec) => ({
+            ...sec,
+            groups: sec.groups.map((g) => ({
+              ...g,
+              tickers: g.tickers.map((t) => {
+                const p = q[t.symbol]
+                return p
+                  ? {
+                      ...t,
+                      price: p.price,
+                      change_pct: p.change_pct,
+                      change_abs: p.change_abs,
+                      volume: p.volume,
+                      avg_volume: p.avg_volume,
+                      formal_symbol: p.formal_symbol,
+                    }
+                  : t
+              }),
+            })),
+          }))
+          return { ...prev, sections }
+        })
+      })
+      .catch(() => {})
+  }
+
   useEffect(() => {
-    fetchData().finally(() => setLoading(false))
+    fetchData()
+      .finally(() => setLoading(false))
+      .then(() => fetchGaps())
   }, [])
 
   const handleRefresh = () => {
     setRefreshing(true)
-    fetchData(true).finally(() => setRefreshing(false))
+    fetchData(true)
+      .then(() => fetchGaps(true))
+      .finally(() => setRefreshing(false))
   }
 
   if (loading) {

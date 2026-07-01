@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.backend.tickers import crcl, charts
-from src.backend import market_overview, watchlist_scraper
+from src.backend import market_overview, watchlist_scraper, quotes
 
 NEWS_BASE_PATH = Path.home() / "projects/news/data/market_news"
 CFZH_PATH = Path.home() / "projects/news/data/cfzh_forum_summaries"
@@ -29,26 +29,42 @@ app.add_middleware(
 )
 
 
-_overview_cache: dict = {"data": None, "timestamp": 0.0}
-OVERVIEW_CACHE_TTL = 900
+def _now_la() -> str:
+    return datetime.now(ZoneInfo("America/Los_Angeles")).strftime("%H:%M (%b %d, %Y)")
+
+
+# Last-known values for the licensed-feed symbols the scanner can't serve
+# (see quotes.SCANNER_UNAVAILABLE). Refreshed on demand by the /gaps endpoint
+# and embedded into the overview so those tiles never flash "—" on refresh.
+_gap_cache: dict = {"data": {}, "timestamp": 0.0, "updated_at": ""}
+GAP_CACHE_TTL = 90
 
 
 @app.get("/api/market/overview")
 def get_market_overview(force: int = 0):
-    """Get market overview with all watched tickers grouped by theme."""
+    """Fast path: scanner API for the covered symbols, merged with the
+    last-known gap values. Returns in well under a second (no browser)."""
+    covered = quotes.fetch_covered_quotes()
+    merged = {**covered, **_gap_cache["data"]}
+    sections = market_overview.build_overview(merged)
+    return {"sections": sections, "updated_at": _now_la()}
+
+
+@app.get("/api/market/overview/gaps")
+def get_overview_gaps(force: int = 0):
+    """Slow path: the ~5 licensed-feed symbols the scanner can't serve, via the
+    watchlist scrape. TTL-cached so repeated refreshes don't re-launch the
+    browser; the frontend fetches this after rendering the fast tiles."""
     now = time.time()
-    if not force and _overview_cache["data"] and now - _overview_cache["timestamp"] < OVERVIEW_CACHE_TTL:
-        return _overview_cache["data"]
+    if not force and _gap_cache["data"] and now - _gap_cache["timestamp"] < GAP_CACHE_TTL:
+        return {"quotes": _gap_cache["data"], "updated_at": _gap_cache["updated_at"]}
 
     scraped = watchlist_scraper.scrape_watchlist()
-    sections = market_overview.build_overview(scraped)
-    la_tz = ZoneInfo("America/Los_Angeles")
-    updated_at = datetime.now(la_tz).strftime("%H:%M (%b %d, %Y)")
-
-    result = {"sections": sections, "updated_at": updated_at}
-    _overview_cache["data"] = result
-    _overview_cache["timestamp"] = now
-    return result
+    gap_quotes = {s: scraped[s] for s in quotes.SCANNER_UNAVAILABLE if s in scraped}
+    _gap_cache["data"] = gap_quotes
+    _gap_cache["timestamp"] = now
+    _gap_cache["updated_at"] = _now_la()
+    return {"quotes": gap_quotes, "updated_at": _gap_cache["updated_at"]}
 
 
 @app.get("/api/tickers/search")

@@ -53,21 +53,28 @@ Market Pulse is a web dashboard for monitoring market and individual stock/crypt
 ## Data Flow
 
 ```
-TradingView Watchlist                CoinMarketCap API                News Summaries + Feeds
-(crawl4ai with persistent profile)        ↓                          (NDX, CFZH, X, TrendSpider, Zhihu AI)
+TradingView Scanner API              CoinMarketCap API                News Summaries + Feeds
+(scanner.tradingview.com, JSON)           ↓                          (NDX, CFZH, X, TrendSpider, Zhihu AI)
        ↓                            FastAPI Backend (port 8000)            ↓
-   watchlist_scraper.py              - Fetches data                  - Reads .md/.jsonl files
-   - Scrapes ~150 tickers            - Converts UTC → LA time        - Returns summaries/posts
-   - Extracts price/change/volume    - Computes changes                    ↓
-       ↓                                   ↓                         React Frontend (port 5173)
-   market_overview.py                React Frontend (port 5173)      - MarketView sub-tabs: TV, X, CFZH
-   - Groups by theme/sector          - Filters by time range         - Markdown rendering
-   - Computes avg change/vol ratio   - Renders Plotly chart
-   - 15 min cache                    - Displays changes table
+   quotes.py                         - Fetches data                  - Reads .md/.jsonl files
+   - One batched POST, ~0.12s        - Converts UTC → LA time        - Returns summaries/posts
+   - EXCHANGE:SYMBOL from ticker.csv - Computes changes                    ↓
+   - Covers ~166 symbols                  ↓                         React Frontend (port 5173)
+       ↓                            React Frontend (port 5173)      - MarketView sub-tabs: TV, X, CFZH
+   watchlist_scraper.py (fallback)   - Filters by time range         - Markdown rendering
+   - crawl4ai scrape, ~8s            - Renders Plotly chart
+   - only ~5 licensed-feed gap       - Displays changes table
+     symbols (SCANNER_UNAVAILABLE),
+     via /api/market/overview/gaps
+       ↓
+   market_overview.py
+   - Groups by theme/sector
+   - Computes avg change/vol ratio
        ↓
    MarketOverview.tsx (Overview sub-tab of OverviewView, the default view)
-   - Card grid by section
-   - Clickable tickers → TradingView charts
+   - Two-phase load: fast scanner tiles render instantly, gap tiles
+     patched in from /gaps without blocking or flashing
+   - Card grid by section; clickable tickers → TradingView charts
    - Hover tooltips with volume data
 ```
 
@@ -82,7 +89,8 @@ TradingView Watchlist                CoinMarketCap API                News Summa
 | `/api/market/x-summary` | GET | Returns today's X market news summary |
 | `/api/market/trendspider-posts` | GET | Returns up to 50 recent TrendSpider posts (JSONL) |
 | `/api/market/ai-news-brief` | GET | Returns the latest Zhihu AI news daily brief (`date`, `is_stale`, `articles[]`) from `~/projects/news/data/zhihu/daily_briefs/zhihu_brief_YYYYMMDD.jsonl` |
-| `/api/market/overview` | GET | Returns market overview: tickers grouped by theme with prices, changes, volume (cached 15 min; `force=1` refreshes) |
+| `/api/market/overview` | GET | Returns market overview: tickers grouped by theme with prices, changes, volume. Live from the TradingView scanner API (`quotes.py`, ~0.12s), merged with last-known gap values |
+| `/api/market/overview/gaps` | GET | Returns the ~5 licensed-feed symbols (`SCANNER_UNAVAILABLE`) the scanner can't serve, via the watchlist scrape (~8s, TTL-cached 90s; `force=1` refreshes). Frontend fetches this after the fast tiles render |
 | `/api/tickers/search` | GET | Symbol search over the chart ticker universe (`q`, `limit`) |
 | `/api/tickers/portfolio` | GET | Portfolio tickers (`PORTFOLIO` in `market_overview.py`) with company names, for the search dropdown quick-picks |
 | `/api/tickers/{ticker}/weekly-chart` | GET | Weekly OHLCV + indicators (full history) from `weekly_bars_adjusted` ⋈ `weekly_indicators` |
