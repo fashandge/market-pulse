@@ -11,6 +11,7 @@ TICKER_CSV = Path.home() / "projects/stock_picker/data/ticker.csv"
 PORTFOLIO = [
     "MU", "AMD", "MRVL",
     "NVDA", "GOOGL", "META", "TSLA",
+    "DELL",
 ]
 
 SECTIONS = [
