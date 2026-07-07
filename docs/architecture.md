@@ -180,6 +180,16 @@ App.tsx
 - No CORS issues in development
 - `vite.config.ts` configures proxy
 
+## Market Overview Data Sourcing (ticker.csv + TradingView scanner)
+
+Market Overview loads ticker groups from `~/projects/stock_picker/data/ticker.csv` at runtime. To add/reorder tickers within a theme, edit the CSV (`theme`, `display_order` columns).
+
+- The CSV's `exchange` column is the single source of truth for the scanner fetch: `quotes.py` builds each scanner symbol as `EXCHANGE:SYMBOL`, so `exchange` must be the value TradingView's scanner indexes (US ETFs use `AMEX`/`NASDAQ`/`CBOE`; index/crypto/futures use TradingView feed names like `TVC`/`CRYPTO`/`CME_MINI`).
+- A symbol with no free scanner data is listed in `SCANNER_UNAVAILABLE` in `quotes.py` and served from the crawl4ai watchlist scrape (`watchlist_scraper.py`) instead.
+- Curated section/group ordering lives in `SECTIONS` in `market_overview.py`; new CSV themes not listed there are automatically appended to `Other Themes`.
+- Tickers may appear in multiple themes (e.g., NVDA in both Big Tech and AI Chips & Foundry).
+- The `Portfolio` section (shown just below `Overview`) is the exception: its single group is a hardcoded ticker list in `PORTFOLIO` in `market_overview.py`, not sourced from the CSV.
+
 ## Future Considerations
 
 ### Adding New Tickers
