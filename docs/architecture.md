@@ -92,7 +92,7 @@ TradingView Scanner API              CoinMarketCap API                News Summa
 | `/api/market/overview` | GET | Returns market overview: tickers grouped by theme with prices, changes, volume. Live from the TradingView scanner API (`quotes.py`, ~0.12s), merged with last-known gap values |
 | `/api/market/overview/gaps` | GET | Returns the ~5 licensed-feed symbols (`SCANNER_UNAVAILABLE`) the scanner can't serve, via the watchlist scrape (~8s, TTL-cached 90s; `force=1` refreshes). Frontend fetches this after the fast tiles render |
 | `/api/tickers/search` | GET | Symbol search over the chart ticker universe (`q`, `limit`) |
-| `/api/tickers/portfolio` | GET | Portfolio tickers (`PORTFOLIO` in `market_overview.py`) with company names, for the search dropdown quick-picks |
+| `/api/tickers/portfolio` | GET | Portfolio tickers (from the TradingView `portfolio` watchlist via `portfolio.py`) with company names, for the search dropdown quick-picks |
 | `/api/tickers/{ticker}/weekly-chart` | GET | Weekly OHLCV + indicators (full history) from `weekly_bars_adjusted` ⋈ `weekly_indicators` |
 | `/api/tickers/{ticker}/monthly-chart` | GET | Monthly OHLCV + indicators (full history) from `monthly_bars_adjusted` ⋈ `monthly_indicators` (3-month vol avg computed in SQL) |
 | `/api/tickers/{ticker}/daily-chart` | GET | Daily OHLCV + indicators (full history) from `daily_bars_adjusted` ⋈ `classifier_features` (10-day vol avg computed in SQL) |
@@ -188,7 +188,17 @@ Market Overview loads ticker groups from `~/projects/stock_picker/data/ticker.cs
 - A symbol with no free scanner data is listed in `SCANNER_UNAVAILABLE` in `quotes.py` and served from the crawl4ai watchlist scrape (`watchlist_scraper.py`) instead.
 - Curated section/group ordering lives in `SECTIONS` in `market_overview.py`; new CSV themes not listed there are automatically appended to `Other Themes`.
 - Tickers may appear in multiple themes (e.g., NVDA in both Big Tech and AI Chips & Foundry).
-- The `Portfolio` section (shown just below `Overview`) is the exception: its single group is a hardcoded ticker list in `PORTFOLIO` in `market_overview.py`, not sourced from the CSV.
+- The `Portfolio` section (shown just below `Overview`) is the exception: it is not sourced from the CSV at all — see below.
+
+## Portfolio Section Data Sourcing (TradingView `portfolio` watchlist)
+
+The `Portfolio` section mirrors the TradingView watchlist named **`portfolio`**, so holdings are edited in TradingView and never in code (`src/backend/portfolio.py`).
+
+- **Fetch** — shells out to `~/projects/stock_picker/skills/manage-tradingview-watchlist/tv_watchlist.py --list-symbols --watchlist portfolio`, which drives the logged-in Chrome session and owns all TradingView watchlist logic. That script is also what `manage-watchlist` uses to mirror ticker adds/removes, so there is one implementation of "read/write a TV watchlist".
+- **Benchmarks are filtered out.** The watchlist also carries NDX / QQQ / SPX / SMH / SOXX for comparison. A symbol is dropped by *instrument type* from TradingView's scanner (`quotes.fetch_types`): `index`, `fund` (ETFs), `futures`, `spot`, `commodity`, `forex`, `bond`, `economic`. The filter is a **drop-list, not a keep-list**, because ADRs classify as `dr` rather than `stock` (TSM, ARM, SKHY) — a holding is better shown as a dashed tile than silently omitted. `ticker.csv`'s `ticker_type` is the fallback when the scanner returns no type.
+- **Caching** — the resolved symbols + types live in `data/portfolio.json`. A cached list is served immediately at any age; a cache older than `CACHE_TTL` (6h) triggers a *background* refresh, so no request blocks on a browser launch after the first. If TradingView is unreachable, the last known list keeps serving; with no cache at all the section is simply omitted.
+- `data/portfolio.json` is local-only (the global gitignore covers `data/*`), so a fresh clone has no fallback and its first overview request blocks ~2s on the one-time fetch. The file is rewritten only when the symbols actually change, with the mtime touched either way, so a refresh that finds nothing new costs no write.
+- Holdings not yet mirrored into `ticker.csv` still get quotes: `main.py` passes them to `quotes.fetch_covered_quotes(extra=...)` using the exchange from the watchlist.
 
 ## Future Considerations
 

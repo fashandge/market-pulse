@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.backend.tickers import crcl, charts
-from src.backend import market_overview, watchlist_scraper, quotes
+from src.backend import market_overview, watchlist_scraper, quotes, portfolio
 
 NEWS_BASE_PATH = Path.home() / "projects/news/data/market_news"
 CFZH_PATH = Path.home() / "projects/news/data/cfzh_forum_summaries"
@@ -44,9 +44,12 @@ GAP_CACHE_TTL = 90
 def get_market_overview(force: int = 0):
     """Fast path: scanner API for the covered symbols, merged with the
     last-known gap values. Returns in well under a second (no browser)."""
-    covered = quotes.fetch_covered_quotes()
+    holdings = portfolio.load_holdings()
+    covered = quotes.fetch_covered_quotes(extra=dict(holdings))
     merged = {**covered, **_gap_cache["data"]}
-    sections = market_overview.build_overview(merged)
+    sections = market_overview.build_overview(
+        merged, [symbol for symbol, _ in holdings]
+    )
     return {"sections": sections, "updated_at": _now_la()}
 
 
@@ -77,7 +80,9 @@ def search_tickers(q: str = "", limit: int = 20):
 def get_portfolio_tickers():
     """Portfolio tickers (with company names when known) for the search dropdown."""
     names = {t["symbol"]: t["name"] for t in charts.list_tickers()}
-    return {"results": [{"symbol": s, "name": names.get(s)} for s in market_overview.PORTFOLIO]}
+    return {"results": [
+        {"symbol": s, "name": names.get(s)} for s in portfolio.load_symbols()
+    ]}
 
 
 @app.get("/api/tickers/{ticker}/weekly-chart")
