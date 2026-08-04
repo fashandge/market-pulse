@@ -77,28 +77,6 @@ def _fmt_volume(v: float | None) -> str:
     return f"{v:.0f}"
 
 
-def fetch_types(formal_symbols: list[str]) -> dict[str, str]:
-    """Instrument type per ``EXCHANGE:SYMBOL``, straight from the scanner.
-
-    Values are TradingView's own classification — ``stock``, ``dr`` (depositary
-    receipt / ADR), ``fund`` (ETFs), ``index``, ``futures``, ``spot``,
-    ``commodity``, ``bond``, … Symbols the scanner doesn't cover are absent from
-    the result rather than guessed at.
-    """
-    if not formal_symbols:
-        return {}
-    payload = json.dumps({
-        "symbols": {"tickers": list(formal_symbols), "query": {"types": []}},
-        "columns": ["type"],
-    }).encode()
-    req = urllib.request.Request(
-        SCANNER_URL, data=payload, headers={"Content-Type": "application/json"}
-    )
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        body = json.load(resp)
-    return {row["s"]: row["d"][0] for row in body.get("data", []) if row.get("d")}
-
-
 def _load_symbol_exchanges() -> dict[str, str]:
     """Bare symbol -> exchange from the ticker CSV (first occurrence wins)."""
     out: dict[str, str] = {}

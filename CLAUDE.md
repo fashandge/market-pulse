@@ -22,7 +22,7 @@ src/
 │   ├── quotes.py             # Live quotes via TradingView scanner JSON API (CSV-driven EXCHANGE:SYMBOL)
 │   ├── watchlist_scraper.py  # crawl4ai scrape for the ~5 licensed-feed gap symbols
 │   ├── market_overview.py    # Market overview assembler (SECTIONS)
-│   ├── portfolio.py          # Holdings from the TradingView "portfolio" watchlist
+│   ├── portfolio.py          # Holdings from stock_picker's data/portfolio.csv (mirror of the TradingView "portfolio" watchlist)
 │   ├── tickers/charts.py     # Weekly/monthly/daily OHLCV + indicators (reads investment duckdb)
 │   └── scripts/              # start_tunnel.sh, ensure_up.sh
 └── frontend/                 # React + Vite (port 5173); components in src/components/
@@ -51,7 +51,7 @@ Open http://localhost:5173
 - Market cap values are displayed in billions (e.g., "$77.61B")
 - Backend API endpoints are under `/api/tickers/{ticker}/` and `/api/market/`
 - Temp files (screenshots, logs, etc.) go in `tmp/` folder
-- Market Overview ticker groups come from `~/projects/stock_picker/data/ticker.csv` at runtime (`theme`, `display_order` columns; `exchange` must be the TradingView scanner value). Section ordering lives in `SECTIONS` (`market_overview.py`). The `Portfolio` section is **not** hardcoded — it mirrors the TradingView watchlist named `portfolio` (`portfolio.py`); edit the holdings in TradingView, not in code. Full sourcing rules: [docs/architecture.md](docs/architecture.md#market-overview-data-sourcing-tickercsv--tradingview-scanner).
+- Market Overview ticker groups come from `~/projects/stock_picker/data/ticker.csv` at runtime (`theme`, `display_order` columns; `exchange` must be the TradingView scanner value). Section ordering lives in `SECTIONS` (`market_overview.py`). The `Portfolio` section is **not** hardcoded — it reads `~/projects/stock_picker/data/portfolio.csv` (`portfolio.py`), which `tv_watchlist.py` mirrors from the TradingView watchlist named `portfolio` on every change; edit the holdings in TradingView (via the script), not in code. Full sourcing rules: [docs/architecture.md](docs/architecture.md#market-overview-data-sourcing-tickercsv--tradingview-scanner).
 
 ## Documentation
 
