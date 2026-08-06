@@ -19,7 +19,8 @@ Market Pulse - A web dashboard for monitoring market and individual stock/crypto
 src/
 ├── backend/                  # FastAPI backend (port 8000)
 │   ├── main.py               # App + API endpoints (/api/tickers/…, /api/market/…)
-│   ├── quotes.py             # Live quotes via TradingView scanner JSON API (CSV-driven EXCHANGE:SYMBOL)
+│   ├── quotes.py             # Live quotes via TradingView scanner JSON API (CSV-driven EXCHANGE:SYMBOL); real-time via logged-in TV session (tv_session.py), delayed anonymous fallback
+│   ├── tv_session.py         # Logged-in TradingView session cookies from the crawl4ai profile (playwright, TTL-cached) for real-time scanner quotes
 │   ├── watchlist_scraper.py  # crawl4ai scrape for the ~5 licensed-feed gap symbols
 │   ├── market_overview.py    # Market overview assembler (SECTIONS)
 │   ├── portfolio.py          # Holdings from stock_picker's data/portfolio.csv (mirror of the TradingView "portfolio" watchlist)

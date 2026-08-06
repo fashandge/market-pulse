@@ -59,11 +59,18 @@ TradingView Scanner API              CoinMarketCap API                News Summa
    quotes.py                         - Fetches data                  - Reads .md/.jsonl files
    - One batched POST, ~0.12s        - Converts UTC → LA time        - Returns summaries/posts
    - EXCHANGE:SYMBOL from ticker.csv - Computes changes                    ↓
-   - Covers ~166 symbols                  ↓                         React Frontend (port 5173)
-       ↓                            React Frontend (port 5173)      - MarketView sub-tabs: TV, X, CFZH
-   watchlist_scraper.py (fallback)   - Filters by time range         - Markdown rendering
-   - crawl4ai scrape, ~8s            - Renders Plotly chart
-   - only ~5 licensed-feed gap       - Displays changes table
+   - Real-time via logged-in TV                            React Frontend (port 5173)
+     session (tv_session.py)                            - MarketView sub-tabs: TV, X, CFZH
+   - Covers ~166 symbols                                   - Markdown rendering
+       ↓                                                    - Renders Plotly chart
+   tv_session.py (session cookies)                         - Displays changes table
+   - Reads sessionid/sessionid_sign from the crawl4ai
+     profile (~2s browser launch, TTL-cached 6h);
+     anonymous fallback = delayed quotes
+       ↓
+   watchlist_scraper.py (fallback)
+   - crawl4ai scrape, ~8s
+   - only ~5 licensed-feed gap
      symbols (SCANNER_UNAVAILABLE),
      via /api/market/overview/gaps
        ↓
@@ -89,7 +96,7 @@ TradingView Scanner API              CoinMarketCap API                News Summa
 | `/api/market/x-summary` | GET | Returns today's X market news summary |
 | `/api/market/trendspider-posts` | GET | Returns up to 50 recent TrendSpider posts (JSONL) |
 | `/api/market/ai-news-brief` | GET | Returns the latest Zhihu AI news daily brief (`date`, `is_stale`, `articles[]`) from `~/projects/news/data/zhihu/daily_briefs/zhihu_brief_YYYYMMDD.jsonl` |
-| `/api/market/overview` | GET | Returns market overview: tickers grouped by theme with prices, changes, volume. Live from the TradingView scanner API (`quotes.py`, ~0.12s), merged with last-known gap values |
+| `/api/market/overview` | GET | Returns market overview: tickers grouped by theme with prices, changes, volume. Live from the TradingView scanner API (`quotes.py`, ~0.12s, real-time when the logged-in TV session is available), merged with last-known gap values |
 | `/api/market/overview/gaps` | GET | Returns the ~5 licensed-feed symbols (`SCANNER_UNAVAILABLE`) the scanner can't serve, via the watchlist scrape (~8s, TTL-cached 90s; `force=1` refreshes). Frontend fetches this after the fast tiles render |
 | `/api/tickers/search` | GET | Symbol search over the chart ticker universe (`q`, `limit`) |
 | `/api/tickers/portfolio` | GET | Portfolio tickers (from stock_picker's `data/portfolio.csv`, synced from the TradingView `portfolio` watchlist) with company names, for the search dropdown quick-picks |
@@ -185,6 +192,7 @@ App.tsx
 Market Overview loads ticker groups from `~/projects/stock_picker/data/ticker.csv` at runtime. To add/reorder tickers within a theme, edit the CSV (`theme`, `display_order` columns).
 
 - The CSV's `exchange` column is the single source of truth for the scanner fetch: `quotes.py` builds each scanner symbol as `EXCHANGE:SYMBOL`, so `exchange` must be the value TradingView's scanner indexes (US ETFs use `AMEX`/`NASDAQ`/`CBOE`; index/crypto/futures use TradingView feed names like `TVC`/`CRYPTO`/`CME_MINI`).
+- **Real-time vs delayed quotes.** Anonymous calls to `scanner.tradingview.com/global/scan` serve *delayed* quotes for US equities (minutes old on fast movers — measured ~$2-4 behind the live tape on AMD). The same endpoint returns real-time data when called with the logged-in TradingView session cookies (`sessionid` + `sessionid_sign`), which `tv_session.py` reads from the crawl4ai browser profile (`~/.crawl4ai/tradingview-profile`, already logged in) via a short headless playwright launch, TTL-cached for 6h. If the session is unavailable (profile locked mid-scrape, not logged in, browser error) `quotes.py` falls back to the anonymous endpoint — same response shape, just delayed. The first request after a server restart pays the ~2s browser launch; subsequent ones stay at ~0.1s.
 - A symbol with no free scanner data is listed in `SCANNER_UNAVAILABLE` in `quotes.py` and served from the crawl4ai watchlist scrape (`watchlist_scraper.py`) instead.
 - Curated section/group ordering lives in `SECTIONS` in `market_overview.py`; new CSV themes not listed there are automatically appended to `Other Themes`.
 - Tickers may appear in multiple themes (e.g., NVDA in both Big Tech and AI Chips & Foundry).

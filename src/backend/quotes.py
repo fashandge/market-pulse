@@ -10,6 +10,13 @@ ticker CSV, so the CSV's ``exchange`` column is the single source of truth (it
 already uses TradingView's exchange names for non-stock rows, e.g. ``TVC`` for
 yields/gold, ``CRYPTO`` for BTC/ETH, ``CME_MINI`` for E-mini futures).
 
+**Real-time vs delayed:** anonymously the scanner endpoint serves *delayed*
+quotes for US equities (minutes old on fast movers). Calling it with the
+logged-in TradingView session cookies (from the crawl4ai profile, via
+``tv_session``) returns real-time data matching the website. If the session is
+unavailable we silently fall back to the anonymous endpoint — same shape,
+just delayed.
+
 A small set of licensed real-time feeds (CBOE volatility indices + DERIBIT
 crypto-vol) return no data from the free scanner at any spelling; those are
 listed in ``SCANNER_UNAVAILABLE`` and sourced from the watchlist scrape instead
@@ -24,6 +31,8 @@ import csv
 import json
 import urllib.request
 from pathlib import Path
+
+from src.backend import tv_session
 
 TICKER_CSV = Path.home() / "projects/stock_picker/data/ticker.csv"
 SCANNER_URL = "https://scanner.tradingview.com/global/scan"
@@ -108,9 +117,11 @@ def fetch_covered_quotes(extra: dict[str, str] | None = None) -> dict[str, dict]
         "symbols": {"tickers": list(formal_to_symbol), "query": {"types": []}},
         "columns": COLUMNS,
     }).encode()
-    req = urllib.request.Request(
-        SCANNER_URL, data=payload, headers={"Content-Type": "application/json"}
-    )
+    headers = {"Content-Type": "application/json"}
+    cookie = tv_session.cookie_header()
+    if cookie:
+        headers["Cookie"] = cookie
+    req = urllib.request.Request(SCANNER_URL, data=payload, headers=headers)
     with urllib.request.urlopen(req, timeout=15) as resp:
         body = json.load(resp)
 
