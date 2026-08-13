@@ -11,7 +11,7 @@ SECTIONS = [
     ("Overview", False, [
         "Major Indices", "Other Indices", "Futures",
         "Gold / Silver / Copper", "Crypto",
-        "Critical Sectors", "Other ETFs",
+        "Critical Sectors",
     ]),
     ("Critical Themes", True, [
         "Big Tech", "Memory & Storage", "Networking & Optical",
@@ -25,6 +25,10 @@ SECTIONS = [
         "AI Software", "Cybersecurity", "Hospitality", "Defense",
     ]),
 ]
+
+# ticker.csv themes that are deliberately not shown; without this they would be
+# picked up as "unmapped" groups and appended to Other Themes.
+HIDDEN_GROUPS = {"Other ETFs"}
 
 GROUPS_AVG_OVERRIDE: dict[str, dict] = {
     "Memory & Storage": {
@@ -45,7 +49,7 @@ GROUPS_AVG_OVERRIDE: dict[str, dict] = {
 
 
 def _known_group_names() -> set[str]:
-    return {group for _, _, groups in SECTIONS for group in groups}
+    return {group for _, _, groups in SECTIONS for group in groups} | HIDDEN_GROUPS
 
 
 def _load_all_groups() -> dict[str, list[str]]:
