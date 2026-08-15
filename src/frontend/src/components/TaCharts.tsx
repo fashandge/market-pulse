@@ -114,6 +114,7 @@ const CONFIG: Record<Timeframe, TfConfig> = {
       { key: 'sma_100', label: 'SMA100', color: C.red, dashed: true },
       { key: 'sma_150', label: 'SMA150', color: C.redLight, dashed: true },
       { key: 'sma_200', label: 'SMA200', color: C.red },
+      { key: 'vwma_50', label: 'VWMA50', color: C.violet },
     ],
     volAvgKey: 'vol_avg_10',
     volAvgLabel: '10d',
@@ -210,12 +211,19 @@ const paneLegend = (kind: PaneKind, r: Bar, cfg: TfConfig) => {
   }
 }
 
+// MAs with at least one value in the loaded rows. A series the DB doesn't carry
+// yet is all-NULL: it draws nothing, so it stays out of the legend too, and both
+// come back on their own once the column lands.
+const visibleMas = (rows: Bar[], cfg: TfConfig) =>
+  cfg.mas.filter((m) => rows.some((r) => num(r[m.key]) != null))
+
 // All panes' watermark lines for one bar: [price pane, ...indicator panes].
-const legendLines = (r: Bar, ticker: string, cfg: TfConfig) => {
+// `mas` is the visibleMas() subset, so the price legend matches the drawn lines.
+const legendLines = (r: Bar, ticker: string, cfg: TfConfig, mas: MASpec[]) => {
   const price = [
     seg(`${ticker} · ${cfg.titleSuffix}  ·  ${String(r[cfg.timeKey])}`, TITLE_COLOR),
     seg(`O ${f2(r.open)}  H ${f2(r.high)}  L ${f2(r.low)}  C ${f2(r.close)}`, C.base01),
-    ...cfg.mas.map((m) => seg(`${m.label} ${f2(r[m.key])}`, m.color)),
+    ...mas.map((m) => seg(`${m.label} ${f2(r[m.key])}`, m.color)),
   ]
   const indicators = cfg.panes.map((kind) => {
     let title: string = PANE_TITLE[kind]
@@ -549,7 +557,8 @@ export function TaCharts({ ticker }: { ticker: string }) {
         close: r.close as number,
       })),
     )
-    for (const m of cfg.mas) {
+    const mas = visibleMas(rows, cfg)
+    for (const m of mas) {
       const opts = m.dashed ? { ...lineOpts(m.color), lineStyle: LineStyle.Dashed } : lineOpts(m.color)
       chart.addSeries(LineSeries, opts, 0).setData(lineData(m.key))
     }
@@ -565,7 +574,7 @@ export function TaCharts({ ticker }: { ticker: string }) {
     // Per-pane legends: a top-left watermark per pane, refreshed on hover.
     // Default to the most recent bar when the crosshair isn't over a bar.
     const lastRow = rows[rows.length - 1]
-    const watermarks = legendLines(lastRow, ticker, cfg).map((lines, i) =>
+    const watermarks = legendLines(lastRow, ticker, cfg, mas).map((lines, i) =>
       i < panes.length
         ? createTextWatermark(panes[i], { horzAlign: 'left', vertAlign: 'top', lines })
         : null,
@@ -573,7 +582,7 @@ export function TaCharts({ ticker }: { ticker: string }) {
 
     const rowByTime = new Map(rows.map((r) => [String(r[cfg.timeKey]), r]))
     const updateLegend = (r: Bar) => {
-      const all = legendLines(r, ticker, cfg)
+      const all = legendLines(r, ticker, cfg, mas)
       watermarks.forEach((w, i) => w?.applyOptions({ lines: all[i] }))
     }
     chart.subscribeCrosshairMove((param) => {

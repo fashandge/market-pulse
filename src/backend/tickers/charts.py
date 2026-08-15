@@ -9,8 +9,8 @@ serve -- no indicator math here.
   (SMA 3/12, EMA 21, MACD, RSI, OBV, ROC 3, KDJ). The 3-month volume average
   is computed in SQL.
 - Daily: ``daily_bars_adjusted`` (OHLCV) joined with ``classifier_features``
-  (EMA 8/13/21/50, SMA 100/150/200, MACD, RSI, OBV, KDJ, CCI). The 10-day
-  volume average is computed in SQL.
+  (EMA 8/13/21/50, SMA 100/150/200, VWMA 50, MACD, RSI, OBV, KDJ, CCI). The
+  10-day volume average is computed in SQL.
 """
 
 from pathlib import Path
@@ -42,11 +42,18 @@ _DAILY_BAR_COLS = ["open", "high", "low", "close", "volume", "vol_avg_10"]
 _DAILY_IND_COLS = [
     "ema_8", "ema_13", "ema_21", "ema_50",
     "sma_100", "sma_150", "sma_200",
+    "vwma_50",
     "macd", "macd_signal", "macd_hist",
     "rsi_14", "obv",
     "kdj_k", "kdj_d", "kdj_j",
     "cci_20",
 ]
+
+# Daily indicators the investment project computes but that an older
+# ``classifier_features`` snapshot may not have yet (the nightly DB pull adds
+# them). Served as NULL until the column shows up, so the endpoint keeps
+# working and the series appears on its own once the column lands.
+_DAILY_OPTIONAL_IND_COLS = {"vwma_50"}
 
 # Cached ticker universe (loaded lazily on first search).
 _ticker_cache: list[dict] | None = None
@@ -181,6 +188,28 @@ def get_monthly_chart(ticker: str) -> dict:
     return {"ticker": ticker, "data": data}
 
 
+def _daily_ind_select(con: duckdb.DuckDBPyConnection) -> str:
+    """SELECT fragment for the daily indicator columns.
+
+    Optional columns (``_DAILY_OPTIONAL_IND_COLS``) that ``classifier_features``
+    does not have yet become ``NULL AS <col>``, so the payload shape stays the
+    same and the frontend simply drops an all-NULL series.
+    """
+    present = {
+        r[0]
+        for r in con.execute(
+            """
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'classifier_features'
+            """
+        ).fetchall()
+    }
+    return ",\n                ".join(
+        f"NULL AS {c}" if c in _DAILY_OPTIONAL_IND_COLS and c not in present else f"f.{c}"
+        for c in _DAILY_IND_COLS
+    )
+
+
 def get_daily_chart(ticker: str) -> dict:
     """Full-history daily OHLCV + indicators for one ticker.
 
@@ -188,12 +217,13 @@ def get_daily_chart(ticker: str) -> dict:
     ``classifier_features`` (joined on ticker+date). The 10-day volume average
     is computed in SQL. Returns ``{"ticker": ..., "data": [ {date, open, high,
     low, close, volume, vol_avg_10, ema_8, ...}, ... ]}`` sorted ascending by
-    date. SQL NULLs (indicator warmup) come back as JSON ``null``.
+    date. SQL NULLs (indicator warmup, or an optional column the DB snapshot
+    does not carry yet) come back as JSON ``null``.
     """
     con = _connect()
     try:
         rows = con.execute(
-            """
+            f"""
             SELECT
                 d.date,
                 d.open_adjusted, d.high_adjusted, d.low_adjusted, d.close_adjusted,
@@ -201,12 +231,7 @@ def get_daily_chart(ticker: str) -> dict:
                 AVG(d.volume_split_adjusted) OVER (
                     ORDER BY d.date ROWS BETWEEN 9 PRECEDING AND CURRENT ROW
                 ) AS vol_avg_10,
-                f.ema_8, f.ema_13, f.ema_21, f.ema_50,
-                f.sma_100, f.sma_150, f.sma_200,
-                f.macd, f.macd_signal, f.macd_hist,
-                f.rsi_14, f.obv,
-                f.kdj_k, f.kdj_d, f.kdj_j,
-                f.cci_20
+                {_daily_ind_select(con)}
             FROM daily_bars_adjusted d
             JOIN classifier_features f USING (ticker, date)
             WHERE d.ticker = ?
