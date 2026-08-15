@@ -43,7 +43,9 @@ GAP_CACHE_TTL = 90
 @app.get("/api/market/overview")
 def get_market_overview(force: int = 0):
     """Fast path: scanner API for the covered symbols, merged with the
-    last-known gap values. Returns in well under a second (no browser)."""
+    last-known gap values. Well under a second, except the first call after a
+    restart (or after the 6h cookie TTL) which pays the ~2s tv_session browser
+    launch for the logged-in session cookies."""
     holdings = portfolio.load_holdings()
     covered = quotes.fetch_covered_quotes(extra=dict(holdings))
     merged = {**covered, **_gap_cache["data"]}
@@ -62,7 +64,14 @@ def get_overview_gaps(force: int = 0):
     if not force and _gap_cache["data"] and now - _gap_cache["timestamp"] < GAP_CACHE_TTL:
         return {"quotes": _gap_cache["data"], "updated_at": _gap_cache["updated_at"]}
 
-    scraped = watchlist_scraper.scrape_watchlist()
+    try:
+        scraped = watchlist_scraper.scrape_watchlist()
+    except Exception:
+        # Scrape failed (e.g. the browser profile is locked by a concurrent
+        # tv_session cookie fetch). Serve last-known values rather than 500.
+        if _gap_cache["data"]:
+            return {"quotes": _gap_cache["data"], "updated_at": _gap_cache["updated_at"]}
+        return {"quotes": {}, "updated_at": _now_la()}
     gap_quotes = {s: scraped[s] for s in quotes.SCANNER_UNAVAILABLE if s in scraped}
     _gap_cache["data"] = gap_quotes
     _gap_cache["timestamp"] = now

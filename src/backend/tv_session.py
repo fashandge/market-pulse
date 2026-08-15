@@ -29,13 +29,17 @@ from pathlib import Path
 
 PROFILE_DIR = Path.home() / ".crawl4ai" / "tradingview-profile"
 TV_ORIGIN = "https://www.tradingview.com"
-LAUNCH_TIMEOUT_MS = 20_000
 
 # TradingView sessions are long-lived; refresh the cached cookies every 6h.
 COOKIE_TTL = 6 * 3600
 # Don't retry a failed browser launch more often than this (e.g. the profile
 # may be locked while watchlist_scraper is mid-scrape).
 FAILURE_BACKOFF = 60
+# Fail-fast bound for the headless launch: the overview hot path waits on this
+# before degrading to the anonymous (delayed) fallback. A locked profile fails
+# in ~1s via Chromium's singleton; the timeout only bites pathological cases
+# (profile migration, slow disk).
+LAUNCH_TIMEOUT_MS = 5_000
 
 REQUIRED_COOKIES = ("sessionid", "sessionid_sign")
 
@@ -84,14 +88,24 @@ def get_tv_cookies() -> dict[str, str] | None:
     if now - _cache["last_fail"] < FAILURE_BACKOFF:
         return cached  # may be None (fully anonymous) or stale-but-usable
     with _lock:
-        # Re-check under the lock: another request may have refreshed already.
+        # Re-check under the lock: another request may have refreshed already
+        # (success-freshness), or a queued thread may have just recorded a
+        # failure (backoff) — otherwise a burst of concurrent requests would
+        # each launch the browser in turn.
         if _cache["cookies"] is not None and time.time() - _cache["fetched_at"] < COOKIE_TTL:
+            return _cache["cookies"]
+        if time.time() - _cache["last_fail"] < FAILURE_BACKOFF:
             return _cache["cookies"]
         cookies = _fetch_cookies_from_profile()
         if cookies:
             _cache.update(cookies=cookies, fetched_at=time.time())
         else:
             _cache["last_fail"] = time.time()
+        # NOTE: cached cookies may have been invalidated server-side (logout /
+        # session expiry). Until the TTL lapses the scanner then treats the
+        # request as anonymous — i.e. the same delayed-data fallback as no
+        # cookies at all. Deliberate: fresh-enough beats a browser launch per
+        # request, and the session is long-lived.
         return cookies or _cache["cookies"]
 
 
