@@ -45,6 +45,7 @@ Open http://localhost:5173
 - Server logs: `tmp/backend.log`, `tmp/frontend.log`.
 - Public URL: `src/backend/scripts/start_tunnel.sh [status|stop]` (ngrok, detached). Details: [docs/operations.md](docs/operations.md).
 - Auto-start on login: LaunchAgent `com.jianfuchen.market-pulse` runs the `ensure_up.sh` supervisor daemon (restarts app + tunnel within ~1 min of a crash/wake). Enable/disable + design constraints: [docs/operations.md](docs/operations.md).
+- Backend tests: `python -m pytest tests/ -q` **from the repo root** (`pytest tests/` alone can't import `src.backend` — nothing puts the root on `sys.path`).
 
 ## Key Conventions
 

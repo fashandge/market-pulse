@@ -102,7 +102,7 @@ TradingView Scanner API              CoinMarketCap API                News Summa
 | `/api/tickers/portfolio` | GET | Portfolio tickers (from stock_picker's `data/portfolio.csv`, synced from the TradingView `portfolio` watchlist) with company names, for the search dropdown quick-picks |
 | `/api/tickers/{ticker}/weekly-chart` | GET | Weekly OHLCV + indicators (full history) from `weekly_bars_adjusted` ⋈ `weekly_indicators` |
 | `/api/tickers/{ticker}/monthly-chart` | GET | Monthly OHLCV + indicators (full history) from `monthly_bars_adjusted` ⋈ `monthly_indicators` (3-month vol avg computed in SQL) |
-| `/api/tickers/{ticker}/daily-chart` | GET | Daily OHLCV + indicators (full history) from `daily_bars_adjusted` ⋈ `classifier_features` (10-day vol avg computed in SQL) |
+| `/api/tickers/{ticker}/daily-chart` | GET | Daily OHLCV + indicators (full history) from `daily_bars_adjusted` ⋈ `classifier_features` (10-day vol avg computed in SQL). Indicators listed in `_DAILY_OPTIONAL_IND_COLS` (currently `vwma_50`) are probed in `information_schema` and served as `NULL` when the duckdb snapshot predates them, so the endpoint survives the investment repo adding a feature column ahead of the nightly DB pull |
 
 ## Frontend Components
 
@@ -150,11 +150,15 @@ App.tsx
 │       MACD, RSI, OBV, ROC 12, KDJ; ranges 1Y/2Y/5Y/Max (default 1Y).
 │     • Monthly (/api/tickers/{t}/monthly-chart): candles+SMA 3/12 & EMA 21, volume+3mo
 │       avg, MACD, RSI, OBV, ROC 3, KDJ; ranges 1Y/2Y/5Y/10Y/Max (default 2Y).
-│     • Daily (/api/tickers/{t}/daily-chart): candles+EMA 8/13/21/50 & SMA 100/150/200,
-│       volume+10d avg, MACD, RSI, OBV, KDJ, CCI 20 (no ROC); ranges 3M/6M/1Y/2Y/Max
-│       (default 3M).
+│     • Daily (/api/tickers/{t}/daily-chart): candles+EMA 8/13/21/50 & SMA 100/150/200
+│       (dashed except SMA 200) & VWMA 50 (solid violet), volume+10d avg, MACD, RSI,
+│       OBV, KDJ, CCI 20 (no ROC); ranges 3M/6M/1Y/2Y/Max (default 3M).
 │   Each pane shows a top-left color-coded legend (per-pane watermark) of the
 │   crosshair-hovered bar's values, defaulting to the latest bar when not hovering.
+│   A price-pane MA whose column is all-NULL in the payload is drawn nowhere and
+│   listed nowhere: `visibleMas()` filters the config's `mas` list to specs with at
+│   least one value, so an indicator the duckdb snapshot does not carry yet simply
+│   appears — line and legend entry — once the column lands.
 │   RSI pane has a soft 30–70 band fill + dashed 30/50/70 guides; KDJ pane has
 │   green/red K≥D regime bands + dashed 80/20 guides (custom lightweight-charts
 │   primitives drawn behind the series)
