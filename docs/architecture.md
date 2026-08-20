@@ -103,6 +103,7 @@ TradingView Scanner API              CoinMarketCap API                News Summa
 | `/api/tickers/{ticker}/weekly-chart` | GET | Weekly OHLCV + indicators (full history) from `weekly_bars_adjusted` ⋈ `weekly_indicators` |
 | `/api/tickers/{ticker}/monthly-chart` | GET | Monthly OHLCV + indicators (full history) from `monthly_bars_adjusted` ⋈ `monthly_indicators` (3-month vol avg computed in SQL) |
 | `/api/tickers/{ticker}/daily-chart` | GET | Daily OHLCV + indicators (full history) from `daily_bars_adjusted` ⋈ `classifier_features` (10-day vol avg computed in SQL). Indicators listed in `_DAILY_OPTIONAL_IND_COLS` (currently `vwma_50`) are probed in `information_schema` and served as `NULL` when the duckdb snapshot predates them, so the endpoint survives the investment repo adding a feature column ahead of the nightly DB pull |
+| `/api/tickers/{ticker}/pnf-chart` | GET | Point & Figure columns + boxes via the investment project's `investment.src.charts.pnf` library (high/low method; one-step-back rule on 1-box charts). Query: `since` (ISO date or past-N-calendar-days, default 365), `box` (absolute) or `box_pct` (fraction of last close, default 0.03, rounded to 1/2/2.5/5×10^k), `reversal` (3 default, 1 = Wyckoff), `end`. Bars come from the investment duckdb (split-adjusted OHLC) with a Yahoo Finance fallback for symbols the DB lacks; 400 on bad args / no data |
 
 ## Frontend Components
 
@@ -121,6 +122,7 @@ App.tsx
 │   ├── Overview tab → MarketOverview
 │   ├── Charts tab: TickerSearch (search full duckdb universe) + TaCharts, with a
 │   │   Daily/Weekly/Monthly timeframe toggle (default weekly, remembered in sessionStorage)
+│   ├── P&F tab: the same TickerSearch (shared selected ticker) + PnfChart
 │   └── Trend Spider tab → TrendSpiderView
 │
 ├── MarketOverview.tsx
@@ -139,6 +141,10 @@ App.tsx
 ├── TrendSpiderView.tsx — card feed of recent TrendSpider posts
 │   (/api/market/trendspider-posts) with images and timestamps
 │
+├── PnfChart.tsx — Point & Figure chart (react-plotly, Solarized) from
+│   /api/tickers/{t}/pnf-chart; controls for range (3M–5Y), box size (1/2/3/5% of
+│   last close or a custom value), reversal (3-box / 1-box Wyckoff) and style (X·O or
+│   price-in-box); settings persist in sessionStorage. Used by the P&F tab.
 ├── TickerSearch.tsx — debounced /api/tickers/search dropdown (symbol + name).
 │   With an empty box it shows quick-picks: a "Recently searched" section
 │   (localStorage `recentTickers`, excludes portfolio symbols) above an always-on

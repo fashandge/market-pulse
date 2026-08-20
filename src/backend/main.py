@@ -6,10 +6,10 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.backend.tickers import crcl, charts
+from src.backend.tickers import crcl, charts, pnf
 from src.backend import market_overview, watchlist_scraper, quotes, portfolio
 
 NEWS_BASE_PATH = Path.home() / "projects/news/data/market_news"
@@ -110,6 +110,24 @@ def get_monthly_chart(ticker: str):
 def get_daily_chart(ticker: str):
     """Daily OHLCV + technical indicators for a ticker (full history)."""
     return charts.get_daily_chart(ticker.upper())
+
+
+@app.get("/api/tickers/{ticker}/pnf-chart")
+def get_pnf_chart(
+    ticker: str,
+    since: str = "365",
+    box: float | None = None,
+    box_pct: float | None = None,
+    reversal: int = 3,
+    end: str | None = None,
+):
+    """Point & Figure columns/boxes (investment P&F library; duckdb bars with a
+    Yahoo fallback). ``since`` = ISO date or past-N-calendar-days; ``box`` or
+    ``box_pct`` (default 3% of last close) sets the box size; ``reversal`` 1|3."""
+    try:
+        return pnf.get_pnf_chart(ticker.upper(), since, box, box_pct, reversal, end)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @app.get("/api/tickers/crcl/market-cap")

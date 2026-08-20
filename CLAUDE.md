@@ -10,7 +10,7 @@ Market Pulse - A web dashboard for monitoring market and individual stock/crypto
 
 - **Frontend**: React + Vite + TypeScript + Tailwind CSS v4 (Solarized Light theme, `--color-sol-*` variables in `index.css`)
 - **Backend**: FastAPI (Python, `ml` conda env per global CLAUDE.md)
-- **Charts**: Plotly (react-plotly.js) for market-cap; TradingView Lightweight Charts v5 for weekly + monthly + daily TA charts
+- **Charts**: Plotly (react-plotly.js) for market-cap and Point & Figure; TradingView Lightweight Charts v5 for weekly + monthly + daily TA charts
 - **Data Sources**: CoinMarketCap API; TradingView scanner JSON API for live quotes (`quotes.py`) with a crawl4ai watchlist scrape covering a handful of licensed-feed symbols (`watchlist_scraper.py`); news summaries (NDX, CFZH forum, X market news), TrendSpider posts, Zhihu AI briefs (all from the `news` project); OHLCV + precomputed indicators read-only from the `investment` project duckdb (`~/projects/investment/data/stocks/stocks.duckdb`)
 
 ## Project Structure
@@ -25,9 +25,10 @@ src/
 │   ├── market_overview.py    # Market overview assembler (SECTIONS)
 │   ├── portfolio.py          # Holdings from stock_picker's data/portfolio.csv (mirror of the TradingView "portfolio" watchlist)
 │   ├── tickers/charts.py     # Weekly/monthly/daily OHLCV + indicators (reads investment duckdb)
+│   ├── tickers/pnf.py        # Point & Figure columns/boxes via investment.src.charts.pnf (duckdb bars, Yahoo fallback)
 │   └── scripts/              # start_tunnel.sh, ensure_up.sh
 └── frontend/                 # React + Vite (port 5173); components in src/components/
-                              # (OverviewView, MarketOverview, MarketView, TaCharts, TickerView, …)
+                              # (OverviewView, MarketOverview, MarketView, TaCharts, PnfChart, TickerView, …)
 ```
 
 Full component list and data flow: [docs/architecture.md](docs/architecture.md).

@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { MarketOverview } from './MarketOverview'
 import { TickerSearch } from './TickerSearch'
 import { TaCharts } from './TaCharts'
+import { PnfChart } from './PnfChart'
 import { TrendSpiderView } from './TrendSpiderView'
 
-type OverviewTab = 'overview' | 'charts' | 'trendspider'
+type OverviewTab = 'overview' | 'charts' | 'pnf' | 'trendspider'
 const TABS: { id: OverviewTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'charts', label: 'Charts' },
+  { id: 'pnf', label: 'P&F' },
   { id: 'trendspider', label: 'Trend Spider' },
 ]
 
@@ -31,7 +33,7 @@ export function OverviewView() {
   }
 
   return (
-    <div className={activeTab === 'charts' ? 'max-w-6xl' : ''}>
+    <div className={activeTab === 'charts' || activeTab === 'pnf' ? 'max-w-6xl' : ''}>
       <div className="flex gap-1 mb-6 border-b border-sol-base1/30">
         {TABS.map((tab) => (
           <button
@@ -58,6 +60,19 @@ export function OverviewView() {
           ) : (
             <div className="flex items-center justify-center h-64 text-sol-base1">
               Search for a ticker to view its charts.
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'pnf' && (
+        <div className="space-y-4">
+          <TickerSearch onSelect={handleSelectTicker} selected={chartTicker} />
+          {chartTicker ? (
+            <PnfChart ticker={chartTicker} />
+          ) : (
+            <div className="flex items-center justify-center h-64 text-sol-base1">
+              Search for a ticker to view its Point &amp; Figure chart.
             </div>
           )}
         </div>
