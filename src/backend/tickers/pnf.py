@@ -82,5 +82,6 @@ def get_pnf_chart(
         "columns": cols.to_dict(orient="records"),
         "boxes": boxes.to_dict(orient="records"),
         "has_volume": chart.has_volume,
+        "notes": chart.notes,
         "volume_profile": profile.to_dict(orient="records"),
     }

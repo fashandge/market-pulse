@@ -48,8 +48,13 @@ interface PnfPayload {
   columns: PnfColumn[]
   boxes: PnfBox[]
   has_volume: boolean
+  notes: string[]
   volume_profile: PnfProfileRow[]
 }
+
+// Cap on the relative-volume axis so one extreme column (an IPO day against a
+// dormant-ticker baseline) cannot flatten every other bar; hover shows the exact value.
+const REL_VOL_AXIS_CAP = 8
 
 type RangeKey = '3M' | '6M' | '1Y' | '2Y' | '5Y'
 const RANGE_DAYS: Record<RangeKey, number> = { '3M': 92, '6M': 183, '1Y': 365, '2Y': 731, '5Y': 1827 }
@@ -224,7 +229,9 @@ export function PnfChart({ ticker }: { ticker: string }) {
               (c) =>
                 `${c.kind} column ${c.column}<br>${c.days} day${c.days === 1 ? '' : 's'}, ` +
                 `${(c.volume / 1e6).toFixed(1)}M shares` +
-                (c.rel_volume != null ? `<br>rel. volume ${c.rel_volume.toFixed(2)}x` : ''),
+                (c.rel_volume != null
+                  ? `<br>rel. volume ${c.rel_volume.toFixed(2)}x`
+                  : '<br>no 50-day baseline yet (fewer than 10 prior bars) — no bar drawn'),
             ),
             hoverinfo: 'text' as const,
           },
@@ -269,6 +276,10 @@ export function PnfChart({ ticker }: { ticker: string }) {
     // wrapper means the wrapper scrolls horizontally.
     const minWidth = (data.n_columns + 2) * (style === 'price' ? 40 : 18) + 90
     const plotWidth = Math.max(wrapWidth || 0, minWidth)
+    const maxRel = data.columns.reduce((m, c) => Math.max(m, c.rel_volume ?? 0), 0)
+    const relCap = Math.max(1.2, Math.min(maxRel * 1.05, REL_VOL_AXIS_CAP))
+    const relCapped = maxRel > REL_VOL_AXIS_CAP
+    const noBaseline = data.columns.filter((c) => c.rel_volume == null).length
     caption = (
       <>
         <span className="font-semibold text-sol-base01">{data.ticker}</span> Point &amp; Figure — box {fmt(b)} (
@@ -279,6 +290,11 @@ export function PnfChart({ ticker }: { ticker: string }) {
         column; hover a box for its column's dates.
         {data.has_volume &&
           ' Below: each column\'s volume relative to the 50-day average before it (dotted line = 1×); right: volume traded at each price level.'}
+        {data.has_volume && noBaseline > 0 && ` ${noBaseline} column${noBaseline === 1 ? '' : 's'} without a bar: fewer than 10 prior bars, so no 50-day baseline (e.g. a new listing).`}
+        {data.has_volume && relCapped && ` Volume axis capped at ${REL_VOL_AXIS_CAP}× (max ${maxRel.toFixed(0)}×) — hover a bar for the exact value.`}
+        {data.notes.length > 0 && (
+          <span className="text-sol-yellow"> Note: {data.notes.join('; ')}.</span>
+        )}
       </>
     )
     const axisBase = { tickfont: { color: C.base00, size: 11 }, gridcolor: `${C.base1}40`, linecolor: C.base1, zeroline: false }
@@ -318,7 +334,7 @@ export function PnfChart({ ticker }: { ticker: string }) {
                   title: { text: 'rel. vol', font: { color: C.base00, size: 11 } },
                   domain: [0, 0.21],
                   anchor: 'x',
-                  rangemode: 'tozero',
+                  range: [0, relCap],
                 },
                 shapes: [
                   {
