@@ -36,7 +36,8 @@ def get_pnf_chart(
               1-box chart applies the one-step-back rule).
     Returns ``{ticker, source, box_size, reversal, first_date, last_date,
     last_close, n_columns, columns: [...], boxes: [...], has_volume,
-    volume_profile: [...]}``. ``boxes`` is one row per filled box ``{column,
+    notes: [...], volume_profile: [...]}``; ``notes`` are caveats from the
+    library (e.g. bars before a >30-day listing gap were dropped). ``boxes`` is one row per filled box ``{column,
     level, kind, start, end}``; each column carries ``volume`` (shares over the
     bars attributed to it), ``days`` and ``rel_volume`` (column avg daily volume
     / 50-bar average before the column, null when unavailable);

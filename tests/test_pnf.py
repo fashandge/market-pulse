@@ -89,3 +89,17 @@ def test_endpoint_maps_value_error_to_400(fake_bars):
     assert client.get("/api/tickers/TEST/pnf-chart?since=99999999").status_code == 400  # huge N: 400, not 500
     ok = client.get("/api/tickers/TEST/pnf-chart?since=90&box=2")
     assert ok.status_code == 200 and ok.json()["n_columns"] == 1
+
+
+def test_notes_pass_through(monkeypatch):
+    rows = [(100, 100), (104, 101), (110, 106)]
+
+    def loader(*a, **k):
+        df = _bars(rows)
+        df.attrs["dropped_before"] = df["date"].iloc[0]
+        df.attrs["gap_days"] = 67
+        return df
+
+    monkeypatch.setattr(pnf.pnf_lib, "load_bars", loader)
+    out = pnf.get_pnf_chart("TEST", "90", box=2)
+    assert len(out["notes"]) == 1 and "67-day listing gap" in out["notes"][0]
