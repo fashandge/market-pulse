@@ -43,6 +43,11 @@ def test_payload_shape_and_json_safe_types(fake_bars):
     assert out["first_date"] == "2026-01-01" and out["last_date"] == "2026-01-07"
     box = out["boxes"][0]
     assert set(box) == {"column", "level", "kind", "start", "end"} and box["start"] == "2026-01-01"
+    # volume: every bar's volume lands on the column in force; rel_volume null without a baseline
+    assert out["has_volume"] is True
+    assert [c["days"] for c in out["columns"]] == [4, 1] and [c["volume"] for c in out["columns"]] == [4000, 1000]
+    assert all(c["rel_volume"] is None for c in out["columns"])
+    assert abs(sum(r["volume"] for r in out["volume_profile"]) - 5000) < 1e-9
 
 
 def test_default_box_is_pct_of_last_close(fake_bars):

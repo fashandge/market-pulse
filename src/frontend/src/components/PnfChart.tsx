@@ -26,6 +26,14 @@ interface PnfColumn {
   lead: 'X' | 'O' | null
   start: string
   end: string
+  volume: number
+  days: number
+  rel_volume: number | null
+}
+
+interface PnfProfileRow {
+  level: number
+  volume: number
 }
 
 interface PnfPayload {
@@ -39,6 +47,8 @@ interface PnfPayload {
   n_columns: number
   columns: PnfColumn[]
   boxes: PnfBox[]
+  has_volume: boolean
+  volume_profile: PnfProfileRow[]
 }
 
 type RangeKey = '3M' | '6M' | '1Y' | '2Y' | '5Y'
@@ -197,6 +207,42 @@ export function PnfChart({ ticker }: { ticker: string }) {
         hoverinfo: 'text' as const,
       }
     })
+    // Volume panes: relative volume per column (below, shares x) and volume at
+    // price (right, shares y). Skipped when the bars carry no volume.
+    const showVol = data.has_volume
+    const volTraces = showVol
+      ? [
+          {
+            x: data.columns.map((c) => c.column),
+            y: data.columns.map((c) => c.rel_volume ?? 0),
+            type: 'bar' as const,
+            xaxis: 'x',
+            yaxis: 'y2',
+            name: 'rel. volume',
+            marker: { color: data.columns.map((c) => (c.kind === 'X' ? C.green : C.red)), opacity: 0.75 },
+            hovertext: data.columns.map(
+              (c) =>
+                `${c.kind} column ${c.column}<br>${c.days} day${c.days === 1 ? '' : 's'}, ` +
+                `${(c.volume / 1e6).toFixed(1)}M shares` +
+                (c.rel_volume != null ? `<br>rel. volume ${c.rel_volume.toFixed(2)}x` : ''),
+            ),
+            hoverinfo: 'text' as const,
+          },
+          {
+            x: data.volume_profile.map((r) => r.volume / 1e6),
+            y: data.volume_profile.map((r) => r.level),
+            type: 'bar' as const,
+            orientation: 'h' as const,
+            xaxis: 'x2',
+            yaxis: 'y',
+            width: b * 0.9,
+            name: 'volume at price',
+            marker: { color: C.base1, opacity: 0.55 },
+            hovertext: data.volume_profile.map((r) => `${fmt(r.level)}: ${(r.volume / 1e6).toFixed(1)}M shares`),
+            hoverinfo: 'text' as const,
+          },
+        ]
+      : []
     // Sparse x ticks: the first column of each month, labelled with its start date.
     const seen = new Set<string>()
     const tickvals: number[] = []
@@ -225,36 +271,68 @@ export function PnfChart({ ticker }: { ticker: string }) {
         {data.source ? ` [${data.source}]` : ''}.{' '}
         <span className="text-sol-green">X</span> = rising column, <span className="text-sol-red">O</span> = falling
         column; hover a box for its column's dates.
+        {data.has_volume &&
+          ' Below: each column\'s volume relative to the 50-day average before it (dotted line = 1×); right: volume traded at each price level.'}
       </>
     )
+    const axisBase = { tickfont: { color: C.base00, size: 11 }, gridcolor: `${C.base1}40`, linecolor: C.base1, zeroline: false }
+    const plotHeight = showVol ? 860 : 720
     plot = (
       <Plot
-        data={traces}
+        data={[...traces, ...volTraces]}
         layout={{
           xaxis: {
+            ...axisBase,
             title: { text: 'column (one per reversal; labels = column start date)', font: { color: C.base00 } },
             tickvals,
             ticktext,
-            tickfont: { color: C.base00, size: 11 },
             range: [-1, data.n_columns],
-            gridcolor: `${C.base1}40`,
-            linecolor: C.base1,
-            zeroline: false,
+            domain: [0, showVol ? 0.85 : 1],
+            anchor: showVol ? 'y2' : 'y',
           },
           yaxis: {
+            ...axisBase,
             title: { text: 'price', font: { color: C.base00 } },
             range: [ymin, ymax],
             dtick: nLevels <= 80 ? b : undefined,
             tickformat: `,.${dec}f`,
-            tickfont: { color: C.base00, size: 11 },
-            gridcolor: `${C.base1}40`,
-            linecolor: C.base1,
-            zeroline: false,
+            domain: [showVol ? 0.25 : 0, 1],
+            anchor: 'x',
           },
+          ...(showVol
+            ? {
+                xaxis2: {
+                  ...axisBase,
+                  title: { text: 'vol (M)', font: { color: C.base00, size: 11 } },
+                  domain: [0.86, 1],
+                  anchor: 'y',
+                },
+                yaxis2: {
+                  ...axisBase,
+                  title: { text: 'rel. vol', font: { color: C.base00, size: 11 } },
+                  domain: [0, 0.21],
+                  anchor: 'x',
+                  rangemode: 'tozero',
+                },
+                shapes: [
+                  {
+                    type: 'line',
+                    xref: 'paper',
+                    x0: 0,
+                    x1: 0.85,
+                    yref: 'y2',
+                    y0: 1,
+                    y1: 1,
+                    line: { color: C.base1, width: 1, dash: 'dot' },
+                  },
+                ],
+              }
+            : {}),
           showlegend: false,
           autosize: false,
           width: plotWidth,
-          height: 720,
+          height: plotHeight,
+          bargap: 0.15,
           margin: { t: 30, r: 20, b: 60, l: 70 },
           hovermode: 'closest',
           hoverlabel: { bgcolor: C.base2, bordercolor: C.blue, font: { color: C.base01 } },
@@ -262,7 +340,7 @@ export function PnfChart({ ticker }: { ticker: string }) {
           paper_bgcolor: C.base3,
           font: { family: 'Atkinson Hyperlegible, Helvetica, Arial, sans-serif' },
         }}
-        style={{ width: `${plotWidth}px`, height: '720px' }}
+        style={{ width: `${plotWidth}px`, height: `${plotHeight}px` }}
         config={{ displaylogo: false }}
       />
     )

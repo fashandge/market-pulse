@@ -31,8 +31,12 @@ def get_pnf_chart(
     reversal: boxes needed to open a new column (3 = modern, 1 = Wyckoff; the
               1-box chart applies the one-step-back rule).
     Returns ``{ticker, source, box_size, reversal, first_date, last_date,
-    last_close, n_columns, columns: [...], boxes: [...]}``; ``boxes`` is one
-    row per filled box ``{column, level, kind, start, end}``.
+    last_close, n_columns, columns: [...], boxes: [...], has_volume,
+    volume_profile: [...]}``. ``boxes`` is one row per filled box ``{column,
+    level, kind, start, end}``; each column carries ``volume`` (shares over the
+    bars attributed to it), ``days`` and ``rel_volume`` (column avg daily volume
+    / 50-bar average before the column, null when unavailable);
+    ``volume_profile`` is volume at price per box level ``{level, volume}``.
     Raises ValueError on bad arguments or when the symbol has no data.
     """
     if reversal not in (1, 2, 3, 4, 5):
@@ -58,6 +62,8 @@ def get_pnf_chart(
         frame["start"] = frame["start"].dt.strftime("%Y-%m-%d")
         frame["end"] = frame["end"].dt.strftime("%Y-%m-%d")
     cols["lead"] = cols["lead"].astype(object).where(cols["lead"].notna(), None)
+    cols["rel_volume"] = cols["rel_volume"].astype(object).where(cols["rel_volume"].notna(), None)
+    profile = chart.volume_profile
     return {
         "ticker": chart.ticker,
         "source": chart.source,
@@ -69,4 +75,6 @@ def get_pnf_chart(
         "n_columns": len(chart.columns),
         "columns": cols.to_dict(orient="records"),
         "boxes": boxes.to_dict(orient="records"),
+        "has_volume": chart.has_volume,
+        "volume_profile": profile.to_dict(orient="records"),
     }
