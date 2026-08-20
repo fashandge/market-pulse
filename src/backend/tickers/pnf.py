@@ -13,6 +13,10 @@ from investment.src.charts import pnf as pnf_lib
 
 DEFAULT_BOX_PCT = 0.03
 MAX_CALENDAR_DAYS = 365 * 25
+# Cap on the estimated number of filled boxes: the endpoint is reachable without
+# auth through the tunnel, and a tiny box over a long range is a multi-megabyte
+# payload that also hangs the worker and the browser.
+MAX_BOXES = 50_000
 
 
 def get_pnf_chart(
@@ -37,7 +41,8 @@ def get_pnf_chart(
     bars attributed to it), ``days`` and ``rel_volume`` (column avg daily volume
     / 50-bar average before the column, null when unavailable);
     ``volume_profile`` is volume at price per box level ``{level, volume}``.
-    Raises ValueError on bad arguments or when the symbol has no data.
+    Raises ValueError on bad arguments, when the symbol has no data, or when the
+    chart would exceed MAX_BOXES boxes (the endpoint maps it to HTTP 400).
     """
     if reversal not in (1, 2, 3, 4, 5):
         raise ValueError("reversal must be between 1 and 5")
@@ -54,7 +59,8 @@ def get_pnf_chart(
     box_size = box if box is not None else pnf_lib.pick_box_size(
         bars, pct=box_pct if box_pct is not None else DEFAULT_BOX_PCT
     )
-    chart = pnf_lib.compute_pnf(bars, box_size=box_size, reversal=reversal, ticker=ticker.upper())
+    chart = pnf_lib.compute_pnf(bars, box_size=box_size, reversal=reversal, ticker=ticker.upper(),
+                                max_boxes=MAX_BOXES)
 
     cols = chart.to_frame()
     boxes = chart.boxes()

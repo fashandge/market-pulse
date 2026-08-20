@@ -255,9 +255,15 @@ export function PnfChart({ ticker }: { ticker: string }) {
         ticktext.push(col.start)
       }
     }
-    const levels = data.boxes.map((bx) => bx.level)
-    const ymin = Math.min(...levels) - b
-    const ymax = Math.max(...levels) + b
+    // Loop rather than Math.min(...spread): a spread throws RangeError past ~100k args.
+    let lo = Infinity
+    let hi = -Infinity
+    for (const bx of data.boxes) {
+      if (bx.level < lo) lo = bx.level
+      if (bx.level > hi) hi = bx.level
+    }
+    const ymin = lo - b
+    const ymax = hi + b
     const nLevels = Math.round((ymax - ymin) / b)
     // Room per column so price labels ("117.5") never overlap; wider than the
     // wrapper means the wrapper scrolls horizontally.

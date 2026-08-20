@@ -70,3 +70,21 @@ def test_bad_arguments_raise_value_error(fake_bars, kwargs):
     fake_bars([(100, 100), (104, 101)])
     with pytest.raises(ValueError):
         pnf.get_pnf_chart("TEST", **{"since": "90", **kwargs})
+
+
+def test_too_many_boxes_raises_value_error(fake_bars):
+    fake_bars([(110, 100)] * 10)
+    with pytest.raises(ValueError, match="boxes"):
+        pnf.get_pnf_chart("TEST", "90", box=0.0001)
+
+
+def test_endpoint_maps_value_error_to_400(fake_bars):
+    from fastapi.testclient import TestClient
+    from src.backend.main import app
+
+    fake_bars([(100, 100), (104, 101), (110, 106)])
+    client = TestClient(app)
+    assert client.get("/api/tickers/TEST/pnf-chart?since=90&reversal=0").status_code == 400
+    assert client.get("/api/tickers/TEST/pnf-chart?since=99999999").status_code == 400  # huge N: 400, not 500
+    ok = client.get("/api/tickers/TEST/pnf-chart?since=90&box=2")
+    assert ok.status_code == 200 and ok.json()["n_columns"] == 1
