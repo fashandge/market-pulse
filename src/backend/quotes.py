@@ -38,12 +38,12 @@ TICKER_CSV = Path.home() / "projects/stock_picker/data/ticker.csv"
 SCANNER_URL = "https://scanner.tradingview.com/global/scan"
 COLUMNS = ["close", "change", "change_abs", "volume", "average_volume_10d_calc"]
 
-# Licensed feeds with no free scanner data (CBOE vol indices + DERIBIT crypto
-# vol). These are fetched from the watchlist scrape instead.
-SCANNER_UNAVAILABLE = {"VIX3M", "GVZ", "VXSLV", "DVOL", "ETHDVOL"}
+# Feeds with no free scanner data (CBOE vol indices, DERIBIT crypto vol,
+# FRED economic series). These are fetched from the watchlist scrape instead.
+SCANNER_UNAVAILABLE = {"VIX3M", "GVZ", "VXSLV", "DVOL", "ETHDVOL", "DFII10", "T10YIE"}
 
 # Treasury-yield symbols display their price with a trailing "%".
-YIELD_SYMBOLS = {"US10Y", "US20Y", "US30Y"}
+YIELD_SYMBOLS = {"US10Y", "US20Y", "US30Y", "DFII10", "T10YIE"}
 
 
 def _formal_symbol(ticker: str, exchange: str) -> str:

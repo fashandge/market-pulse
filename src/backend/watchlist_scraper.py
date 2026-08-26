@@ -17,6 +17,8 @@ def _clean_price(raw: str) -> str:
 
 def _clean_pct(raw: str) -> str:
     raw = raw.replace("−", "-").replace("‪", "").replace("‬", "")
+    if raw == "—":  # no % change published (e.g. FRED economic series)
+        return raw
     if raw and not raw.startswith("-") and not raw.startswith("+"):
         raw = "+" + raw
     return raw
@@ -131,6 +133,18 @@ def scrape_watchlist(
 
             if symbol in ("US10Y", "US20Y", "US30Y") and "%" not in price:
                 price = price + "%"
+
+            # FRED economic series publish only the level and absolute change;
+            # derive the missing % change from those two.
+            if change_pct == "—" and price and change_abs:
+                try:
+                    close = float(price.rstrip("%"))
+                    delta = float(change_abs.rstrip("%"))
+                    prev = close - delta
+                    if prev:
+                        change_pct = f"{delta / prev * 100:+.2f}%"
+                except ValueError:
+                    pass
 
             result[symbol] = {
                 "price": price,
