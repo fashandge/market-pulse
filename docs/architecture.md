@@ -210,6 +210,7 @@ Market Overview loads ticker groups from `~/projects/stock_picker/data/ticker.cs
 
 - The CSV's `exchange` column is the single source of truth for the scanner fetch: `quotes.py` builds each scanner symbol as `EXCHANGE:SYMBOL`, so `exchange` must be the value TradingView's scanner indexes (US ETFs use `AMEX`/`NASDAQ`/`CBOE`; index/crypto/futures use TradingView feed names like `TVC`/`CRYPTO`/`CME_MINI`).
 - **Real-time vs delayed quotes.** Anonymous calls to `scanner.tradingview.com/global/scan` serve *delayed* quotes for US equities (minutes old on fast movers — measured ~$2-4 behind the live tape on AMD). The same endpoint returns real-time data when called with the logged-in TradingView session cookies (`sessionid` + `sessionid_sign`), which `tv_session.py` reads from the crawl4ai browser profile (`~/.crawl4ai/tradingview-profile`, already logged in) via a short headless playwright launch, TTL-cached for 6h. If the session is unavailable (profile locked mid-scrape, not logged in, browser error) `quotes.py` falls back to the anonymous endpoint — same response shape, just delayed. That refresh (like the FRED and CBOE-history refreshes) now happens on `overview_cache`'s background thread, never on a request — before the background snapshot existed, whichever page load happened to hit an expired cookie TTL paid the ~3s browser launch.
+- **The session cookie does not make everything real-time — exchange entitlements do.** Whether a symbol streams live is a property of the TradingView *account's* data subscriptions, and the scanner REST API, the quote websocket and the website all honour the same entitlement. No change to the fetch path can turn a delayed symbol real-time; only subscribing to that exchange's real-time feed can. Verified 2026-09-04 with `python -m src.backend.scripts.check_quote_delay`, which reads TradingView's own per-symbol `update_mode`: **153 of 174 symbols stream real-time**; the exceptions are CBOE indices (VIX, VIX3M, SPX, GVZ, VXSLV — 15 min), CME/COMEX/NYMEX futures (ES1!, NQ1!, RTY1!, GC1!, CL1! — 10 min), `NASDAQ:NDX` (15 min), foreign listings (ASX/KRX/TSE/TSX/TSXV/XETR/EURONEXT — 15-20 min) and `NYSE:NYA` (end-of-day). Note the liquid proxies are real-time even where the index is not: SPY and QQQ stream while SPX and NDX are delayed.
 - A symbol with no free scanner data is listed in `SCANNER_UNAVAILABLE` (= `vol_indices.SYMBOLS`) and fetched from its publisher instead — see [Vol indices and the background snapshot](#vol-indices-and-the-background-snapshot). CSV rows with exchange `FRED` are likewise fetched from FRED's keyless fredgraph.csv endpoint (`_fetch_fred_quotes`, TTL-cached). `quotes.fetch_all_quotes()` runs the scanner batch and the vol-index fetch concurrently and merges everything into one dict.
 - Curated section/group ordering lives in `SECTIONS` in `market_overview.py`; new CSV themes not listed there are automatically appended to `Other Themes`. To drop a theme from the dashboard without removing it from the CSV (which stock_picker shares), delete it from `SECTIONS` *and* add it to `HIDDEN_GROUPS` — otherwise the auto-append would put it back under `Other Themes`. `Other ETFs` is hidden this way.
 - Tickers may appear in multiple themes (e.g., NVDA in both Big Tech and AI Chips & Foundry).
@@ -232,7 +233,7 @@ Sep 2026 it had stopped matching any of the five, so all five tiles rendered `�
 
 | Symbols | Source |
 |---|---|
-| VIX3M, GVZ, VXSLV | `cdn.cboe.com/api/global/delayed_quotes/quotes/_SYM.json` |
+| VIX3M, GVZ, VXSLV | `cdn.cboe.com/api/global/delayed_quotes/quotes/_SYM.json` (15-min delayed — **the same delay TradingView serves this account**, see above, so nothing is lost by not going through TV) |
 | DVOL, ETHDVOL | `deribit.com/api/v2/public/get_volatility_index_data` (BTC / ETH, daily candles) |
 
 The one subtlety is the **previous close**. CBOE's quote payload carries `prev_day_close`, but for
@@ -243,7 +244,10 @@ bar before the live quote's session date. That series is ~500 KB, so it is cache
 session date — one fetch per trading day. If it fails, the code falls back to `prev_day_close`
 (correct for VIX3M, merely flat for the others). Deribit needs no such workaround: the last two
 daily candles give the level and its reference directly, matching how TradingView shows
-`DERIBIT:DVOL`.
+`DERIBIT:DVOL` — and Deribit is `streaming` (real-time) on TradingView too, so DVOL/ETHDVOL are
+real-time here as well. Cross-checked 2026-09-04: TV's websocket reported `DERIBIT:DVOL`
+`prev_close_price` 39.78, exactly the previous daily candle close this module uses, and `CBOE:GVZ`
+`chp` -2.02 with `prev_close_price` 27.18, exactly what the CBOE-history path computes.
 
 Both producers emit `quote_format`-shaped dicts, the same shape the scanner and FRED paths emit,
 so `quotes.fetch_all_quotes()` just merges them. `quote_format.py` exists so the three producers

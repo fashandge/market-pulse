@@ -20,6 +20,7 @@ src/
 ├── backend/                  # FastAPI backend (port 8000)
 │   ├── main.py               # App + API endpoints (/api/tickers/…, /api/market/…)
 │   ├── quotes.py             # Live quotes via TradingView scanner JSON API (CSV-driven EXCHANGE:SYMBOL); real-time via logged-in TV session (tv_session.py), delayed anonymous fallback
+│   ├── scripts/check_quote_delay.py  # Which symbols are real-time vs exchange-delayed (TradingView update_mode)
 │   ├── tv_session.py         # Logged-in TradingView session cookies from the crawl4ai profile (playwright, TTL-cached) for real-time scanner quotes
 │   ├── vol_indices.py        # VIX3M/GVZ/VXSLV (CBOE) + DVOL/ETHDVOL (Deribit) — the 5 symbols the scanner won't serve
 │   ├── quote_format.py       # Shared quote-dict shape/formatting for every quote producer
@@ -54,6 +55,7 @@ Open http://localhost:5173
 
 - All timestamps are in LA time (America/Los_Angeles)
 - Market cap values are displayed in billions (e.g., "$77.61B")
+- **Not every quote is real-time, and no code change can fix that** — it is a TradingView account data entitlement. 153/174 symbols stream live; CBOE indices and CME futures are 10-15 min delayed. Check with `python -m src.backend.scripts.check_quote_delay`; details in [docs/architecture.md](docs/architecture.md#vol-indices-and-the-background-snapshot).
 - Backend API endpoints are under `/api/tickers/{ticker}/` and `/api/market/`
 - Temp files (screenshots, logs, etc.) go in `tmp/` folder
 - Market Overview ticker groups come from `~/projects/stock_picker/data/ticker.csv` at runtime (`theme`, `display_order` columns; `exchange` must be the TradingView scanner value). Section ordering lives in `SECTIONS` (`market_overview.py`). The `Portfolio` section is **not** hardcoded — it reads `~/projects/stock_picker/data/portfolio.csv` (`portfolio.py`), which `tv_watchlist.py` mirrors from the TradingView watchlist named `portfolio` on every change; edit the holdings in TradingView (via the script), not in code. Full sourcing rules: [docs/architecture.md](docs/architecture.md#market-overview-data-sourcing-tickercsv--tradingview-scanner).
