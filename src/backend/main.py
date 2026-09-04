@@ -1,7 +1,7 @@
 """FastAPI backend for the market dashboard."""
 
 import json
-import time
+from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.backend.tickers import crcl, charts, pnf
-from src.backend import market_overview, watchlist_scraper, quotes, portfolio
+from src.backend import overview_cache, portfolio
 
 NEWS_BASE_PATH = Path.home() / "projects/news/data/market_news"
 CFZH_PATH = Path.home() / "projects/news/data/cfzh_forum_summaries"
@@ -18,7 +18,17 @@ X_MARKET_NEWS_PATH = Path.home() / "projects/news/data/x_market_news"
 TRENDSPIDER_PATH = Path.home() / "projects/news/data/trendspider"
 ZHIHU_DAILY_BRIEFS_PATH = Path.home() / "projects/news/data/zhihu/daily_briefs"
 
-app = FastAPI(title="Market Dashboard API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Keep the market-overview snapshot warm for the whole server lifetime, so
+    a page load never pays for the quote fetch (see ``overview_cache``)."""
+    overview_cache.start()
+    yield
+    overview_cache.stop()
+
+
+app = FastAPI(title="Market Dashboard API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,54 +39,12 @@ app.add_middleware(
 )
 
 
-def _now_la() -> str:
-    return datetime.now(ZoneInfo("America/Los_Angeles")).strftime("%H:%M (%b %d, %Y)")
-
-
-# Last-known values for the licensed-feed symbols the scanner can't serve
-# (see quotes.SCANNER_UNAVAILABLE). Refreshed on demand by the /gaps endpoint
-# and embedded into the overview so those tiles never flash "—" on refresh.
-_gap_cache: dict = {"data": {}, "timestamp": 0.0, "updated_at": ""}
-GAP_CACHE_TTL = 90
-
-
 @app.get("/api/market/overview")
 def get_market_overview(force: int = 0):
-    """Fast path: scanner API for the covered symbols, merged with the
-    last-known gap values. Well under a second, except the first call after a
-    restart (or after the 6h cookie TTL) which pays the ~2s tv_session browser
-    launch for the logged-in session cookies."""
-    holdings = portfolio.load_holdings()
-    covered = quotes.fetch_covered_quotes(extra=dict(holdings))
-    merged = {**covered, **_gap_cache["data"]}
-    sections = market_overview.build_overview(
-        merged, [symbol for symbol, _ in holdings]
-    )
-    return {"sections": sections, "updated_at": _now_la()}
-
-
-@app.get("/api/market/overview/gaps")
-def get_overview_gaps(force: int = 0):
-    """Slow path: the ~5 licensed-feed symbols the scanner can't serve, via the
-    watchlist scrape. TTL-cached so repeated refreshes don't re-launch the
-    browser; the frontend fetches this after rendering the fast tiles."""
-    now = time.time()
-    if not force and _gap_cache["data"] and now - _gap_cache["timestamp"] < GAP_CACHE_TTL:
-        return {"quotes": _gap_cache["data"], "updated_at": _gap_cache["updated_at"]}
-
-    try:
-        scraped = watchlist_scraper.scrape_watchlist()
-    except Exception:
-        # Scrape failed (e.g. the browser profile is locked by a concurrent
-        # tv_session cookie fetch). Serve last-known values rather than 500.
-        if _gap_cache["data"]:
-            return {"quotes": _gap_cache["data"], "updated_at": _gap_cache["updated_at"]}
-        return {"quotes": {}, "updated_at": _now_la()}
-    gap_quotes = {s: scraped[s] for s in quotes.SCANNER_UNAVAILABLE if s in scraped}
-    _gap_cache["data"] = gap_quotes
-    _gap_cache["timestamp"] = now
-    _gap_cache["updated_at"] = _now_la()
-    return {"quotes": gap_quotes, "updated_at": _gap_cache["updated_at"]}
+    """Market overview sections. Served from the background-refreshed snapshot
+    (``overview_cache``), so this is a no-I/O response in the normal case;
+    ``force=1`` (the UI's refresh button) always fetches live."""
+    return overview_cache.get_overview(force=bool(force))
 
 
 @app.get("/api/tickers/search")

@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
 
 const TV_CHART_ID = '5JanKmS6'
+// The backend serves the overview from a background-refreshed snapshot, so a
+// poll costs it no network I/O — and polling keeps it in its fast refresh
+// cadence, which is what makes the numbers track the tape while the tab is open.
+const LIVE_REFRESH_MS = 5000
 const BAR_MAX = 7
 
 interface Ticker {
@@ -29,6 +33,7 @@ interface Section {
 interface OverviewResponse {
   sections: Section[]
   updated_at: string
+  age_seconds?: number
 }
 
 function parseVolume(v: string): number {
@@ -322,68 +327,39 @@ export function MarketOverview() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         return res.json()
       })
-      .then(setData)
+      .then((res) => {
+        setData(res)
+        setError(null)
+      })
+      // A failed poll must not blank a dashboard that is already rendering:
+      // the error only surfaces while there is nothing to show.
       .catch((err) => setError(err.message))
   }
 
-  // The licensed-feed tiles (futures/vol indices) come from a slower scrape via
-  // a separate endpoint, so they don't block the fast tiles. We patch only
-  // their numeric fields in place — unchanged values produce no visible change,
-  // so a quick re-refresh never flashes.
-  const fetchGaps = (force = false) => {
-    const url = force
-      ? '/api/market/overview/gaps?force=1'
-      : '/api/market/overview/gaps'
-    return fetch(url)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((res) => {
-        const q: Record<string, Ticker> | undefined = res?.quotes
-        if (!q) return
-        setData((prev) => {
-          if (!prev) return prev
-          const sections = prev.sections.map((sec) => ({
-            ...sec,
-            groups: sec.groups.map((g) => ({
-              ...g,
-              tickers: g.tickers.map((t) => {
-                const p = q[t.symbol]
-                return p
-                  ? {
-                      ...t,
-                      price: p.price,
-                      change_pct: p.change_pct,
-                      change_abs: p.change_abs,
-                      volume: p.volume,
-                      avg_volume: p.avg_volume,
-                      formal_symbol: p.formal_symbol,
-                    }
-                  : t
-              }),
-            })),
-          }))
-          return { ...prev, sections }
-        })
-      })
-      .catch(() => {})
-  }
-
+  // Poll while the tab is actually being looked at: a hidden tab neither needs
+  // fresh numbers nor should keep the backend refreshing on its behalf.
   useEffect(() => {
-    fetchData()
-      .finally(() => setLoading(false))
-      .then(() => fetchGaps())
+    fetchData().finally(() => setLoading(false))
+    const poll = () => {
+      if (document.visibilityState === 'visible') fetchData()
+    }
+    const id = setInterval(poll, LIVE_REFRESH_MS)
+    document.addEventListener('visibilitychange', poll)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', poll)
+    }
   }, [])
 
   const handleRefresh = () => {
     setRefreshing(true)
-    fetchData(true)
-      .then(() => fetchGaps(true))
-      .finally(() => setRefreshing(false))
+    fetchData(true).finally(() => setRefreshing(false))
   }
 
   if (loading) {
     return <div className="text-sol-base1 p-4">Loading market overview...</div>
   }
-  if (error) {
+  if (error && !data) {
     return <div className="text-sol-red p-4">Error: {error}</div>
   }
   if (!data) return null

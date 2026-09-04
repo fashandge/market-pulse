@@ -57,30 +57,35 @@ TradingView Scanner API              CoinMarketCap API                News Summa
 (scanner.tradingview.com, JSON)           ↓                          (NDX, CFZH, X, TrendSpider, Zhihu AI)
        ↓                            FastAPI Backend (port 8000)            ↓
    quotes.py                         - Fetches data                  - Reads .md/.jsonl files
-   - One batched POST, ~0.12s        - Converts UTC → LA time        - Returns summaries/posts
+   - One batched POST, ~1s           - Converts UTC → LA time        - Returns summaries/posts
    - EXCHANGE:SYMBOL from ticker.csv - Computes changes                    ↓
    - Real-time via logged-in TV                            React Frontend (port 5173)
      session (tv_session.py)                            - MarketView sub-tabs: TV, X, CFZH
-   - Covers ~166 symbols                                   - Markdown rendering
+   - Covers ~170 symbols                                   - Markdown rendering
        ↓                                                    - Renders Plotly chart
    tv_session.py (session cookies)                         - Displays changes table
    - Reads sessionid/sessionid_sign from the crawl4ai
-     profile (~2s browser launch, TTL-cached 6h);
+     profile (~3s browser launch, TTL-cached 6h);
      anonymous fallback = delayed quotes
        ↓
-   watchlist_scraper.py (fallback)
-   - crawl4ai scrape, ~8s
-   - only ~5 licensed-feed gap
-     symbols (SCANNER_UNAVAILABLE),
-     via /api/market/overview/gaps
+   vol_indices.py (the 5 symbols the scanner won't serve)
+   - VIX3M/GVZ/VXSLV from CBOE's delayed-quotes JSON
+   - DVOL/ETHDVOL from Deribit's volatility-index API
+   - fetched concurrently with the scanner batch by
+     quotes.fetch_all_quotes(), TTL 60s
        ↓
    market_overview.py
    - Groups by theme/sector
    - Computes avg change/vol ratio
        ↓
+   overview_cache.py (background snapshot)
+   - Daemon thread rebuilds the whole payload every 5s while
+     someone is watching, 30s when idle
+   - /api/market/overview serves it with no network I/O (~5ms)
+       ↓
    MarketOverview.tsx (Overview sub-tab of OverviewView, the default view)
-   - Two-phase load: fast scanner tiles render instantly, gap tiles
-     patched in from /gaps without blocking or flashing
+   - One request, no second phase: every tile is in the first payload
+   - Polls every 5s while the browser tab is visible
    - Card grid by section; clickable tickers → TradingView charts
    - Hover tooltips with volume data
 ```
@@ -96,8 +101,7 @@ TradingView Scanner API              CoinMarketCap API                News Summa
 | `/api/market/x-summary` | GET | Returns today's X market news summary |
 | `/api/market/trendspider-posts` | GET | Returns up to 50 recent TrendSpider posts (JSONL) |
 | `/api/market/ai-news-brief` | GET | Returns the latest Zhihu AI news daily brief (`date`, `is_stale`, `articles[]`) from `~/projects/news/data/zhihu/daily_briefs/zhihu_brief_YYYYMMDD.jsonl` |
-| `/api/market/overview` | GET | Returns market overview: tickers grouped by theme with prices, changes, volume. Live from the TradingView scanner API (`quotes.py`, ~0.12s, real-time when the logged-in TV session is available), merged with last-known gap values |
-| `/api/market/overview/gaps` | GET | Returns the ~5 licensed-feed symbols (`SCANNER_UNAVAILABLE`) the scanner can't serve, via the watchlist scrape (~8s, TTL-cached 90s; `force=1` refreshes). Frontend fetches this after the fast tiles render |
+| `/api/market/overview` | GET | Returns market overview: tickers grouped by theme with prices, changes, volume, plus `age_seconds` (how old the served snapshot is). Served from `overview_cache`'s background-refreshed snapshot, so the normal response does **no** network I/O (~5ms); it fetches synchronously only when the snapshot is older than `MAX_SERVE_AGE` or `force=1` is passed (~0.9s) |
 | `/api/tickers/search` | GET | Symbol search over the chart ticker universe (`q`, `limit`) |
 | `/api/tickers/portfolio` | GET | Portfolio tickers (from stock_picker's `data/portfolio.csv`, synced from the TradingView `portfolio` watchlist) with company names, for the search dropdown quick-picks |
 | `/api/tickers/{ticker}/weekly-chart` | GET | Weekly OHLCV + indicators (full history) from `weekly_bars_adjusted` ⋈ `weekly_indicators` |
@@ -131,7 +135,9 @@ App.tsx
 │   ├── Ticker rows: symbol | gradient magnitude bar | %chg | price
 │   ├── High-volume highlight: blue accent rail, vol ratio chip, bolder text
 │   ├── Hover tooltip: volume, avg volume, vol ratio, raw change
-│   └── Group headers: avg change%, avg volume ratio
+│   ├── Group headers: avg change%, avg volume ratio
+│   └── Live: one /api/market/overview request, re-polled every 5s while the
+│       browser tab is visible (see Vol indices and the background snapshot)
 │
 ├── MarketView.tsx
 │   ├── Persists selected sub-tab in sessionStorage (per browser tab)
@@ -203,11 +209,78 @@ App.tsx
 Market Overview loads ticker groups from `~/projects/stock_picker/data/ticker.csv` at runtime. To add/reorder tickers within a theme, edit the CSV (`theme`, `display_order` columns).
 
 - The CSV's `exchange` column is the single source of truth for the scanner fetch: `quotes.py` builds each scanner symbol as `EXCHANGE:SYMBOL`, so `exchange` must be the value TradingView's scanner indexes (US ETFs use `AMEX`/`NASDAQ`/`CBOE`; index/crypto/futures use TradingView feed names like `TVC`/`CRYPTO`/`CME_MINI`).
-- **Real-time vs delayed quotes.** Anonymous calls to `scanner.tradingview.com/global/scan` serve *delayed* quotes for US equities (minutes old on fast movers — measured ~$2-4 behind the live tape on AMD). The same endpoint returns real-time data when called with the logged-in TradingView session cookies (`sessionid` + `sessionid_sign`), which `tv_session.py` reads from the crawl4ai browser profile (`~/.crawl4ai/tradingview-profile`, already logged in) via a short headless playwright launch, TTL-cached for 6h. If the session is unavailable (profile locked mid-scrape, not logged in, browser error) `quotes.py` falls back to the anonymous endpoint — same response shape, just delayed. The first request after a server restart pays the ~2s browser launch; subsequent ones stay at ~0.1s.
-- A symbol with no free scanner data is listed in `SCANNER_UNAVAILABLE` in `quotes.py` and served from the crawl4ai watchlist scrape (`watchlist_scraper.py`) instead — except CSV rows with exchange `FRED`, which are fetched from FRED's keyless fredgraph.csv endpoint (`_fetch_fred_quotes`, TTL-cached, merged into the fast path).
+- **Real-time vs delayed quotes.** Anonymous calls to `scanner.tradingview.com/global/scan` serve *delayed* quotes for US equities (minutes old on fast movers — measured ~$2-4 behind the live tape on AMD). The same endpoint returns real-time data when called with the logged-in TradingView session cookies (`sessionid` + `sessionid_sign`), which `tv_session.py` reads from the crawl4ai browser profile (`~/.crawl4ai/tradingview-profile`, already logged in) via a short headless playwright launch, TTL-cached for 6h. If the session is unavailable (profile locked mid-scrape, not logged in, browser error) `quotes.py` falls back to the anonymous endpoint — same response shape, just delayed. That refresh (like the FRED and CBOE-history refreshes) now happens on `overview_cache`'s background thread, never on a request — before the background snapshot existed, whichever page load happened to hit an expired cookie TTL paid the ~3s browser launch.
+- A symbol with no free scanner data is listed in `SCANNER_UNAVAILABLE` (= `vol_indices.SYMBOLS`) and fetched from its publisher instead — see [Vol indices and the background snapshot](#vol-indices-and-the-background-snapshot). CSV rows with exchange `FRED` are likewise fetched from FRED's keyless fredgraph.csv endpoint (`_fetch_fred_quotes`, TTL-cached). `quotes.fetch_all_quotes()` runs the scanner batch and the vol-index fetch concurrently and merges everything into one dict.
 - Curated section/group ordering lives in `SECTIONS` in `market_overview.py`; new CSV themes not listed there are automatically appended to `Other Themes`. To drop a theme from the dashboard without removing it from the CSV (which stock_picker shares), delete it from `SECTIONS` *and* add it to `HIDDEN_GROUPS` — otherwise the auto-append would put it back under `Other Themes`. `Other ETFs` is hidden this way.
 - Tickers may appear in multiple themes (e.g., NVDA in both Big Tech and AI Chips & Foundry).
 - The `Portfolio` section (shown just below `Overview`) is the exception: it is not sourced from the CSV at all — see below.
+
+## Vol indices and the background snapshot
+
+Two changes (Sep 2026) took the Overview tab from ~1.3s + an 18s tail down to a ~5ms response.
+
+### The five symbols TradingView won't serve
+
+`VIX3M`, `GVZ`, `VXSLV`, `DVOL` and `ETHDVOL` are licensed real-time feeds. The free scanner
+returns no row for them at any spelling, and the single-symbol endpoint
+(`scanner.tradingview.com/symbol?symbol=CBOE:GVZ`) returns `null` even *with* the logged-in
+session cookie — verified, not assumed. They used to be filled in by a headless crawl4ai scrape
+of the TradingView watchlist page behind `/api/market/overview/gaps`: 18s per refresh, and by
+Sep 2026 it had stopped matching any of the five, so all five tiles rendered `—`.
+
+`vol_indices.py` fetches them from the publishers instead, concurrently, TTL-cached 60s:
+
+| Symbols | Source |
+|---|---|
+| VIX3M, GVZ, VXSLV | `cdn.cboe.com/api/global/delayed_quotes/quotes/_SYM.json` |
+| DVOL, ETHDVOL | `deribit.com/api/v2/public/get_volatility_index_data` (BTC / ETH, daily candles) |
+
+The one subtlety is the **previous close**. CBOE's quote payload carries `prev_day_close`, but for
+the thinner indices (GVZ/VXSLV, which come off a different feed — note their differing
+`exchange_id`) it is reported equal to the current price, which would render a permanent
+`+0.00%`. So the reference close comes from `charts/historical/_SYM.json` instead: the last daily
+bar before the live quote's session date. That series is ~500 KB, so it is cached per symbol per
+session date — one fetch per trading day. If it fails, the code falls back to `prev_day_close`
+(correct for VIX3M, merely flat for the others). Deribit needs no such workaround: the last two
+daily candles give the level and its reference directly, matching how TradingView shows
+`DERIBIT:DVOL`.
+
+Both producers emit `quote_format`-shaped dicts, the same shape the scanner and FRED paths emit,
+so `quotes.fetch_all_quotes()` just merges them. `quote_format.py` exists so the three producers
+cannot drift on decimals, sign or volume suffixes.
+
+### Why the overview is served from a snapshot
+
+The scanner POST costs ~1s for ~170 symbols no matter how it is sliced — splitting it into four
+parallel chunks was measured at 1.0-1.6s, because the cost is round-trip latency, not payload
+size. On top of that, the caches on the request path (the 6h `tv_session` cookie TTL, worth a ~3s
+browser launch, and the 900s FRED TTL) expired onto whichever page load happened to hit them,
+which is what made an occasional refresh feel like several seconds.
+
+`overview_cache.py` moves all of it off the request path. A daemon thread, started from the
+FastAPI lifespan, rebuilds the entire response body — quotes, portfolio, sections — on a cadence
+that follows whether anyone is actually looking:
+
+| Constant | Value | Meaning |
+|---|---|---|
+| `REFRESH_ACTIVE` | 5s | cadence while a request arrived within `ACTIVE_WINDOW` |
+| `REFRESH_IDLE` | 30s | cadence when nobody is watching |
+| `ACTIVE_WINDOW` | 120s | how long a request keeps the server "active" |
+| `MAX_SERVE_AGE` | 35s | older than this and a request fetches synchronously instead |
+
+`MAX_SERVE_AGE` must stay greater than `REFRESH_IDLE` (there is a test asserting it): otherwise
+the first page load on an idle server always blocks on a live fetch, which is the exact latency
+this module exists to remove. The gate is what keeps the design honest — a stale snapshot is
+never displayed; the worst case degrades to the old blocking behaviour rather than to stale
+numbers. A failed fetch keeps serving the last known payload rather than erroring.
+
+`force=1` (the UI's refresh button) always fetches synchronously (~0.9s).
+
+The frontend side is the mirror image: `MarketOverview.tsx` makes one request instead of two
+sequential ones, and polls every 5s **while the browser tab is visible** (`visibilitychange`). The
+poll is nearly free for the backend (no network I/O) and it is what keeps the refresher in its
+fast cadence, so an open dashboard tracks the tape within ~5-10s. A failed poll no longer blanks
+a dashboard that is already rendering — the error only surfaces when there is nothing to show.
 
 ## Portfolio Section Data Sourcing (stock_picker `data/portfolio.csv`)
 

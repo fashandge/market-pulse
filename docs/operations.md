@@ -8,11 +8,11 @@ How the app is launched, exposed publicly, and kept alive. `CLAUDE.md` has the s
 when starting from inside a cmux/Claude Code terminal. cmux injects a transient
 `NODE_OPTIONS=--require=…/cmux-claude-node-options/restore-node-options.cjs` shim into the shell;
 once that temp file is cleaned up the env var dangles, so any `node` the backend spawns (the
-Playwright driver behind `watchlist_scraper`, and vite) aborts with `MODULE_NOT_FOUND`. The visible
-symptom is an **`HTTP 500` from `/api/market/overview/gaps`** (that endpoint → scraper → Playwright
-driver crash); the main `/api/market/overview` no longer scrapes (it uses the scanner API, `quotes.py`)
-so it stays up, but the ~5 licensed-feed gap tiles fail to refresh. `market-pulse-server` self-heals
-this: it detects a cmux shell and drops
+Playwright driver behind `tv_session`, and vite) aborts with `MODULE_NOT_FOUND`. The visible symptom
+is that **quotes go delayed**: `tv_session` can no longer launch the browser to read the logged-in
+TradingView cookies, so `quotes.py` silently falls back to the anonymous (delayed) scanner endpoint.
+Nothing 500s — the overview still renders, just minutes behind the tape on fast movers.
+`market-pulse-server` self-heals this: it detects a cmux shell and drops
 the stale `NODE_OPTIONS` before starting the servers. If you must run `uvicorn` directly from a
 cmux shell, prefix it with `env -u NODE_OPTIONS`, or just launch from a normal terminal (Terminal /
 iTerm), whose `NODE_OPTIONS` is clean.
