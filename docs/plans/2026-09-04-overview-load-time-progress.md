@@ -38,3 +38,11 @@ Next: tests, browser verification, docs, push.
   `/api/market/overview/gaps` request at all. Repeat polls 20-64 ms.
 
 Remaining: docs + push.
+
+## 2026-09-04 15:16 — done
+
+Docs synced (`CLAUDE.md`, `docs/architecture.md` incl. a new "Vol indices and the
+background snapshot" section, `docs/operations.md` — the cmux `NODE_OPTIONS` trap
+now describes the real symptom, silently-delayed quotes via `tv_session`, since
+the `/gaps` endpoint it referenced is gone). Committed as `9543df7`, pushed to
+`origin/main`. All plan tasks complete.
