@@ -56,6 +56,26 @@ def fmt_volume(v: float | None) -> str:
     return f"{v:.0f}"
 
 
+def delay_label(update_mode: str | None) -> str:
+    """Display label for TradingView's ``update_mode``: "" when the quote is
+    real-time, else how far behind it is.
+
+    Real-time vs delayed is an exchange data entitlement on the TradingView
+    account — the same for the scanner REST API, the quote websocket and the
+    website — so this is reported, never worked around. See
+    ``src/backend/scripts/check_quote_delay.py``.
+    """
+    if not update_mode or update_mode == "streaming":
+        return ""
+    if update_mode == "endofday":
+        return "EOD"
+    if update_mode.startswith("delayed_streaming_"):
+        seconds = update_mode.rsplit("_", 1)[-1]
+        if seconds.isdigit():
+            return f"{int(seconds) // 60}m"
+    return "delayed"
+
+
 def build_quote(
     symbol: str,
     exchange: str,
@@ -64,9 +84,12 @@ def build_quote(
     change_abs: float | None = None,
     volume: float | None = None,
     avg_volume: float | None = None,
+    delay: str = "",
 ) -> dict:
-    """One overview-shaped quote dict. ``change`` is a percentage."""
+    """One overview-shaped quote dict. ``change`` is a percentage; ``delay`` is
+    a ``delay_label`` result ("" when the quote is real-time)."""
     return {
+        "delay": delay,
         "price": fmt_price(close, symbol in YIELD_SYMBOLS),
         "change_pct": fmt_pct(change),
         "change_pct_float": round(change, 2) if change is not None else None,

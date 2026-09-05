@@ -15,6 +15,10 @@ interface Ticker {
   volume: string
   avg_volume: string
   formal_symbol: string
+  // "" when the quote is real-time; else how far behind the exchange serves it
+  // to this TradingView account ("15m", "10m", "EOD"). An entitlement, not
+  // something the backend can fetch its way around.
+  delay?: string
 }
 
 interface Group {
@@ -65,6 +69,10 @@ function fmtPct(val: number | null): string {
   return `${sign}${val.toFixed(2)}%`
 }
 
+function delayNote(delay: string): string {
+  return delay === 'EOD' ? 'End-of-day quote' : `Delayed ${delay}`
+}
+
 function volRatio(ticker: Ticker): number | null {
   if (!ticker.volume || !ticker.avg_volume) return null
   const vol = parseVolume(ticker.volume)
@@ -105,7 +113,7 @@ function MagnitudeBar({ chg }: { chg: number }) {
 function TickerRow({ ticker }: { ticker: Ticker }) {
   const [showTip, setShowTip] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
-  const hasTip = ticker.volume || ticker.avg_volume || ticker.change_abs
+  const hasTip = ticker.volume || ticker.avg_volume || ticker.change_abs || ticker.delay
   const ratio = volRatio(ticker)
   const highVol = ratio != null && ratio > 1
 
@@ -121,7 +129,7 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
       onMouseLeave={() => setShowTip(false)}
       style={{
         display: 'grid',
-        gridTemplateColumns: '70px 1fr 56px 64px',
+        gridTemplateColumns: '90px 1fr 56px 64px',
         alignItems: 'center',
         gap: 10,
         padding: `5px 0 5px ${highVol ? 8 : 0}px`,
@@ -148,7 +156,7 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
         >
           {ticker.symbol}
         </a>
-        {highVol && ratio != null && (() => {
+        {highVol && ratio != null && !ticker.delay && (() => {
           const chipColor = chgVal >= 0 ? '#5A8A35' : '#B53A2C'
           return (
           <span style={{
@@ -161,6 +169,16 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
           </span>
           )
         })()}
+        {ticker.delay && (
+          <span style={{
+            fontSize: 9, fontWeight: 600, color: '#8A8478',
+            border: '1px solid rgba(45,42,36,0.18)',
+            borderRadius: 3, padding: '0 3px', lineHeight: 1.35,
+            whiteSpace: 'nowrap', letterSpacing: '0.02em',
+          }}>
+            {ticker.delay}
+          </span>
+        )}
       </div>
 
       {/* Magnitude bar */}
@@ -198,6 +216,14 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
           boxShadow: '0 6px 20px rgba(45,42,36,0.18)',
           fontVariantNumeric: 'tabular-nums',
         }}>
+          {ticker.delay && (
+            <>
+              <span style={{ color: '#B58900', fontWeight: 600 }}>{delayNote(ticker.delay)}</span>
+              {(ticker.volume || ticker.avg_volume || ticker.change_abs) && (
+                <span style={{ color: '#8A8478', margin: '0 6px' }}>·</span>
+              )}
+            </>
+          )}
           {ticker.volume && <>Vol <span style={{
             color: highVol ? (chgVal >= 0 ? '#5A8A35' : '#B53A2C') : 'inherit',
             fontWeight: highVol ? 700 : 400,

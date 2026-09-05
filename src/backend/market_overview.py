@@ -123,6 +123,8 @@ def _build_group_data(
                 "volume": d["volume"],
                 "avg_volume": d["avg_volume"],
                 "formal_symbol": d.get("formal_symbol", sym),
+                # "" when real-time; see quote_format.delay_label.
+                "delay": d.get("delay", ""),
             })
         else:
             tickers.append({
@@ -133,6 +135,7 @@ def _build_group_data(
                 "volume": "",
                 "avg_volume": "",
                 "formal_symbol": sym,
+                "delay": "",
             })
     avg_vol_ratio = _compute_avg_vol_ratio(avg_symbols, scraped_data) if show_avg else None
     group_data: dict = {

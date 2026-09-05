@@ -55,7 +55,7 @@ Open http://localhost:5173
 
 - All timestamps are in LA time (America/Los_Angeles)
 - Market cap values are displayed in billions (e.g., "$77.61B")
-- **Not every quote is real-time, and no code change can fix that** — it is a TradingView account data entitlement. 153/174 symbols stream live; CBOE indices and CME futures are 10-15 min delayed. Check with `python -m src.backend.scripts.check_quote_delay`; details in [docs/architecture.md](docs/architecture.md#vol-indices-and-the-background-snapshot).
+- **Not every quote is real-time, and no code change can fix that** — it is a TradingView account data entitlement. 153/174 symbols stream live; CBOE indices and CME futures are 10-15 min delayed. Delayed tiles are labelled in the UI (`delay` field, from the scanner's `update_mode` column). Audit with `python -m src.backend.scripts.check_quote_delay`; details in [docs/architecture.md](docs/architecture.md#vol-indices-and-the-background-snapshot).
 - Backend API endpoints are under `/api/tickers/{ticker}/` and `/api/market/`
 - Temp files (screenshots, logs, etc.) go in `tmp/` folder
 - Market Overview ticker groups come from `~/projects/stock_picker/data/ticker.csv` at runtime (`theme`, `display_order` columns; `exchange` must be the TradingView scanner value). Section ordering lives in `SECTIONS` (`market_overview.py`). The `Portfolio` section is **not** hardcoded — it reads `~/projects/stock_picker/data/portfolio.csv` (`portfolio.py`), which `tv_watchlist.py` mirrors from the TradingView watchlist named `portfolio` on every change; edit the holdings in TradingView (via the script), not in code. Full sourcing rules: [docs/architecture.md](docs/architecture.md#market-overview-data-sourcing-tickercsv--tradingview-scanner).

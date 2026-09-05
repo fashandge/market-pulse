@@ -47,7 +47,13 @@ TICKER_CSV = Path.home() / "projects/stock_picker/data/ticker.csv"
 SCANNER_URL = "https://scanner.tradingview.com/global/scan"
 FRED_CSV_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={ids}"
 FRED_CACHE_TTL = 900  # seconds; the series only update once per business day
-COLUMNS = ["close", "change", "change_abs", "volume", "average_volume_10d_calc"]
+# ``update_mode`` rides along free in the same batch request and says whether
+# the exchange serves this account real-time or delayed data (see
+# ``quote_format.delay_label``).
+COLUMNS = [
+    "close", "change", "change_abs", "volume", "average_volume_10d_calc",
+    "update_mode",
+]
 
 # Licensed feeds with no free scanner data; see ``vol_indices``.
 SCANNER_UNAVAILABLE = set(vol_indices.SYMBOLS)
@@ -99,7 +105,9 @@ def _fetch_fred_quotes(symbols: list[str]) -> dict[str, dict]:
             values[-1], values[-2] if len(values) >= 2 else None
         )
         result[symbol] = build_quote(
-            symbol, "FRED", values[-1], change=change, change_abs=change_abs
+            symbol, "FRED", values[-1], change=change, change_abs=change_abs,
+            # FRED publishes end-of-day with a 1-2 business-day lag.
+            delay="EOD",
         )
     _fred_cache.update({"data": result, "timestamp": now, "ids": ids})
     return result
@@ -145,10 +153,13 @@ def fetch_covered_quotes(extra: dict[str, str] | None = None) -> dict[str, dict]
         symbol = formal_to_symbol.get(formal)
         if symbol is None:
             continue
-        close, change, change_abs, volume, avg_volume = (row["d"] + [None] * 5)[:5]
+        close, change, change_abs, volume, avg_volume, update_mode = (
+            row["d"] + [None] * 6
+        )[:6]
         quote = build_quote(
             symbol, "", close, change=change, change_abs=change_abs,
             volume=volume, avg_volume=avg_volume,
+            delay=quote_format.delay_label(update_mode),
         )
         # The scanner echoes the symbol it matched, which is authoritative for
         # the chart link (it can differ from the CSV spelling).

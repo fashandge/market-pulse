@@ -62,6 +62,11 @@ TIMEOUT = 10
 # Deribit needs an explicit window; a week of daily candles is ample for the
 # last two closes even across a holiday gap.
 DERIBIT_LOOKBACK = 7 * 86400
+# CBOE serves these off its public *delayed* feed — the same 15-minute delay
+# TradingView gives this account for CBOE indices, so nothing is lost by not
+# going through TV. Deribit's API is real-time (TV reports DERIBIT:DVOL as
+# "streaming" too).
+CBOE_DELAY_LABEL = "15m"
 
 _lock = threading.Lock()
 _cache: dict = {"data": {}, "timestamp": 0.0}
@@ -113,7 +118,8 @@ def _fetch_cboe(symbol: str) -> dict:
         prev_close = data.get("prev_day_close")
     change_abs, change = quote_format.pct_change(close, prev_close)
     return quote_format.build_quote(
-        symbol, "CBOE", close, change=change, change_abs=change_abs
+        symbol, "CBOE", close, change=change, change_abs=change_abs,
+        delay=CBOE_DELAY_LABEL,
     )
 
 
