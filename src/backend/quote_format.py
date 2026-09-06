@@ -13,7 +13,7 @@ decimals, sign, or volume suffixes.
 from __future__ import annotations
 
 # Treasury-yield and real-yield symbols display their price with a trailing "%".
-YIELD_SYMBOLS = {"US10Y", "US20Y", "US30Y", "DFII10", "T10YIE"}
+YIELD_SYMBOLS = {"US02Y", "US10Y", "US20Y", "US30Y", "DFII10", "T10YIE"}
 
 
 def num_str(x: float) -> str:
