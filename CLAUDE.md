@@ -48,6 +48,7 @@ Open http://localhost:5173
 - **Always prefer `market-pulse-server` over raw `uvicorn`/`npm run dev`** — from a cmux/Claude Code shell, a dangling cmux `NODE_OPTIONS` shim crashes every spawned `node` (symptom: `tv_session` can't launch, so quotes silently go delayed); the wrapper strips it. If you must run uvicorn from a cmux shell, prefix `env -u NODE_OPTIONS`. Details + manual two-terminal commands: [docs/operations.md](docs/operations.md).
 - Server logs: `tmp/backend.log`, `tmp/frontend.log`.
 - Public URL: `src/backend/scripts/start_tunnel.sh [status|stop]` (ngrok, detached). Details: [docs/operations.md](docs/operations.md).
+- **Blank page on the ngrok URL is the free-tier interstitial, not a dead server** — ngrok answers every request (JS modules and `/api` included) with the warning page as HTTP 200 `text/html` until a per-browser cookie dismisses it. Clear that host's cookies + Cmd+Shift+R + "Visit Site". Full explanation: [docs/operations.md](docs/operations.md#tunnel-url-shows-a-blank-page-ngrok-free-tier-interstitial).
 - Auto-start on login: LaunchAgent `com.jianfuchen.market-pulse` runs the `ensure_up.sh` supervisor daemon (restarts app + tunnel within ~1 min of a crash/wake). Enable/disable + design constraints: [docs/operations.md](docs/operations.md).
 - Backend tests: `python -m pytest tests/ -q` **from the repo root** (`pytest tests/` alone can't import `src.backend` — nothing puts the root on `sys.path`).
 

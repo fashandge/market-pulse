@@ -59,6 +59,37 @@ tier hands out a **new random hostname on every start**, so the URL changes each
 a static domain on the ngrok dashboard and add `--url=<domain>` to the `ngrok http` line if you
 need a stable link. The tunnel still dies if the Mac sleeps.
 
+### Tunnel URL shows a blank page (ngrok free-tier interstitial)
+
+**Symptom:** the ngrok URL loads an entirely empty page — no dashboard, no error — and reloading
+does not help. The same URL works fine in a fresh browser profile.
+
+**Fix (takes ~10 seconds):** in the affected browser, open DevTools (Cmd+Opt+J) →
+**Application** → **Cookies**, delete everything for the ngrok host (the
+`*.ngrok-free.dev` hostname from `start_tunnel.sh status`), then hard-reload with **Cmd+Shift+R**. The ngrok
+warning page appears; click **Visit Site** and the dashboard loads. To confirm the diagnosis
+first, open the **Console** — a blank page from this cause always shows a MIME-type error naming
+`text/html` on a module script.
+
+**Why it happens:** ngrok's free tier gates the whole site behind an abuse interstitial
+(`ERR_NGROK_6024`), dismissed by a per-browser cookie. Without that cookie ngrok answers *every*
+request with the interstitial — not just page loads, but `/src/main.tsx`, `/@vite/client` and
+`/api/...` too — and it does so as **HTTP 200 with `content-type: text/html`**, so status codes
+alone look healthy. When the browser has the document but no valid cookie, the JS modules come
+back as HTML, Chrome's strict MIME checking refuses to execute them, React never mounts, and
+`main.tsx` renders `<App/>` with no error boundary, so nothing reports the failure. A reload
+repeats the identical sequence, which is why refreshing never clears it.
+
+**Do not waste time checking the server** — this failure looks exactly like a dead backend but
+isn't. `curl`ing the tunnel is misleading unless you inspect `content-type`, since the interstitial
+returns 200; `curl -sD- -H 'ngrok-skip-browser-warning: 1'` bypasses it and shows the true response.
+
+**Permanent fix:** remove the interstitial, either by upgrading to any paid ngrok plan (keeps the
+static hostname) or by switching the tunnel to cloudflared, which has no interstitial —
+`allowedHosts` already whitelists `.trycloudflare.com`. Note the DNS caveat above: some
+routers/ISPs block `*.trycloudflare.com`. Adding an error boundary around `<App/>` would surface
+this class of failure instead of showing a blank page.
+
 ## Auto-start on login (LaunchAgent)
 
 A LaunchAgent keeps the app and tunnel running without manual commands:
