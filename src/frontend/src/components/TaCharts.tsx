@@ -246,10 +246,12 @@ interface RegimeBar {
 }
 
 class RegimeBandsRenderer implements IPrimitivePaneRenderer {
-  constructor(
-    private _chart: IChartApi | null,
-    private _bars: RegimeBar[],
-  ) {}
+  private _chart: IChartApi | null
+  private _bars: RegimeBar[]
+  constructor(chart: IChartApi | null, bars: RegimeBar[]) {
+    this._chart = chart
+    this._bars = bars
+  }
 
   draw(target: CanvasRenderingTarget2D) {
     const chart = this._chart
@@ -278,7 +280,10 @@ class RegimeBandsRenderer implements IPrimitivePaneRenderer {
 
 class RegimeBandsPrimitive implements ISeriesPrimitive<Time> {
   private _chart: IChartApi | null = null
-  constructor(private _bars: RegimeBar[]) {}
+  private _bars: RegimeBar[]
+  constructor(bars: RegimeBar[]) {
+    this._bars = bars
+  }
   attached(p: SeriesAttachedParameter<Time>) {
     this._chart = p.chart
   }
@@ -297,12 +302,16 @@ class RegimeBandsPrimitive implements ISeriesPrimitive<Time> {
 
 // Horizontal shaded band between two price levels (e.g. RSI 30–70).
 class PriceBandRenderer implements IPrimitivePaneRenderer {
-  constructor(
-    private _series: ISeriesApi<'Line'> | null,
-    private _lower: number,
-    private _upper: number,
-    private _color: string,
-  ) {}
+  private _series: ISeriesApi<'Line'> | null
+  private _lower: number
+  private _upper: number
+  private _color: string
+  constructor(series: ISeriesApi<'Line'> | null, lower: number, upper: number, color: string) {
+    this._series = series
+    this._lower = lower
+    this._upper = upper
+    this._color = color
+  }
 
   draw(target: CanvasRenderingTarget2D) {
     const series = this._series
@@ -319,11 +328,14 @@ class PriceBandRenderer implements IPrimitivePaneRenderer {
 
 class PriceBandPrimitive implements ISeriesPrimitive<Time> {
   private _series: ISeriesApi<'Line'> | null = null
-  constructor(
-    private _lower: number,
-    private _upper: number,
-    private _color: string,
-  ) {}
+  private _lower: number
+  private _upper: number
+  private _color: string
+  constructor(lower: number, upper: number, color: string) {
+    this._lower = lower
+    this._upper = upper
+    this._color = color
+  }
   attached(p: SeriesAttachedParameter<Time>) {
     this._series = p.series as ISeriesApi<'Line'>
   }
