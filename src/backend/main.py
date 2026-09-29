@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.backend.tickers import crcl, charts, pnf
-from src.backend import overview_cache, portfolio
+from src.backend import breadth, overview_cache, portfolio
 
 NEWS_BASE_PATH = Path.home() / "projects/news/data/market_news"
 CFZH_PATH = Path.home() / "projects/news/data/cfzh_forum_summaries"
@@ -45,6 +45,13 @@ def get_market_overview(force: int = 0):
     (``overview_cache``), so this is a no-I/O response in the normal case;
     ``force=1`` (the UI's refresh button) always fetches live."""
     return overview_cache.get_overview(force=bool(force))
+
+
+@app.get("/api/market/breadth")
+def get_market_breadth():
+    """Full-history S&P 500 / Nasdaq-100 breadth with SPY and QQQ closes
+    (columnar, from the investment duckdb) for the Overview Breadth tab."""
+    return breadth.get_breadth()
 
 
 @app.get("/api/tickers/search")

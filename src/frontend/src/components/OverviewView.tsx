@@ -4,13 +4,15 @@ import { TickerSearch } from './TickerSearch'
 import { TaCharts } from './TaCharts'
 import { PnfChart } from './PnfChart'
 import { TrendSpiderView } from './TrendSpiderView'
+import { BreadthCharts } from './BreadthCharts'
 
-type OverviewTab = 'overview' | 'charts' | 'pnf' | 'trendspider'
+type OverviewTab = 'overview' | 'charts' | 'pnf' | 'trendspider' | 'breadth'
 const TABS: { id: OverviewTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'charts', label: 'Charts' },
   { id: 'pnf', label: 'P&F' },
   { id: 'trendspider', label: 'Trend Spider' },
+  { id: 'breadth', label: 'Breadth' },
 ]
 
 export function OverviewView() {
@@ -79,6 +81,8 @@ export function OverviewView() {
       )}
 
       {activeTab === 'trendspider' && <TrendSpiderView />}
+
+      {activeTab === 'breadth' && <BreadthCharts />}
     </div>
   )
 }

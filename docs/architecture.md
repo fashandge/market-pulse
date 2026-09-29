@@ -102,6 +102,7 @@ TradingView Scanner API              CoinMarketCap API                News Summa
 | `/api/market/trendspider-posts` | GET | Returns up to 50 recent TrendSpider posts (JSONL) |
 | `/api/market/ai-news-brief` | GET | Returns the latest Zhihu AI news daily brief (`date`, `is_stale`, `articles[]`) from `~/projects/news/data/zhihu/daily_briefs/zhihu_brief_YYYYMMDD.jsonl` |
 | `/api/market/overview` | GET | Returns market overview: tickers grouped by theme with prices, changes, volume, plus `age_seconds` (how old the served snapshot is). Served from `overview_cache`'s background-refreshed snapshot, so the normal response does **no** network I/O (~5ms); it fetches synchronously only when the snapshot is older than `MAX_SERVE_AGE` or `force=1` is passed (~0.9s) |
+| `/api/market/breadth` | GET | Full-history S&P 500 / Nasdaq-100 breadth (% of members above 20/50/200-day SMA, net new 52-week highs, advancers − decliners) with SPY/QQQ adjusted closes and 5-week distribution-day counts, columnar (`dates` + one array per series), read-only from the investment duckdb (`breadth.py`); cached on the DB file's mtime |
 | `/api/tickers/search` | GET | Symbol search over the chart ticker universe (`q`, `limit`) |
 | `/api/tickers/portfolio` | GET | Portfolio tickers (from stock_picker's `data/portfolio.csv`, synced from the TradingView `portfolio` watchlist) with company names, for the search dropdown quick-picks |
 | `/api/tickers/{ticker}/weekly-chart` | GET | Weekly OHLCV + indicators (full history) from `weekly_bars_adjusted` ⋈ `weekly_indicators` |
@@ -122,12 +123,13 @@ App.tsx
 │
 ├── OverviewView.tsx
 │   ├── Persists selected sub-tab in sessionStorage (per browser tab)
-│   ├── Sub-tabs: Overview | Charts | Trend Spider
+│   ├── Sub-tabs: Overview | Charts | P&F | Trend Spider | Breadth
 │   ├── Overview tab → MarketOverview
 │   ├── Charts tab: TickerSearch (search full duckdb universe) + TaCharts, with a
 │   │   Daily/Weekly/Monthly timeframe toggle (default weekly, remembered in sessionStorage)
 │   ├── P&F tab: the same TickerSearch (shared selected ticker) + PnfChart
-│   └── Trend Spider tab → TrendSpiderView
+│   ├── Trend Spider tab → TrendSpiderView
+│   └── Breadth tab → BreadthCharts
 │
 ├── MarketOverview.tsx
 │   ├── Sections: Overview | Critical Themes | Other Themes
@@ -146,6 +148,12 @@ App.tsx
 │
 ├── TrendSpiderView.tsx — card feed of recent TrendSpider posts
 │   (/api/market/trendspider-posts) with images and timestamps
+│
+├── BreadthCharts.tsx — vertically stacked SVG panels on one shared trading-day
+│   axis (/api/market/breadth): SPY/QQQ rebased price, % of members above
+│   200/50/20-day averages, net new 52-week highs, cumulative A/D line,
+│   distribution days; synced crosshair readouts, drag-to-zoom, range presets
+│   (3M–Max), SPY-drawdown shading, and a latest-readings table.
 │
 ├── PnfChart.tsx — Point & Figure chart (react-plotly, Solarized) from
 │   /api/tickers/{t}/pnf-chart; controls for range (3M–5Y), box size (1/2/3/5% of
