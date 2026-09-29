@@ -11,7 +11,7 @@ Market Pulse - A web dashboard for monitoring market and individual stock/crypto
 - **Frontend**: React + Vite + TypeScript + Tailwind CSS v4 (Solarized Light theme, `--color-sol-*` variables in `index.css`)
 - **Backend**: FastAPI (Python, `ml` conda env per global CLAUDE.md)
 - **Charts**: Plotly (react-plotly.js) for market-cap and Point & Figure; TradingView Lightweight Charts v5 for weekly + monthly + daily TA charts
-- **Data Sources**: CoinMarketCap API; TradingView scanner JSON API for live quotes (`quotes.py`), with the five licensed-feed vol indices from CBOE's and Deribit's own JSON APIs (`vol_indices.py`) and FRED economic series (DFII10, T10YIE) straight from fredgraph.csv; news summaries (NDX, CFZH forum, X market news), TrendSpider posts, Zhihu AI briefs (all from the `news` project); OHLCV + precomputed indicators read-only from the `investment` project duckdb (`~/projects/investment/data/stocks/stocks.duckdb`)
+- **Data Sources**: CoinMarketCap API; TradingView scanner JSON API for live quotes (`quotes.py`), with the five licensed-feed vol indices from CBOE's and Deribit's own JSON APIs (`vol_indices.py`) and FRED economic series (DFII10, T10YIE) straight from fredgraph.csv; news summaries (NDX, CFZH forum, X market news), TrendSpider posts, Zhihu AI briefs (all from the `news` project); OHLCV, precomputed indicators and market breadth read-only from the `investment` project duckdb (`~/projects/investment/data/stocks/stocks.duckdb`)
 
 ## Project Structure
 
@@ -27,11 +27,12 @@ src/
 │   ├── overview_cache.py     # Background-refreshed overview snapshot; /api/market/overview serves it with no network I/O
 │   ├── market_overview.py    # Market overview assembler (SECTIONS)
 │   ├── portfolio.py          # Holdings from stock_picker's data/portfolio.csv (mirror of the TradingView "portfolio" watchlist)
+│   ├── breadth.py            # S&P 500 / Nasdaq-100 breadth + SPY/QQQ closes for the Breadth tab (reads investment duckdb)
 │   ├── tickers/charts.py     # Weekly/monthly/daily OHLCV + indicators (reads investment duckdb)
 │   ├── tickers/pnf.py        # Point & Figure columns/boxes via investment.src.charts.pnf (duckdb bars, Yahoo fallback)
 │   └── scripts/              # start_tunnel.sh, ensure_up.sh
 └── frontend/                 # React + Vite (port 5173); components in src/components/
-                              # (OverviewView, MarketOverview, MarketView, TaCharts, PnfChart, TickerView, …)
+                              # (OverviewView, MarketOverview, MarketView, TaCharts, PnfChart, BreadthCharts, TickerView, …)
 ```
 
 Full component list and data flow: [docs/architecture.md](docs/architecture.md).
