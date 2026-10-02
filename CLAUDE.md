@@ -27,12 +27,13 @@ src/
 │   ├── overview_cache.py     # Background-refreshed overview snapshot; /api/market/overview serves it with no network I/O
 │   ├── market_overview.py    # Market overview assembler (SECTIONS)
 │   ├── portfolio.py          # Holdings from stock_picker's data/portfolio.csv (mirror of the TradingView "portfolio" watchlist)
+│   ├── estimates.py          # Analyst estimates for the Estimates tab: reads stock_picker's data/estimates/*.json; fetches an uncached ticker on demand via stock_picker's fetch_estimates (rate-limited)
 │   ├── breadth.py            # S&P 500 / Nasdaq-100 breadth + SPY/QQQ closes for the Breadth tab (reads investment duckdb)
 │   ├── tickers/charts.py     # Weekly/monthly/daily OHLCV + indicators (reads investment duckdb)
 │   ├── tickers/pnf.py        # Point & Figure columns/boxes via investment.src.charts.pnf (duckdb bars, Yahoo fallback)
 │   └── scripts/              # start_tunnel.sh, ensure_up.sh
 └── frontend/                 # React + Vite (port 5173); components in src/components/
-                              # (OverviewView, MarketOverview, MarketView, TaCharts, PnfChart, BreadthCharts, TickerView, …)
+                              # (OverviewView, MarketOverview, MarketView, TaCharts, PnfChart, BreadthCharts, EstimatesView, TickerView, …)
 ```
 
 Full component list and data flow: [docs/architecture.md](docs/architecture.md).

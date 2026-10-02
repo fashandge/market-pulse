@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.backend.tickers import crcl, charts, pnf
-from src.backend import breadth, overview_cache, portfolio
+from src.backend import breadth, estimates, overview_cache, portfolio
 
 NEWS_BASE_PATH = Path.home() / "projects/news/data/market_news"
 CFZH_PATH = Path.home() / "projects/news/data/cfzh_forum_summaries"
@@ -52,6 +52,31 @@ def get_market_breadth():
     """Full-history S&P 500 / Nasdaq-100 breadth with SPY and QQQ closes
     (columnar, from the investment duckdb) for the Overview Breadth tab."""
     return breadth.get_breadth()
+
+
+@app.get("/api/market/estimates")
+def get_market_estimates():
+    """Cached analyst estimates (consensus by fiscal year, price targets,
+    rating changes) for every ticker stock_picker's fetch_estimates.py has
+    been run on, portfolio holdings first, for the Overview Estimates tab."""
+    return estimates.load_estimates()
+
+
+@app.post("/api/market/estimates/{ticker}")
+def fetch_market_estimates(ticker: str):
+    """One ticker's estimates for the Estimates tab's search box: the cache
+    file when it is under an hour old, otherwise a live fetch (about two
+    seconds) that also writes the cache. 404 for a symbol outside the chart
+    universe, 429 when the hourly fetch budget is spent, 502 when a source
+    refused or has no estimates for it (ETFs, for instance)."""
+    try:
+        return estimates.get_or_fetch(ticker)
+    except estimates.UnknownTicker:
+        raise HTTPException(status_code=404, detail=f"{ticker.upper()} is not a known ticker")
+    except estimates.RateLimited as exc:
+        raise HTTPException(status_code=429, detail=str(exc))
+    except estimates.FetchFailed as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
 
 
 @app.get("/api/tickers/search")

@@ -103,6 +103,8 @@ TradingView Scanner API              CoinMarketCap API                News Summa
 | `/api/market/ai-news-brief` | GET | Returns the latest Zhihu AI news daily brief (`date`, `is_stale`, `articles[]`) from `~/projects/news/data/zhihu/daily_briefs/zhihu_brief_YYYYMMDD.jsonl` |
 | `/api/market/overview` | GET | Returns market overview: tickers grouped by theme with prices, changes, volume, plus `age_seconds` (how old the served snapshot is). Served from `overview_cache`'s background-refreshed snapshot, so the normal response does **no** network I/O (~5ms); it fetches synchronously only when the snapshot is older than `MAX_SERVE_AGE` or `force=1` is passed (~0.9s) |
 | `/api/market/breadth` | GET | Full-history S&P 500 / Nasdaq-100 breadth (% of members above 20/50/200-day SMA, net new 52-week highs, advancers − decliners) with SPY/QQQ adjusted closes and 5-week distribution-day counts, columnar (`dates` + one array per series), read-only from the investment duckdb (`breadth.py`); cached on the DB file's mtime |
+| `/api/market/estimates` | GET | Analyst estimates for every ticker with a cache file in `~/projects/stock_picker/data/estimates/` (`estimates.py`): per ticker, consensus EPS and revenue by fiscal year, price, mean target, mean rating, the stockanalysis.com cross-check and the rating-change log, passed through unchanged plus `in_portfolio`. Holdings first in watchlist order, then the rest alphabetically; files that are not valid or lack required fields are named in `unreadable`. A plain per-request folder read — no network, no cache |
+| `/api/market/estimates/{ticker}` | POST | One ticker's estimates for the Estimates tab's search box and Refresh link: the cache file when it is under an hour old, otherwise a live fetch through stock_picker's `fetch_estimates.fetch_ticker` (three outbound requests, ~2s) that also writes the cache. Bounded because the tunnel has no auth: 404 unless the symbol is in the chart ticker universe, 429 past 30 fetches an hour (one at a time), 502 when a source refuses or has no estimates (ETFs) |
 | `/api/tickers/search` | GET | Symbol search over the chart ticker universe (`q`, `limit`) |
 | `/api/tickers/portfolio` | GET | Portfolio tickers (from stock_picker's `data/portfolio.csv`, synced from the TradingView `portfolio` watchlist) with company names, for the search dropdown quick-picks |
 | `/api/tickers/{ticker}/weekly-chart` | GET | Weekly OHLCV + indicators (full history) from `weekly_bars_adjusted` ⋈ `weekly_indicators` |
@@ -123,13 +125,14 @@ App.tsx
 │
 ├── OverviewView.tsx
 │   ├── Persists selected sub-tab in sessionStorage (per browser tab)
-│   ├── Sub-tabs: Overview | Charts | P&F | Trend Spider | Breadth
+│   ├── Sub-tabs: Overview | Charts | P&F | Trend Spider | Breadth | Estimates
 │   ├── Overview tab → MarketOverview
 │   ├── Charts tab: TickerSearch (search full duckdb universe) + TaCharts, with a
 │   │   Daily/Weekly/Monthly timeframe toggle (default weekly, remembered in sessionStorage)
 │   ├── P&F tab: the same TickerSearch (shared selected ticker) + PnfChart
 │   ├── Trend Spider tab → TrendSpiderView
-│   └── Breadth tab → BreadthCharts
+│   ├── Breadth tab → BreadthCharts
+│   └── Estimates tab → EstimatesView
 │
 ├── MarketOverview.tsx
 │   ├── Sections: Overview | Critical Themes | Other Themes
@@ -154,6 +157,25 @@ App.tsx
 │   200/50/20-day averages, net new 52-week highs, cumulative A/D line,
 │   distribution days; synced crosshair readouts, drag-to-zoom, range presets
 │   (3M–Max), SPY-drawdown shading, and a latest-readings table.
+│
+├── EstimatesView.tsx — analyst estimates, laid out as search → comparison table →
+│   detail panel:
+│     • TickerSearch on top. Picking a ticker already in the table selects it;
+│       any other is fetched through POST /api/market/estimates/{t} (~2s), added
+│       under "Not in the portfolio" and selected.
+│     • Comparison table (/api/market/estimates), one single-line row per cached
+│       ticker, holdings first: price, mean target against price, mean rating,
+│       EPS-by-fiscal-year mini bars (grey reported, blue consensus, pale when
+│       fewer than 3 analysts), the month the first estimate year ends, then EPS
+│       growth and price ÷ EPS for three consecutive fiscal years, and the fetch
+│       date (yellow when older than 8 days; a yellow dot when stockanalysis.com
+│       disagrees). Rows never expand, so the list stays intact for comparison.
+│     • Detail panel below for the selected row (remembered in sessionStorage,
+│       first row by default): every fiscal year, the cross-check figures, the
+│       rating changes (per quarter, per broker, full log) and a Refresh link.
+│   The table is sized to fit a ~900px content area without sideways scrolling.
+│   Data comes from stock_picker's scripts/fetch_estimates.py — weekly for the
+│   holdings, on demand (script or search box) for anything else.
 │
 ├── PnfChart.tsx — Point & Figure chart (react-plotly, Solarized) from
 │   /api/tickers/{t}/pnf-chart; controls for range (3M–5Y), box size (1/2/3/5% of
