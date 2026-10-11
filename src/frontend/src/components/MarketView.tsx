@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import ReactMarkdown from 'react-markdown'
+import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { SignalDigestDay, type SignalDigestRun } from './SignalDigestDay'
 
@@ -31,6 +31,15 @@ const MULTI_DAY_SOURCES: Partial<Record<SourceTab, { endpoint: string; emptyMess
     endpoint: '/api/market/x-today-news',
     emptyMessage: 'No X Today news in the last 4 days.',
   },
+}
+
+// X Today story titles link to x.com; open them in a new (focused) tab.
+const NEW_TAB_LINKS: Components = {
+  a: ({ href, children }) => (
+    <a href={href} target="_blank" rel="noopener noreferrer">
+      {children}
+    </a>
+  ),
 }
 
 const SOURCE_CONFIG: Record<string, { label: string; endpoint: string; noDataMessage: string }> = {
@@ -152,7 +161,12 @@ export function MarketView() {
                   <SignalDigestDay runs={s.runs} />
                 ) : s.content ? (
                   <div className="prose prose-base summary-prose">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{s.content}</ReactMarkdown>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={activeSource === 'x-today' ? NEW_TAB_LINKS : undefined}
+                    >
+                      {s.content}
+                    </ReactMarkdown>
                   </div>
                 ) : (
                   <p className="text-sol-base1">No summary for {s.date}.</p>
