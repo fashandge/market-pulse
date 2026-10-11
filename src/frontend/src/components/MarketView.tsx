@@ -7,13 +7,25 @@ interface SummaryResponse {
   content: string | null
 }
 
-interface CfzhSummariesResponse {
+interface DailySummariesResponse {
   summaries: SummaryResponse[]
 }
 
-type SourceTab = 'trading-view' | 'cfzh' | 'x'
+type SourceTab = 'trading-view' | 'cfzh' | 'x' | 'general'
 
-const SOURCE_TABS: SourceTab[] = ['trading-view', 'x', 'cfzh']
+const SOURCE_TABS: SourceTab[] = ['trading-view', 'x', 'cfzh', 'general']
+
+// Tabs that show the last few days' summaries as collapsible sections.
+const MULTI_DAY_SOURCES: Partial<Record<SourceTab, { endpoint: string; emptyMessage: string }>> = {
+  cfzh: {
+    endpoint: '/api/market/cfzh-summaries',
+    emptyMessage: 'No CFZH forum summaries available yet.',
+  },
+  general: {
+    endpoint: '/api/market/signal-digests',
+    emptyMessage: 'No signal digests in the last 4 days.',
+  },
+}
 
 const SOURCE_CONFIG: Record<string, { label: string; endpoint: string; noDataMessage: string }> = {
   'trading-view': {
@@ -37,6 +49,7 @@ const TAB_LABELS: Record<SourceTab, string> = {
   'trading-view': 'Trading View',
   x: 'X',
   cfzh: 'CFZH',
+  general: 'General',
 }
 
 export function MarketView() {
@@ -45,7 +58,7 @@ export function MarketView() {
     return stored && SOURCE_TABS.includes(stored) ? stored : 'trading-view'
   })
   const [summary, setSummary] = useState<SummaryResponse | null>(null)
-  const [cfzhSummaries, setCfzhSummaries] = useState<SummaryResponse[]>([])
+  const [dailySummaries, setDailySummaries] = useState<SummaryResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -58,11 +71,13 @@ export function MarketView() {
     setLoading(true)
     setError(null)
 
-    if (activeSource === 'cfzh') {
-      fetch('/api/market/cfzh-summaries')
+    const multiDay = MULTI_DAY_SOURCES[activeSource]
+    if (multiDay) {
+      setDailySummaries([])
+      fetch(multiDay.endpoint)
         .then((res) => res.json())
-        .then((data: CfzhSummariesResponse) => {
-          setCfzhSummaries(data.summaries)
+        .then((data: DailySummariesResponse) => {
+          setDailySummaries(data.summaries)
           setLoading(false)
         })
         .catch((err) => {
@@ -100,17 +115,18 @@ export function MarketView() {
       )
     }
 
-    if (activeSource === 'cfzh') {
-      if (cfzhSummaries.length === 0 || cfzhSummaries.every((s) => !s.content)) {
+    const multiDay = MULTI_DAY_SOURCES[activeSource]
+    if (multiDay) {
+      if (dailySummaries.length === 0 || dailySummaries.every((s) => !s.content)) {
         return (
           <div className="flex items-center justify-center h-64 text-sol-base1">
-            No CFZH forum summaries available yet.
+            {multiDay.emptyMessage}
           </div>
         )
       }
       return (
         <div className="flex flex-col gap-3">
-          {cfzhSummaries.map((s, i) => (
+          {dailySummaries.map((s, i) => (
             <details
               key={s.date}
               open={i === 0}

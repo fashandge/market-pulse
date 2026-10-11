@@ -54,13 +54,13 @@ Market Pulse is a web dashboard for monitoring market and individual stock/crypt
 
 ```
 TradingView Scanner API              CoinMarketCap API                News Summaries + Feeds
-(scanner.tradingview.com, JSON)           ↓                          (NDX, CFZH, X, TrendSpider, Zhihu AI)
+(scanner.tradingview.com, JSON)           ↓                          (NDX, CFZH, X, signal digest, TrendSpider, Zhihu AI)
        ↓                            FastAPI Backend (port 8000)            ↓
    quotes.py                         - Fetches data                  - Reads .md/.jsonl files
    - One batched POST, ~1s           - Converts UTC → LA time        - Returns summaries/posts
    - EXCHANGE:SYMBOL from ticker.csv - Computes changes                    ↓
    - Real-time via logged-in TV                            React Frontend (port 5173)
-     session (tv_session.py)                            - MarketView sub-tabs: TV, X, CFZH
+     session (tv_session.py)                            - MarketView sub-tabs: TV, X, CFZH, General
    - Covers ~170 symbols                                   - Markdown rendering
        ↓                                                    - Renders Plotly chart
    tv_session.py (session cookies)                         - Displays changes table
@@ -99,6 +99,7 @@ TradingView Scanner API              CoinMarketCap API                News Summa
 | `/api/market/ndx-summary` | GET | Returns today's NDX/Trading View summary |
 | `/api/market/cfzh-summary` | GET | Returns today's CFZH forum summary |
 | `/api/market/x-summary` | GET | Returns today's X market news summary |
+| `/api/market/signal-digests` | GET | Returns `summaries[]` (`date`, `content`): the latest signal-digest `report.md` per day for today + the previous 3 days (LA time), days without a report omitted. Reads `~/projects/news/data/signal_digest/runs/<YYYYMMDD_HHMM[_N]>/report.md`; experiment runs with other suffixes (`_jev`, `_nofilter`) are skipped |
 | `/api/market/trendspider-posts` | GET | Returns up to 50 recent TrendSpider posts (JSONL) |
 | `/api/market/ai-news-brief` | GET | Returns the latest Zhihu AI news daily brief (`date`, `is_stale`, `articles[]`) from `~/projects/news/data/zhihu/daily_briefs/zhihu_brief_YYYYMMDD.jsonl` |
 | `/api/market/overview` | GET | Returns market overview: tickers grouped by theme with prices, changes, volume, plus `age_seconds` (how old the served snapshot is). Served from `overview_cache`'s background-refreshed snapshot, so the normal response does **no** network I/O (~5ms); it fetches synchronously only when the snapshot is older than `MAX_SERVE_AGE` or `force=1` is passed (~0.9s) |
@@ -146,7 +147,8 @@ App.tsx
 │
 ├── MarketView.tsx
 │   ├── Persists selected sub-tab in sessionStorage (per browser tab)
-│   ├── Sub-tabs: Trading View | X | CFZH
+│   ├── Sub-tabs: Trading View | X | CFZH | General (signal digest)
+│   ├── CFZH and General show the last 4 days as collapsible sections (newest open)
 │   └── Summary tabs: markdown (react-markdown + remark-gfm)
 │
 ├── TrendSpiderView.tsx — card feed of recent TrendSpider posts

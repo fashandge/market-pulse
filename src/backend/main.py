@@ -1,6 +1,7 @@
 """FastAPI backend for the market dashboard."""
 
 import json
+import re
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -17,6 +18,10 @@ CFZH_PATH = Path.home() / "projects/news/data/cfzh_forum_summaries"
 X_MARKET_NEWS_PATH = Path.home() / "projects/news/data/x_market_news"
 TRENDSPIDER_PATH = Path.home() / "projects/news/data/trendspider"
 ZHIHU_DAILY_BRIEFS_PATH = Path.home() / "projects/news/data/zhihu/daily_briefs"
+SIGNAL_DIGEST_RUNS_PATH = Path.home() / "projects/news/data/signal_digest/runs"
+# signal_digest names runs YYYYMMDD_HHMM, suffixed _2, _3… on collision; other
+# suffixes (e.g. _jev, _nofilter) are manual experiments and are skipped.
+SIGNAL_DIGEST_RUN_RE = re.compile(r"^(\d{8})_(\d{4})(?:_(\d+))?$")
 
 
 @asynccontextmanager
@@ -222,6 +227,40 @@ def get_cfzh_summaries():
         content = f"Generated {generated_time} ({formatted_date})\n\n{content}"
         summaries.append({"date": formatted_date, "content": content})
     return {"summaries": summaries}
+
+
+def load_signal_digests(runs_path: Path, today: date, days: int = 4) -> list[dict]:
+    """Latest signal-digest report per day for ``today`` and the previous days.
+
+    Days without a report are omitted, so at most ``days`` entries come back,
+    newest first.
+    """
+    wanted = {(today - timedelta(days=i)).strftime("%Y%m%d") for i in range(days)}
+    latest: dict[str, tuple[tuple[str, int], Path]] = {}
+    if runs_path.exists():
+        for run in runs_path.iterdir():
+            m = SIGNAL_DIGEST_RUN_RE.match(run.name)
+            if not m or m.group(1) not in wanted or not (run / "report.md").is_file():
+                continue
+            key = (m.group(2), int(m.group(3) or 1))
+            if m.group(1) not in latest or key > latest[m.group(1)][0]:
+                latest[m.group(1)] = (key, run)
+
+    summaries = []
+    for day in sorted(latest, reverse=True):
+        (hhmm, _), run = latest[day]
+        formatted_date = datetime.strptime(day, "%Y%m%d").strftime("%B %d, %Y")
+        content = (run / "report.md").read_text()
+        content = f"Generated {hhmm[:2]}:{hhmm[2:]} ({formatted_date})\n\n{content}"
+        summaries.append({"date": formatted_date, "content": content})
+    return summaries
+
+
+@app.get("/api/market/signal-digests")
+def get_signal_digests():
+    """Get the latest signal-digest report for today and each of the previous 3 days."""
+    today = datetime.now(ZoneInfo("America/Los_Angeles")).date()
+    return {"summaries": load_signal_digests(SIGNAL_DIGEST_RUNS_PATH, today)}
 
 
 @app.get("/api/market/x-summary")
