@@ -13,9 +13,9 @@ interface DailySummariesResponse {
   summaries: SummaryResponse[]
 }
 
-type SourceTab = 'trading-view' | 'cfzh' | 'x' | 'general'
+type SourceTab = 'trading-view' | 'cfzh' | 'x' | 'general' | 'x-today'
 
-const SOURCE_TABS: SourceTab[] = ['trading-view', 'x', 'cfzh', 'general']
+const SOURCE_TABS: SourceTab[] = ['trading-view', 'x', 'cfzh', 'general', 'x-today']
 
 // Tabs that show the last few days' summaries as collapsible sections.
 const MULTI_DAY_SOURCES: Partial<Record<SourceTab, { endpoint: string; emptyMessage: string }>> = {
@@ -26,6 +26,10 @@ const MULTI_DAY_SOURCES: Partial<Record<SourceTab, { endpoint: string; emptyMess
   general: {
     endpoint: '/api/market/signal-digests',
     emptyMessage: 'No signal digests in the last 4 days.',
+  },
+  'x-today': {
+    endpoint: '/api/market/x-today-news',
+    emptyMessage: 'No X Today news in the last 4 days.',
   },
 }
 
@@ -52,6 +56,7 @@ const TAB_LABELS: Record<SourceTab, string> = {
   x: 'X',
   cfzh: 'CFZH',
   general: 'General',
+  'x-today': 'X Today',
 }
 
 export function MarketView() {
