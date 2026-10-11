@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { SignalDigestDay, type SignalDigestRun } from './SignalDigestDay'
 
 interface SummaryResponse {
   date: string
   content: string | null
+  runs?: SignalDigestRun[]  // signal digests: every run that day, newest first
 }
 
 interface DailySummariesResponse {
@@ -117,7 +119,7 @@ export function MarketView() {
 
     const multiDay = MULTI_DAY_SOURCES[activeSource]
     if (multiDay) {
-      if (dailySummaries.length === 0 || dailySummaries.every((s) => !s.content)) {
+      if (dailySummaries.length === 0 || dailySummaries.every((s) => !s.content && !s.runs?.length)) {
         return (
           <div className="flex items-center justify-center h-64 text-sol-base1">
             {multiDay.emptyMessage}
@@ -134,9 +136,16 @@ export function MarketView() {
             >
               <summary className="px-4 py-3 bg-sol-base3 cursor-pointer font-medium text-sol-base01 hover:bg-sol-base2/50 select-none">
                 {s.date}
+                {s.runs && (
+                  <span className="ml-2 text-sm font-normal text-sol-base1">
+                    {s.runs.length} {s.runs.length === 1 ? 'run' : 'runs'}
+                  </span>
+                )}
               </summary>
               <div className="px-4 py-3">
-                {s.content ? (
+                {s.runs?.length ? (
+                  <SignalDigestDay runs={s.runs} />
+                ) : s.content ? (
                   <div className="prose prose-base summary-prose">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{s.content}</ReactMarkdown>
                   </div>

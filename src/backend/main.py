@@ -229,36 +229,64 @@ def get_cfzh_summaries():
     return {"summaries": summaries}
 
 
+def _split_signal_report(text: str) -> tuple[str, str]:
+    """Return (body without the leading ``# Signal digest`` title, verdict line).
+
+    The verdict previews a folded run: the first line of prose after the title,
+    skipping headings, blockquotes (the fallback-agent notice) and bare bold
+    labels such as ``**Investing**``, with list markers and markdown stripped.
+    """
+    lines = text.split("\n")
+    body_start = 0
+    for i, line in enumerate(lines):
+        if line.strip():
+            if line.startswith("# "):
+                body_start = i + 1
+            break
+    body = "\n".join(lines[body_start:]).strip()
+    verdict = ""
+    for line in body.split("\n"):
+        line = line.strip()
+        if not line or line.startswith((">", "#")) or re.fullmatch(r"\*\*[^*]+\*\*:?", line):
+            continue
+        line = re.sub(r"^(?:[-*+]|\d+\.)\s+", "", line)
+        line = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", line)
+        verdict = line.replace("**", "").replace("`", "")
+        break
+    return body, verdict
+
+
 def load_signal_digests(runs_path: Path, today: date, days: int = 4) -> list[dict]:
-    """Latest signal-digest report per day for ``today`` and the previous days.
+    """Every signal-digest run with a report, grouped by day, for ``today`` and
+    the previous days.
 
     Days without a report are omitted, so at most ``days`` entries come back,
-    newest first.
+    newest first; each day's ``runs`` are newest first too.
     """
     wanted = {(today - timedelta(days=i)).strftime("%Y%m%d") for i in range(days)}
-    latest: dict[str, tuple[tuple[str, int], Path]] = {}
+    by_day: dict[str, list[tuple[tuple[str, int], Path]]] = {}
     if runs_path.exists():
         for run in runs_path.iterdir():
             m = SIGNAL_DIGEST_RUN_RE.match(run.name)
             if not m or m.group(1) not in wanted or not (run / "report.md").is_file():
                 continue
-            key = (m.group(2), int(m.group(3) or 1))
-            if m.group(1) not in latest or key > latest[m.group(1)][0]:
-                latest[m.group(1)] = (key, run)
+            by_day.setdefault(m.group(1), []).append(((m.group(2), int(m.group(3) or 1)), run))
 
     summaries = []
-    for day in sorted(latest, reverse=True):
-        (hhmm, _), run = latest[day]
+    for day in sorted(by_day, reverse=True):
         formatted_date = datetime.strptime(day, "%Y%m%d").strftime("%B %d, %Y")
-        content = (run / "report.md").read_text()
-        content = f"Generated {hhmm[:2]}:{hhmm[2:]} ({formatted_date})\n\n{content}"
-        summaries.append({"date": formatted_date, "content": content})
+        runs = []
+        for (hhmm, _), run in sorted(by_day[day], reverse=True):
+            body, verdict = _split_signal_report((run / "report.md").read_text())
+            runs.append({"run_id": run.name, "time": f"{hhmm[:2]}:{hhmm[2:]}",
+                         "verdict": verdict, "content": body})
+        summaries.append({"date": formatted_date, "content": None, "runs": runs})
     return summaries
 
 
 @app.get("/api/market/signal-digests")
 def get_signal_digests():
-    """Get the latest signal-digest report for today and each of the previous 3 days."""
+    """Get every signal-digest run for today and each of the previous 3 days, grouped by day."""
     today = datetime.now(ZoneInfo("America/Los_Angeles")).date()
     return {"summaries": load_signal_digests(SIGNAL_DIGEST_RUNS_PATH, today)}
 

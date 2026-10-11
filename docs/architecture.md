@@ -101,7 +101,7 @@ TradingView Scanner API              CoinMarketCap API                News Summa
 | `/api/market/ndx-summary` | GET | Returns today's NDX/Trading View summary |
 | `/api/market/cfzh-summary` | GET | Returns today's CFZH forum summary |
 | `/api/market/x-summary` | GET | Returns today's X market news summary |
-| `/api/market/signal-digests` | GET | Returns `summaries[]` (`date`, `content`): the latest signal-digest `report.md` per day for today + the previous 3 days (LA time), days without a report omitted. Reads `~/projects/news/data/signal_digest/runs/<YYYYMMDD_HHMM[_N]>/report.md`; experiment runs with other suffixes (`_jev`, `_nofilter`) are skipped |
+| `/api/market/signal-digests` | GET | Returns `summaries[]` (`date`, `runs[]`): every signal-digest run with a `report.md`, grouped by day, for today + the previous 3 days (LA time), days without a report omitted; days and runs newest first. Each run has `run_id`, `time` (HH:MM from the dir name), `verdict` (first prose line, the folded-run preview) and `content` (the report minus its `# Signal digest` title). Reads `~/projects/news/data/signal_digest/runs/<YYYYMMDD_HHMM[_N]>/report.md`; experiment runs with other suffixes (`_jev`, `_nofilter`) are skipped |
 | `/api/market/trendspider-posts` | GET | Returns up to 50 recent TrendSpider posts (JSONL) |
 | `/api/market/ai-news-brief` | GET | Returns the latest Zhihu AI news daily brief (`date`, `is_stale`, `articles[]`) from `~/projects/news/data/zhihu/daily_briefs/zhihu_brief_YYYYMMDD.jsonl` |
 | `/api/market/overview` | GET | Returns market overview: tickers grouped by theme with prices, changes, volume, plus `age_seconds` (how old the served snapshot is). Served from `overview_cache`'s background-refreshed snapshot, so the normal response does **no** network I/O (~5ms); it fetches synchronously only when the snapshot is older than `MAX_SERVE_AGE` or `force=1` is passed (~0.9s) |
@@ -151,6 +151,9 @@ App.tsx
 │   ├── Persists selected sub-tab in sessionStorage (per browser tab)
 │   ├── Sub-tabs: Trading View | X | CFZH | General (signal digest)
 │   ├── CFZH and General show the last 4 days as collapsible sections (newest open)
+│   ├── General nests each day's runs (SignalDigestDay.tsx): each run folds on its own,
+│   │   folded runs show time + verdict, only the latest run starts open, and
+│   │   "Unfold all runs" / "Fold all runs" act on the whole day
 │   └── Summary tabs: markdown (react-markdown + remark-gfm)
 │
 ├── TrendSpiderView.tsx — card feed of recent TrendSpider posts
