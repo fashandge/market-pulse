@@ -80,7 +80,7 @@ export function ChinaNewsView() {
             latest available summary from <strong>{data.date}</strong>.
           </div>
         )}
-        <div className="prose prose-base max-w-none prose-headings:text-sol-base01 prose-p:text-sol-base00 prose-a:text-sol-blue prose-strong:text-sol-base01 prose-code:text-sol-cyan prose-code:bg-sol-base2 prose-code:px-1 prose-code:rounded">
+        <div className="prose prose-base summary-prose">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{data.content}</ReactMarkdown>
         </div>
       </>

@@ -1,12 +1,31 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* Atkinson Hyperlegible scaled up 15% for the markdown summaries. Latin subset
+   only, so Chinese text falls back to the system CJK font at its normal size. */
+@font-face {
+  font-family: 'Atkinson Hyperlegible Reading';
+  src: url('/fonts/atkinson-hyperlegible-400-latin.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+  size-adjust: 115%;
+}
+
+@font-face {
+  font-family: 'Atkinson Hyperlegible Reading';
+  src: url('/fonts/atkinson-hyperlegible-700-latin.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+  size-adjust: 115%;
+}
+
 @theme {
   --color-sol-base3: #fdf6e3;
   --color-sol-base2: #eee8d5;
   --color-sol-base1: #93a1a1;
   --color-sol-base00: #657b83;
   --color-sol-base01: #586e75;
+  --color-sol-base02: #073642;
   --color-sol-blue: #268bd2;
   --color-sol-cyan: #2aa198;
   --color-sol-green: #859900;
@@ -31,4 +50,48 @@ body {
 
 #root {
   min-height: 100vh;
+}
+
+/* Markdown summaries (Market News, China news). Main text in base02 (~12:1 on
+   base3) rather than the lighter base00/base01 greys (~4-5:1), for low vision. */
+.summary-prose {
+  --tw-prose-body: var(--color-sol-base02);
+  --tw-prose-headings: var(--color-sol-base02);
+  --tw-prose-lead: var(--color-sol-base02);
+  --tw-prose-bold: var(--color-sol-base02);
+  --tw-prose-counters: var(--color-sol-base01);
+  --tw-prose-bullets: var(--color-sol-base01);
+  --tw-prose-quotes: var(--color-sol-base02);
+  --tw-prose-quote-borders: var(--color-sol-base1);
+  --tw-prose-hr: var(--color-sol-base2);
+  --tw-prose-captions: var(--color-sol-base01);
+  --tw-prose-code: var(--color-sol-base02);
+  --tw-prose-th-borders: var(--color-sol-base1);
+  --tw-prose-td-borders: var(--color-sol-base2);
+  --tw-prose-links: #17598a; /* darkened Solarized blue, ~6.9:1 */
+  max-width: none;
+  font-family: 'Atkinson Hyperlegible Reading', var(--font-sans);
+  line-height: 1.85;
+}
+
+.summary-prose :where(h1, h2, h3, h4) {
+  font-weight: 700;
+}
+
+.summary-prose a {
+  font-weight: 400;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.summary-prose :where(code):not(:where(pre code)) {
+  background: var(--color-sol-base2);
+  padding: 0.1em 0.3em;
+  border-radius: 0.25rem;
+  font-weight: 500;
+}
+
+.summary-prose :where(code):not(:where(pre code))::before,
+.summary-prose :where(code):not(:where(pre code))::after {
+  content: none;
 }

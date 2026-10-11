@@ -28,6 +28,8 @@ Market Pulse is a web dashboard for monitoring market and individual stock/crypt
 - Defined in `index.css` using `@theme` directive with `--color-sol-*` variables
 - Warm cream backgrounds (base3/base2), blue accents, green/red for changes
 - Applied consistently across all components including Plotly charts
+- Markdown summaries (Market News tabs, China news) use the shared `.summary-prose` class: body/headings in base02 (~12:1 contrast) instead of the lighter base00/base01 greys (~4-5:1), links darkened to `#17598a` and underlined, inline code without the cyan tint or backticks
+- `.summary-prose` text uses "Atkinson Hyperlegible Reading", a self-hosted Latin-only copy (`public/fonts/`) with `size-adjust: 115%`: English renders ~20px while Chinese falls back to the system CJK font at its normal size
 
 ### Backend: FastAPI
 
