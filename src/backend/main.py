@@ -405,6 +405,9 @@ def get_ai_news_briefs():
         date_str = f.stem.split("_")[-1]
         brief_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
         articles = [json.loads(line) for line in f.read_text().splitlines() if line.strip()]
+        for article in articles:
+            # The full article text (for signal_digest) is not shown in the tab.
+            article.pop("body", None)
         articles.sort(key=lambda a: a.get("rank", 9999))
         briefs.append({"date": brief_date, "articles": articles})
 
