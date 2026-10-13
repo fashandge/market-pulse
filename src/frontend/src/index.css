@@ -52,10 +52,19 @@ body {
   min-height: 100vh;
 }
 
-/* Plain-text reading cards (AI News): same face and contrast as .summary-prose. */
+/* Plain-text reading cards (AI News, mostly Chinese). The Reading face covers
+   only Latin, so it styles the embedded English/digits while an explicit
+   Simplified-Chinese stack renders the hanzi (with lang="zh-CN" so the browser
+   picks SC glyph forms, not Japanese ones). Contrast as in .summary-prose. */
+@layer components {
 .reading-text {
-  font-family: 'Atkinson Hyperlegible Reading', var(--font-sans);
+  font-family: 'Atkinson Hyperlegible Reading', "PingFang SC", "Hiragino Sans GB",
+    "Noto Sans CJK SC", "Noto Sans SC", "Microsoft YaHei", var(--font-sans);
   color: var(--color-sol-base02);
+  font-size: 1.0625rem;
+  line-height: 1.9;
+  letter-spacing: 0.02em;
+}
 }
 
 /* Markdown summaries (Market News, China news). Main text in base02 (~12:1 on

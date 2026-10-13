@@ -120,18 +120,19 @@ export function AiNewsView() {
                         href={article.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="reading-text font-bold text-lg leading-snug hover:underline"
+                        className="font-bold text-lg leading-snug hover:underline"
                       >
                         {article.title}
                       </a>
                     ) : (
-                      <h3 className="reading-text font-bold text-lg leading-snug">
+                      <h3 className="font-bold text-lg leading-snug">
                         {article.title}
                       </h3>
                     )
                     return (
                       <div
                         key={index}
+                        lang="zh-CN"
                         className="reading-text w-full max-w-xl bg-sol-base3 rounded-xl border border-sol-base2 shadow-sm px-5 py-4"
                       >
                         <div className="flex flex-wrap gap-1.5 mb-2">
@@ -148,7 +149,7 @@ export function AiNewsView() {
                         </div>
                         <div className="mb-2">{titleNode}</div>
                         {article.snippet && (
-                          <p className="whitespace-pre-wrap leading-[1.85]">
+                          <p className="whitespace-pre-wrap">
                             {article.snippet}
                           </p>
                         )}
