@@ -160,7 +160,10 @@ export function MarketView() {
                 {s.runs?.length ? (
                   <SignalDigestDay runs={s.runs} />
                 ) : s.content ? (
-                  <div className="prose prose-base summary-prose">
+                  <div
+                    lang={activeSource === 'cfzh' ? 'zh-CN' : undefined}
+                    className="prose prose-base summary-prose"
+                  >
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={activeSource === 'x-today' ? NEW_TAB_LINKS : undefined}

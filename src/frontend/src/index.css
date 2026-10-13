@@ -52,14 +52,19 @@ body {
   min-height: 100vh;
 }
 
-/* Plain-text reading cards (AI News, mostly Chinese). The Reading face covers
-   only Latin, so it styles the embedded English/digits while an explicit
-   Simplified-Chinese stack renders the hanzi (with lang="zh-CN" so the browser
-   picks SC glyph forms, not Japanese ones). Contrast as in .summary-prose. */
+/* Reading face for news text. The Reading face covers only Latin, so it styles
+   English/digits while the Simplified-Chinese stack renders hanzi. Mark Chinese
+   content lang="zh-CN" so the browser picks SC glyph forms, not Japanese ones. */
+:root {
+  --font-reading: 'Atkinson Hyperlegible Reading', "PingFang SC", "Hiragino Sans GB",
+    "Noto Sans CJK SC", "Noto Sans SC", "Microsoft YaHei", var(--font-sans);
+}
+
+/* Plain-text reading cards (AI News, mostly Chinese); contrast as in
+   .summary-prose, spacing sized for dense CJK text. */
 @layer components {
 .reading-text {
-  font-family: 'Atkinson Hyperlegible Reading', "PingFang SC", "Hiragino Sans GB",
-    "Noto Sans CJK SC", "Noto Sans SC", "Microsoft YaHei", var(--font-sans);
+  font-family: var(--font-reading);
   color: var(--color-sol-base02);
   font-size: 1.0625rem;
   line-height: 1.9;
@@ -85,8 +90,15 @@ body {
   --tw-prose-td-borders: var(--color-sol-base2);
   --tw-prose-links: #17598a; /* darkened Solarized blue, ~6.9:1 */
   max-width: none;
-  font-family: 'Atkinson Hyperlegible Reading', var(--font-sans);
+  font-family: var(--font-reading);
   line-height: 1.85;
+}
+
+/* Chinese summaries (CFZH forum): bigger and airier for dense hanzi. */
+.summary-prose:lang(zh) {
+  font-size: 1.0625rem;
+  line-height: 1.9;
+  letter-spacing: 0.02em;
 }
 
 .summary-prose :where(h1, h2, h3, h4) {
