@@ -68,6 +68,14 @@ def get_market_estimates():
     return estimates.load_estimates()
 
 
+@app.get("/api/market/estimates/prices")
+def get_market_estimate_prices():
+    """Live TradingView price of every cached estimates ticker, which the
+    Estimates tab fetches on open to update price, target gap and price ÷ EPS
+    on screen. The cache files keep their fetch-time price."""
+    return estimates.live_prices()
+
+
 @app.post("/api/market/estimates/{ticker}")
 def fetch_market_estimates(ticker: str):
     """One ticker's estimates for the Estimates tab's search box: the cache

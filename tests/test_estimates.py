@@ -165,3 +165,38 @@ def test_a_source_failure_surfaces_as_fetch_failed_and_keeps_the_old_cache(cache
         estimates.get_or_fetch("QQQ")
 
     assert json.loads((cache / "QQQ.json").read_text())["price"] == 5.0
+
+
+# --- live prices (GET /api/market/estimates/prices) --------------------------
+
+
+def test_live_prices_look_up_every_cached_ticker_and_leave_the_cache_alone(cache, monkeypatch):
+    for ticker in ("MU", "AMD"):
+        _write(cache, ticker, price=1.0)
+    (cache / "BAD.json").write_text("{not json")
+    asked = []
+
+    def fake_prices(symbols):
+        asked.append(symbols)
+        return {"MU": {"price": 2.0, "delay": "", "formal_symbol": "NASDAQ:MU"}}
+
+    monkeypatch.setattr(estimates.quotes, "fetch_us_prices", fake_prices)
+
+    result = estimates.live_prices()
+
+    assert asked == [["AMD", "MU"]]
+    assert result == {"prices": {"MU": {"price": 2.0, "delay": "", "formal_symbol": "NASDAQ:MU"}}, "error": None}
+    assert json.loads((cache / "MU.json").read_text())["price"] == 1.0
+
+
+def test_a_scanner_failure_is_reported_not_fatal(cache, monkeypatch):
+    _write(cache, "MU")
+
+    def boom(symbols):
+        raise OSError("timed out")
+
+    monkeypatch.setattr(estimates.quotes, "fetch_us_prices", boom)
+
+    result = estimates.live_prices()
+
+    assert result["prices"] == {} and "timed out" in result["error"]

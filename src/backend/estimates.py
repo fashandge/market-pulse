@@ -18,6 +18,11 @@ outbound requests, about two seconds. The app is reachable through the tunnel
 without auth, so that path is bounded: the ticker must be in the chart
 universe, a cache file younger than ``REFETCH_AFTER`` is returned as is, and
 at most ``MAX_FETCHES_PER_HOUR`` fetches run in any hour, one at a time.
+
+The price in a cache file is finviz's at fetch time, up to a week old for a
+holding. ``live_prices`` gets the current one from the TradingView scanner
+when the tab opens; the tab recomputes the target gap and price ÷ EPS from it
+on screen. The cache files are never rewritten with it.
 """
 
 from __future__ import annotations
@@ -30,7 +35,7 @@ from pathlib import Path
 
 from stock_picker.scripts import fetch_estimates
 
-from src.backend import portfolio
+from src.backend import portfolio, quotes
 from src.backend.tickers import charts
 
 ESTIMATES_DIR = Path.home() / "projects/stock_picker/data/estimates"
@@ -132,3 +137,20 @@ def get_or_fetch(ticker: str) -> dict:
             except fetch_estimates.EstimatesError as exc:
                 raise FetchFailed(str(exc)) from exc
     return {**data, "in_portfolio": ticker in portfolio.load_symbols()}
+
+
+def live_prices() -> dict:
+    """Current price of every cached ticker, from one TradingView scanner request.
+
+    ``{"prices": {ticker: {"price", "delay", "formal_symbol"}}, "error": str | None}``.
+    Only cached tickers are looked up, so the request takes no user input. A
+    scanner failure comes back as ``error`` with no prices, and the tab keeps
+    showing the cached ones.
+    """
+    tickers = sorted(
+        data["ticker"] for path in ESTIMATES_DIR.glob("*.json") if (data := _read(path))
+    )
+    try:
+        return {"prices": quotes.fetch_us_prices(tickers), "error": None}
+    except (OSError, ValueError) as exc:
+        return {"prices": {}, "error": f"TradingView scanner: {exc}"}

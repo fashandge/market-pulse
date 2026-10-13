@@ -108,6 +108,7 @@ TradingView Scanner API              CoinMarketCap API                News Summa
 | `/api/market/overview` | GET | Returns market overview: tickers grouped by theme with prices, changes, volume, plus `age_seconds` (how old the served snapshot is). Served from `overview_cache`'s background-refreshed snapshot, so the normal response does **no** network I/O (~5ms); it fetches synchronously only when the snapshot is older than `MAX_SERVE_AGE` or `force=1` is passed (~0.9s) |
 | `/api/market/breadth` | GET | Full-history S&P 500 / Nasdaq-100 breadth (% of members above 20/50/200-day SMA, net new 52-week highs, advancers − decliners) with SPY/QQQ adjusted closes and 5-week distribution-day counts, columnar (`dates` + one array per series), read-only from the investment duckdb (`breadth.py`); cached on the DB file's mtime |
 | `/api/market/estimates` | GET | Analyst estimates for every ticker with a cache file in `~/projects/stock_picker/data/estimates/` (`estimates.py`): per ticker, consensus EPS and revenue by fiscal year, price, mean target, mean rating, the stockanalysis.com cross-check and the rating-change log, passed through unchanged plus `in_portfolio`. Holdings first in watchlist order, then the rest alphabetically; files that are not valid or lack required fields are named in `unreadable`. A plain per-request folder read — no network, no cache |
+| `/api/market/estimates/prices` | GET | Live price of every cached estimates ticker (`estimates.live_prices`): one TradingView `america/scan` request filtered on the bare `name` column (`quotes.fetch_us_prices`), so no exchange is needed for tickers outside `ticker.csv`. Returns `{prices: {ticker: {price, delay, formal_symbol}}, error}`; a scanner failure is an `error` string with no prices. Never writes the cache files |
 | `/api/market/estimates/{ticker}` | POST | One ticker's estimates for the Estimates tab's search box and Refresh link: the cache file when it is under an hour old, otherwise a live fetch through stock_picker's `fetch_estimates.fetch_ticker` (three outbound requests, ~2s) that also writes the cache. Bounded because the tunnel has no auth: 404 unless the symbol is in the chart ticker universe, 429 past 30 fetches an hour (one at a time), 502 when a source refuses or has no estimates (ETFs) |
 | `/api/tickers/search` | GET | Symbol search over the chart ticker universe (`q`, `limit`) |
 | `/api/tickers/portfolio` | GET | Portfolio tickers (from stock_picker's `data/portfolio.csv`, synced from the TradingView `portfolio` watchlist) with company names, for the search dropdown quick-picks |
@@ -181,6 +182,11 @@ App.tsx
 │     • Detail panel below for the selected row (remembered in sessionStorage,
 │       first row by default): every fiscal year, the cross-check figures, the
 │       rating changes (per quarter, per broker, full log) and a Refresh link.
+│     • On open it also fetches /api/market/estimates/prices and overlays the live
+│       TradingView price on screen, recomputing target gap and price ÷ EPS with
+│       the fetcher's rounding (consensus, targets and ratings stay as fetched; the
+│       cache files keep their finviz price). A price without a live quote is grey,
+│       and a note under the table gives the price time or the scanner error.
 │   The table is sized to fit a ~900px content area without sideways scrolling.
 │   Data comes from stock_picker's scripts/fetch_estimates.py — weekly for the
 │   holdings, on demand (script or search box) for anything else.

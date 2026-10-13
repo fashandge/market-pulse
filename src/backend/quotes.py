@@ -45,6 +45,10 @@ from src.backend.quote_format import build_quote
 
 TICKER_CSV = Path.home() / "projects/stock_picker/data/ticker.csv"
 SCANNER_URL = "https://scanner.tradingview.com/global/scan"
+US_SCANNER_URL = "https://scanner.tradingview.com/america/scan"
+# Listing venues for ``fetch_us_prices``: a bare symbol can also match an OTC
+# line, which is never the one the dashboard means.
+US_EXCHANGES = ["NASDAQ", "NYSE", "AMEX", "CBOE"]
 FRED_CSV_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={ids}"
 FRED_CACHE_TTL = 900  # seconds; the series only update once per business day
 # ``update_mode`` rides along free in the same batch request and says whether
@@ -135,17 +139,10 @@ def fetch_covered_quotes(extra: dict[str, str] | None = None) -> dict[str, dict]
             continue
         formal_to_symbol[quote_format.formal_symbol(symbol, exchange)] = symbol
 
-    payload = json.dumps({
+    body = _scan(SCANNER_URL, {
         "symbols": {"tickers": list(formal_to_symbol), "query": {"types": []}},
         "columns": COLUMNS,
-    }).encode()
-    headers = {"Content-Type": "application/json"}
-    cookie = tv_session.cookie_header()
-    if cookie:
-        headers["Cookie"] = cookie
-    req = urllib.request.Request(SCANNER_URL, data=payload, headers=headers)
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        body = json.load(resp)
+    })
 
     result: dict[str, dict] = _fetch_fred_quotes(fred_symbols)
     for row in body.get("data", []):
@@ -165,6 +162,48 @@ def fetch_covered_quotes(extra: dict[str, str] | None = None) -> dict[str, dict]
         # the chart link (it can differ from the CSV spelling).
         quote["formal_symbol"] = formal
         result[symbol] = quote
+    return result
+
+
+def _scan(url: str, payload: dict) -> dict:
+    """POST one scanner query, with the logged-in session when there is one."""
+    headers = {"Content-Type": "application/json"}
+    cookie = tv_session.cookie_header()
+    if cookie:
+        headers["Cookie"] = cookie
+    req = urllib.request.Request(url, data=json.dumps(payload).encode(), headers=headers)
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        return json.load(resp)
+
+
+def fetch_us_prices(symbols: list[str]) -> dict[str, dict]:
+    """Last price for bare US-listed symbols whose exchange is not known.
+
+    One ``america/scan`` request filtered on the ``name`` column resolves the
+    listing itself, so a ticker outside the CSV (any Estimates-tab ticker)
+    needs no exchange lookup. Returns ``{symbol: {"price", "delay",
+    "formal_symbol"}}``; a symbol the scanner does not list is simply absent.
+    """
+    if not symbols:
+        return {}
+    body = _scan(US_SCANNER_URL, {
+        "filter": [
+            {"left": "name", "operation": "in_range", "right": symbols},
+            {"left": "exchange", "operation": "in_range", "right": US_EXCHANGES},
+        ],
+        "columns": ["name", "close", "update_mode"],
+        "range": [0, 2 * len(symbols)],
+    })
+    result: dict[str, dict] = {}
+    for row in body.get("data", []):
+        name, close, update_mode = (row["d"] + [None] * 3)[:3]
+        if name in result or close is None:
+            continue
+        result[name] = {
+            "price": close,
+            "delay": quote_format.delay_label(update_mode),
+            "formal_symbol": row["s"],
+        }
     return result
 
 

@@ -62,6 +62,19 @@ interface Estimate {
   ratings: Rating[]
   ratings_summary: { by_quarter: QuarterSummary[]; latest_by_analyst: BrokerState[] }
   in_portfolio: boolean
+  // Set by withLive when the TradingView scanner returned a current price.
+  live?: LivePrice
+}
+
+interface LivePrice {
+  price: number
+  delay: string
+  formal_symbol: string
+}
+
+interface LivePrices {
+  prices: Record<string, LivePrice>
+  error: string | null
 }
 
 interface EstimatesResponse {
@@ -105,6 +118,25 @@ const ageDays = (iso: string) => (Date.now() - new Date(iso).getTime()) / 86_400
 const yearTitle = (y: Year) =>
   `Fiscal year ${y.fiscal_year}, ending ${monthYear(y.period_end)}` +
   (y.eps_analysts != null ? `; ${y.eps_analysts} analysts` : '')
+
+// The cached price is finviz's at fetch time. Swap in the live one and
+// recompute what derives from it, with the fetcher's rounding; consensus,
+// targets and ratings stay as fetched.
+function withLive(t: Estimate, live: LivePrice | undefined): Estimate {
+  if (!live) return t
+  const price = live.price
+  return {
+    ...t,
+    price,
+    live,
+    target_gap_pct: t.target_mean == null ? null : Math.round((t.target_mean / price - 1) * 1000) / 10,
+    years: t.years.map((y) => ({ ...y, pe: y.eps && y.eps > 0 ? Math.round((price / y.eps) * 10) / 10 : null })),
+  }
+}
+const priceSource = (t: Estimate) =>
+  t.live
+    ? `Live from TradingView${t.live.delay ? `, ${t.live.delay} delayed` : ''}`
+    : `finviz price when fetched, ${dateTime(t.fetched_at)}`
 
 // Holdings stay in watchlist order; everything else is alphabetical.
 function upsert(list: Estimate[], item: Estimate): Estimate[] {
@@ -348,7 +380,9 @@ function Detail({ estimate, busy, onRefresh }: { estimate: Estimate; busy: boole
         <span className="text-[1.15rem] font-bold">{estimate.ticker}</span>
         <span className="text-sol-base00">{estimate.company}</span>
         <span className="text-[0.88rem]" style={NUM}>
-          {money(estimate.price)} · mean target {money(estimate.target_mean, 0)}{' '}
+          <span title={priceSource(estimate)}>{money(estimate.price)}</span>{' '}
+          <span className="text-sol-base1">{estimate.live ? (estimate.live.delay ? `${estimate.live.delay} delayed` : 'live') : 'at fetch'}</span>
+          {' '}· mean target {money(estimate.target_mean, 0)}{' '}
           <span className={changeColor(estimate.target_gap_pct)}>({signed(estimate.target_gap_pct)})</span> · mean
           rating {estimate.recommendation?.toFixed(2) ?? '—'}
         </span>
@@ -399,9 +433,26 @@ export function EstimatesView() {
   const [selected, setSelected] = useState<string | null>(() => sessionStorage.getItem(SELECTED_KEY))
   const [busy, setBusy] = useState<string | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [live, setLive] = useState<LivePrices | null>(null)
+  const [liveAt, setLiveAt] = useState<Date | null>(null)
   const detailRef = useRef<HTMLDivElement>(null)
 
+  // Current prices for every cached ticker, one scanner request on the
+  // backend; on failure the cached prices stay on screen.
+  const loadLive = () =>
+    fetch('/api/market/estimates/prices')
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.json()
+      })
+      .then((body: LivePrices) => {
+        setLive(body)
+        setLiveAt(new Date())
+      })
+      .catch((err) => setLive({ prices: {}, error: err.message }))
+
   useEffect(() => {
+    loadLive()
     fetch('/api/market/estimates')
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -434,6 +485,7 @@ export function EstimatesView() {
         setData((prev) => prev && { ...prev, tickers: upsert(prev.tickers, estimate) })
         select(estimate.ticker)
         if (reveal) revealDetail()
+        loadLive()
       })
       .catch((err) => setFetchError(`${ticker}: ${err.message}`))
       .finally(() => setBusy(null))
@@ -457,8 +509,14 @@ export function EstimatesView() {
     return <div className="flex items-center justify-center h-64 text-sol-base1">Loading...</div>
   }
 
-  const current = data.tickers.find((t) => t.ticker === selected) ?? data.tickers[0]
-  const firstOther = data.tickers.findIndex((t) => !t.in_portfolio)
+  const tickers = data.tickers.map((t) => withLive(t, live?.prices[t.ticker]))
+  const current = tickers.find((t) => t.ticker === selected) ?? tickers[0]
+  const firstOther = tickers.findIndex((t) => !t.in_portfolio)
+  const priceNote = !live
+    ? 'Updating prices from TradingView…'
+    : live.error
+      ? `Live prices unavailable (${live.error}); showing the prices from each fetch.`
+      : `Price, target gap and price ÷ EPS use TradingView prices from ${liveAt?.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}; the consensus and targets are as of each fetch.`
   const COLUMNS = 7 + 2 * FORWARD_YEARS
 
   return (
@@ -474,7 +532,7 @@ export function EstimatesView() {
         </span>
       </div>
 
-      {data.tickers.length === 0 ? (
+      {tickers.length === 0 ? (
         <div className="flex items-center justify-center h-40 text-sol-base1">
           No estimates cached yet. Search for a ticker above to fetch its estimates.
         </div>
@@ -510,7 +568,7 @@ export function EstimatesView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.tickers.map((t, index) => {
+                  {tickers.map((t, index) => {
                     const forward = t.years.filter((y) => !y.reported).slice(0, FORWARD_YEARS)
                     const flagged = t.cross_check.years.some((r) => r.flag)
                     const stale = ageDays(t.fetched_at) > STALE_DAYS
@@ -534,7 +592,13 @@ export function EstimatesView() {
                           >
                             {t.ticker}
                           </td>
-                          <td className="px-1.5 py-1.5 text-right" style={NUM}>{money(t.price)}</td>
+                          <td
+                            className={`px-1.5 py-1.5 text-right ${t.live ? '' : 'text-sol-base1'}`}
+                            style={NUM}
+                            title={priceSource(t)}
+                          >
+                            {money(t.price)}
+                          </td>
                           <td
                             className={`px-1.5 py-1.5 text-right font-semibold ${changeColor(t.target_gap_pct)}`}
                             style={NUM}
@@ -601,6 +665,9 @@ export function EstimatesView() {
         </>
       )}
 
+      <p className={`text-[0.8rem] max-w-[110ch] ${live?.error ? 'text-sol-yellow' : 'text-sol-base00'}`}>
+        {priceNote}
+      </p>
       <p className="text-[0.8rem] text-sol-base00 max-w-[110ch]">
         Select a row for its detail. The 1st, 2nd and 3rd columns are consecutive fiscal years starting with the one
         that ends in the month shown, which differs by company. EPS bars: grey is reported, blue is the analyst
@@ -609,8 +676,8 @@ export function EstimatesView() {
         consensus.
       </p>
       <p className="text-[0.8rem] text-sol-base1 max-w-[110ch]">
-        Sources: Seeking Alpha consensus (normalized EPS, revenue), finviz (price, mean target, ratings),
-        stockanalysis.com as a cross-check. Holdings refresh every Sunday; other tickers are as old as their
+        Sources: Seeking Alpha consensus (normalized EPS, revenue), finviz (mean target, ratings, and the price
+        when TradingView has none), TradingView (live price), stockanalysis.com as a cross-check. Holdings refresh every Sunday; other tickers are as old as their
         fetch date.
         {data.unreadable.length > 0 && ` Unreadable cache files: ${data.unreadable.join(', ')}.`}
       </p>
