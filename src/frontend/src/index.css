@@ -52,6 +52,12 @@ body {
   min-height: 100vh;
 }
 
+/* Plain-text reading cards (AI News): same face and contrast as .summary-prose. */
+.reading-text {
+  font-family: 'Atkinson Hyperlegible Reading', var(--font-sans);
+  color: var(--color-sol-base02);
+}
+
 /* Markdown summaries (Market News, China news). Main text in base02 (~12:1 on
    base3) rather than the lighter base00/base01 greys (~4-5:1), for low vision. */
 .summary-prose {
