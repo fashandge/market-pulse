@@ -19,7 +19,6 @@ X_MARKET_NEWS_PATH = Path.home() / "projects/news/data/x_market_news"
 TRENDSPIDER_PATH = Path.home() / "projects/news/data/trendspider"
 ZHIHU_DAILY_BRIEFS_PATH = Path.home() / "projects/news/data/zhihu/daily_briefs"
 SIGNAL_DIGEST_RUNS_PATH = Path.home() / "projects/news/data/signal_digest/runs"
-X_TODAY_NEWS_PATH = Path.home() / "projects/news/data/x_today_news"
 # signal_digest names runs YYYYMMDD_HHMM, suffixed _2, _3… on collision; other
 # suffixes (e.g. _jev, _nofilter) are manual experiments and are skipped.
 SIGNAL_DIGEST_RUN_RE = re.compile(r"^(\d{8})_(\d{4})(?:_(\d+))?$")
@@ -315,32 +314,6 @@ def get_x_summary():
 
     content = md_files[0].read_text()
     return {"date": formatted_date, "content": content}
-
-
-def load_x_today_news(news_path: Path, today: date, days: int = 4) -> list[dict]:
-    """The newest X "Today's News" snapshot for ``today`` and each previous day.
-
-    Every day gets an entry, newest first; ``content`` is None when that day has
-    no snapshot. The file's ``# X Today's News — <date>`` title is dropped since
-    the tab already labels each day.
-    """
-    summaries = []
-    for days_ago in range(days):
-        d = today - timedelta(days=days_ago)
-        formatted_date = d.strftime("%B %d, %Y")
-        md_files = sorted(news_path.glob(f"x_today_news_{d.strftime('%Y%m%d')}_*.md"), reverse=True)
-        content = None
-        if md_files:
-            content = re.sub(r"\A#\s[^\n]*\n+", "", md_files[0].read_text())
-        summaries.append({"date": formatted_date, "content": content})
-    return summaries
-
-
-@app.get("/api/market/x-today-news")
-def get_x_today_news():
-    """Get the X "Today's News" widget stories for today and each of the previous 3 days."""
-    today = datetime.now(ZoneInfo("America/Los_Angeles")).date()
-    return {"summaries": load_x_today_news(X_TODAY_NEWS_PATH, today)}
 
 
 @app.get("/api/market/trendspider-posts")

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import ReactMarkdown, { type Components } from 'react-markdown'
+import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { SignalDigestDay, type SignalDigestRun } from './SignalDigestDay'
 
@@ -13,9 +13,9 @@ interface DailySummariesResponse {
   summaries: SummaryResponse[]
 }
 
-type SourceTab = 'trading-view' | 'cfzh' | 'x' | 'general' | 'x-today'
+type SourceTab = 'trading-view' | 'cfzh' | 'x' | 'general'
 
-const SOURCE_TABS: SourceTab[] = ['trading-view', 'x', 'cfzh', 'general', 'x-today']
+const SOURCE_TABS: SourceTab[] = ['trading-view', 'x', 'cfzh', 'general']
 
 // Tabs that show the last few days' summaries as collapsible sections.
 const MULTI_DAY_SOURCES: Partial<Record<SourceTab, { endpoint: string; emptyMessage: string }>> = {
@@ -27,19 +27,6 @@ const MULTI_DAY_SOURCES: Partial<Record<SourceTab, { endpoint: string; emptyMess
     endpoint: '/api/market/signal-digests',
     emptyMessage: 'No signal digests in the last 4 days.',
   },
-  'x-today': {
-    endpoint: '/api/market/x-today-news',
-    emptyMessage: 'No X Today news in the last 4 days.',
-  },
-}
-
-// X Today story titles link to x.com; open them in a new (focused) tab.
-const NEW_TAB_LINKS: Components = {
-  a: ({ href, children }) => (
-    <a href={href} target="_blank" rel="noopener noreferrer">
-      {children}
-    </a>
-  ),
 }
 
 const SOURCE_CONFIG: Record<string, { label: string; endpoint: string; noDataMessage: string }> = {
@@ -65,7 +52,6 @@ const TAB_LABELS: Record<SourceTab, string> = {
   x: 'X',
   cfzh: 'CFZH',
   general: 'General',
-  'x-today': 'X Today',
 }
 
 export function MarketView() {
@@ -164,12 +150,7 @@ export function MarketView() {
                     lang={activeSource === 'cfzh' ? 'zh-CN' : undefined}
                     className="prose prose-base summary-prose"
                   >
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      components={activeSource === 'x-today' ? NEW_TAB_LINKS : undefined}
-                    >
-                      {s.content}
-                    </ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{s.content}</ReactMarkdown>
                   </div>
                 ) : (
                   <p className="text-sol-base1">No summary for {s.date}.</p>
