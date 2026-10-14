@@ -7,6 +7,7 @@ interface CatalystEvent {
   date: string // YYYY-MM-DD
   time: string // optional, e.g. "08:30 ET"
   days_away: number
+  critical: boolean // could move the whole market (SPY/QQQ) given the current backdrop
   catalyst: string
   why_it_matters: string
   first_seen: string // "YYYY-MM-DD HH:MM"
@@ -39,6 +40,33 @@ function relativeDay(days: number): string {
   return `in ${days} days`
 }
 
+function CriticalBadge() {
+  return (
+    <span className="ml-2 inline-block rounded px-1.5 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide bg-sol-red text-sol-base3">
+      Critical
+    </span>
+  )
+}
+
+// The few market-moving events, listed above the groups so they can't be missed.
+function CriticalStrip({ events }: { events: CatalystEvent[] }) {
+  return (
+    <div className="rounded-lg border border-sol-red/40 bg-sol-red/5 px-4 py-3">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-sol-red">Critical ahead</h2>
+      <ul className="mt-1.5 flex flex-col gap-1 text-sm">
+        {events.map((e) => (
+          <li key={`${e.date}-${e.catalyst}`} className="text-sol-base02">
+            <span className="font-medium">{formatDay(e.date)}</span>
+            <span className="text-sol-base1"> · {[e.time, relativeDay(e.days_away)].filter(Boolean).join(' · ')}</span>
+            <span className="mx-2 text-sol-base1">—</span>
+            <span className="font-semibold">{e.catalyst}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function CategoryGroup({ category, events }: { category: Category; events: CatalystEvent[] }) {
   const style = CATEGORY_STYLE[category]
   return (
@@ -63,8 +91,11 @@ function CategoryGroup({ category, events }: { category: Category; events: Catal
           </thead>
           <tbody>
             {events.map((e) => (
-              <tr key={`${e.date}-${e.catalyst}`} className="border-b border-sol-base2/60 last:border-0 align-top">
-                <td className="px-4 py-2.5 whitespace-nowrap">
+              <tr
+                key={`${e.date}-${e.catalyst}`}
+                className={`border-b border-sol-base2/60 last:border-0 align-top ${e.critical ? 'bg-sol-red/5' : ''}`}
+              >
+                <td className={`px-4 py-2.5 whitespace-nowrap ${e.critical ? 'shadow-[inset_3px_0_0_var(--color-sol-red)]' : ''}`}>
                   <div className={`font-medium ${e.days_away <= 1 ? 'text-sol-red' : 'text-sol-base02'}`}>
                     {formatDay(e.date)}
                   </div>
@@ -73,7 +104,8 @@ function CategoryGroup({ category, events }: { category: Category; events: Catal
                   </div>
                 </td>
                 <td className="px-4 py-2.5 text-sol-base02">
-                  {e.catalyst}
+                  <span className={e.critical ? 'font-semibold' : ''}>{e.catalyst}</span>
+                  {e.critical && <CriticalBadge />}
                   {e.first_seen && (
                     <div className="text-xs text-sol-base1">first seen {formatDay(e.first_seen.slice(0, 10))}</div>
                   )}
@@ -129,10 +161,12 @@ export function EventsView() {
 
   const near = data.events.filter((e) => e.days_away < NEAR_TERM_DAYS)
   const later = data.events.filter((e) => e.days_away >= NEAR_TERM_DAYS)
+  const critical = data.events.filter((e) => e.critical)
 
   return (
     <div className="flex flex-col gap-8">
       {data.updated && <p className="text-xs text-sol-base1 -mb-4">Calendar updated {data.updated}</p>}
+      {critical.length > 0 && <CriticalStrip events={critical} />}
       <EventsBlock title="Next 14 days" events={near} categories={data.categories} />
       {later.length > 0 && <EventsBlock title="Later" events={later} categories={data.categories} />}
     </div>

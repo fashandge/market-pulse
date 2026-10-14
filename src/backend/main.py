@@ -325,7 +325,8 @@ def load_catalyst_events(path: Path, today: date) -> list[dict]:
     """Catalyst-calendar rows dated ``today`` or later, soonest first.
 
     ``when`` is ``YYYY-MM-DD`` optionally followed by a time; it is split into
-    ``date`` and ``time``. Past rows are dropped here too, so the tab stays right
+    ``date`` and ``time``; ``critical`` marks the few events the news project's
+    agent judged able to move the whole market. Past rows are dropped here too, so the tab stays right
     between the news project's twice-daily refreshes.
     """
     events = []
@@ -343,6 +344,7 @@ def load_catalyst_events(path: Path, today: date) -> list[dict]:
             "date": day.isoformat(),
             "time": when[10:].strip(),
             "days_away": (day - today).days,
+            "critical": row.get("importance") == "critical",
             "catalyst": row.get("catalyst", ""),
             "why_it_matters": row.get("why_it_matters", ""),
             "first_seen": row.get("first_seen", ""),
