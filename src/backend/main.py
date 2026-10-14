@@ -1,5 +1,6 @@
 """FastAPI backend for the market dashboard."""
 
+import csv
 import json
 import re
 from contextlib import asynccontextmanager
@@ -19,6 +20,9 @@ X_MARKET_NEWS_PATH = Path.home() / "projects/news/data/x_market_news"
 TRENDSPIDER_PATH = Path.home() / "projects/news/data/trendspider"
 ZHIHU_DAILY_BRIEFS_PATH = Path.home() / "projects/news/data/zhihu/daily_briefs"
 SIGNAL_DIGEST_RUNS_PATH = Path.home() / "projects/news/data/signal_digest/runs"
+CATALYST_EVENTS_PATH = Path.home() / "projects/news/data/catalyst_calendar/events.csv"
+# Render order of the Events tab; must match news.src.catalyst_calendar.state.CATEGORIES.
+CATALYST_CATEGORIES = ("macro", "special", "earnings")
 # signal_digest names runs YYYYMMDD_HHMM, suffixed _2, _3… on collision; other
 # suffixes (e.g. _jev, _nofilter) are manual experiments and are skipped.
 SIGNAL_DIGEST_RUN_RE = re.compile(r"^(\d{8})_(\d{4})(?:_(\d+))?$")
@@ -314,6 +318,55 @@ def get_x_summary():
 
     content = md_files[0].read_text()
     return {"date": formatted_date, "content": content}
+
+
+def load_catalyst_events(path: Path, today: date) -> list[dict]:
+    """Catalyst-calendar rows dated ``today`` or later, soonest first.
+
+    ``when`` is ``YYYY-MM-DD`` optionally followed by a time; it is split into
+    ``date`` and ``time``. Past rows are dropped here too, so the tab stays right
+    between the news project's twice-daily refreshes.
+    """
+    if not path.exists():
+        return []
+    events = []
+    with path.open(newline="") as fh:
+        for row in csv.DictReader(fh):
+            when = (row.get("when") or "").strip()
+            try:
+                day = date.fromisoformat(when[:10])
+            except ValueError:
+                continue
+            if day < today:
+                continue
+            category = row.get("category", "")
+            events.append({
+                "category": category if category in CATALYST_CATEGORIES else "special",  # catch-all
+                "date": day.isoformat(),
+                "time": when[10:].strip(),
+                "days_away": (day - today).days,
+                "catalyst": row.get("catalyst", ""),
+                "why_it_matters": row.get("why_it_matters", ""),
+                "first_seen": row.get("first_seen", ""),
+            })
+    events.sort(key=lambda e: (e["date"], CATALYST_CATEGORIES.index(e["category"]), e["time"]))
+    return events
+
+
+@app.get("/api/market/events")
+def get_catalyst_events():
+    """Upcoming catalysts from the news project's catalyst calendar."""
+    today = datetime.now(ZoneInfo("America/Los_Angeles")).date()
+    updated = None
+    if CATALYST_EVENTS_PATH.exists():
+        mtime = datetime.fromtimestamp(CATALYST_EVENTS_PATH.stat().st_mtime, ZoneInfo("America/Los_Angeles"))
+        updated = mtime.strftime("%b %d, %H:%M")
+    return {
+        "today": today.isoformat(),
+        "updated": updated,
+        "categories": list(CATALYST_CATEGORIES),
+        "events": load_catalyst_events(CATALYST_EVENTS_PATH, today),
+    }
 
 
 @app.get("/api/market/trendspider-posts")

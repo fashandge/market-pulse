@@ -101,6 +101,7 @@ TradingView Scanner API              CoinMarketCap API                News Summa
 | `/api/market/ndx-summary` | GET | Returns today's NDX/Trading View summary |
 | `/api/market/cfzh-summary` | GET | Returns today's CFZH forum summary |
 | `/api/market/x-summary` | GET | Returns today's X market news summary |
+| `/api/market/events` | GET | Returns `today`, `updated` (CSV mtime, LA time), `categories` (render order: macro, special, earnings; an unknown category is served as special, the catch-all) and `events[]` (`category`, `date`, `time`, `days_away`, `catalyst`, `why_it_matters`, `first_seen`), soonest first, past rows dropped. Reads the news project's catalyst calendar, `~/projects/news/data/catalyst_calendar/events.csv` |
 | `/api/market/signal-digests` | GET | Returns `summaries[]` (`date`, `runs[]`): every signal-digest run with a `report.md`, grouped by day, for today + the previous 3 days (LA time), days without a report omitted; days and runs newest first. Each run has `run_id`, `time` (HH:MM from the dir name), `verdict` (first prose line, the folded-run preview) and `content` (the report minus its `# Signal digest` title). Reads `~/projects/news/data/signal_digest/runs/<YYYYMMDD_HHMM[_N]>/report.md`; experiment runs with other suffixes (`_jev`, `_nofilter`) are skipped |
 | `/api/market/trendspider-posts` | GET | Returns up to 50 recent TrendSpider posts (JSONL) |
 | `/api/market/ai-news-brief` | GET | Returns the latest Zhihu AI news daily brief (`date`, `is_stale`, `articles[]`) from `~/projects/news/data/zhihu/daily_briefs/zhihu_brief_YYYYMMDD.jsonl` |
@@ -150,7 +151,10 @@ App.tsx
 │
 ├── MarketView.tsx
 │   ├── Persists selected sub-tab in sessionStorage (per browser tab)
-│   ├── Sub-tabs: Trading View | X | CFZH | General (signal digest)
+│   ├── Sub-tabs: Trading View | X | CFZH | General (signal digest) | Events
+│   ├── Events (EventsView.tsx): upcoming catalysts, "Next 14 days" then "Later",
+│   │   each grouped Macro (blue) → Special events (magenta, the catch-all) → Earnings (green),
+│   │   one fixed-width table per group; today/tomorrow dates in red, "first seen" date per row
 │   ├── CFZH and General show the last 4 days as collapsible sections (newest open)
 │   ├── General nests each day's runs (SignalDigestDay.tsx): each run folds on its own,
 │   │   folded runs show time + verdict, only the latest run starts open, and

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { SignalDigestDay, type SignalDigestRun } from './SignalDigestDay'
+import { EventsView } from './EventsView'
 
 interface SummaryResponse {
   date: string
@@ -13,9 +14,9 @@ interface DailySummariesResponse {
   summaries: SummaryResponse[]
 }
 
-type SourceTab = 'trading-view' | 'cfzh' | 'x' | 'general'
+type SourceTab = 'trading-view' | 'cfzh' | 'x' | 'general' | 'events'
 
-const SOURCE_TABS: SourceTab[] = ['trading-view', 'x', 'cfzh', 'general']
+const SOURCE_TABS: SourceTab[] = ['trading-view', 'x', 'cfzh', 'general', 'events']
 
 // Tabs that show the last few days' summaries as collapsible sections.
 const MULTI_DAY_SOURCES: Partial<Record<SourceTab, { endpoint: string; emptyMessage: string }>> = {
@@ -52,6 +53,7 @@ const TAB_LABELS: Record<SourceTab, string> = {
   x: 'X',
   cfzh: 'CFZH',
   general: 'General',
+  events: 'Events',
 }
 
 export function MarketView() {
@@ -70,6 +72,8 @@ export function MarketView() {
   }
 
   useEffect(() => {
+    // The Events tab fetches its own data (EventsView).
+    if (activeSource === 'events') return
     setLoading(true)
     setError(null)
 
@@ -101,6 +105,10 @@ export function MarketView() {
   }, [activeSource])
 
   const renderContent = () => {
+    if (activeSource === 'events') {
+      return <EventsView />
+    }
+
     if (loading) {
       return (
         <div className="flex items-center justify-center h-64 text-sol-base1">

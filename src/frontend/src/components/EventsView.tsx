@@ -1,0 +1,140 @@
+import { useEffect, useState } from 'react'
+
+type Category = 'macro' | 'special' | 'earnings'
+
+interface CatalystEvent {
+  category: Category
+  date: string // YYYY-MM-DD
+  time: string // optional, e.g. "08:30 ET"
+  days_away: number
+  catalyst: string
+  why_it_matters: string
+  first_seen: string // "YYYY-MM-DD HH:MM"
+}
+
+interface EventsResponse {
+  today: string
+  updated: string | null
+  categories: Category[]
+  events: CatalystEvent[]
+}
+
+const NEAR_TERM_DAYS = 14
+
+// Each category gets its own Solarized accent so the three main groups read apart at a glance.
+const CATEGORY_STYLE: Record<Category, { label: string; accent: string; text: string; tint: string }> = {
+  macro: { label: 'Macro', accent: 'border-sol-blue', text: 'text-sol-blue', tint: 'bg-sol-blue/10' },
+  special: { label: 'Special events', accent: 'border-sol-magenta', text: 'text-sol-magenta', tint: 'bg-sol-magenta/10' },
+  earnings: { label: 'Earnings', accent: 'border-sol-green', text: 'text-sol-green', tint: 'bg-sol-green/10' },
+}
+
+function formatDay(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+function relativeDay(days: number): string {
+  if (days === 0) return 'today'
+  if (days === 1) return 'tomorrow'
+  return `in ${days} days`
+}
+
+function CategoryGroup({ category, events }: { category: Category; events: CatalystEvent[] }) {
+  const style = CATEGORY_STYLE[category]
+  return (
+    <section className={`border-l-4 ${style.accent} rounded-r-lg overflow-hidden`}>
+      <h3 className={`px-4 py-2 ${style.tint} ${style.text} text-sm font-semibold uppercase tracking-wide`}>
+        {style.label}
+        <span className="ml-2 font-normal normal-case tracking-normal text-sol-base1">{events.length}</span>
+      </h3>
+      <div className="overflow-x-auto">
+        <table className="w-full table-fixed text-sm">
+          <colgroup>
+            <col className="w-36" />
+            <col className="w-[40%]" />
+            <col />
+          </colgroup>
+          <thead>
+            <tr className="text-left text-sol-base01 border-b border-sol-base2">
+              <th className="px-4 py-2 font-medium">When</th>
+              <th className="px-4 py-2 font-medium">Catalyst</th>
+              <th className="px-4 py-2 font-medium">Why it matters</th>
+            </tr>
+          </thead>
+          <tbody>
+            {events.map((e) => (
+              <tr key={`${e.date}-${e.catalyst}`} className="border-b border-sol-base2/60 last:border-0 align-top">
+                <td className="px-4 py-2.5 whitespace-nowrap">
+                  <div className={`font-medium ${e.days_away <= 1 ? 'text-sol-red' : 'text-sol-base02'}`}>
+                    {formatDay(e.date)}
+                  </div>
+                  <div className="text-xs text-sol-base1">
+                    {[e.time, relativeDay(e.days_away)].filter(Boolean).join(' · ')}
+                  </div>
+                </td>
+                <td className="px-4 py-2.5 text-sol-base02">
+                  {e.catalyst}
+                  {e.first_seen && (
+                    <div className="text-xs text-sol-base1">first seen {formatDay(e.first_seen.slice(0, 10))}</div>
+                  )}
+                </td>
+                <td className="px-4 py-2.5 text-sol-base00">{e.why_it_matters}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
+
+function EventsBlock({ title, events, categories }: { title: string; events: CatalystEvent[]; categories: Category[] }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <h2 className="text-base font-semibold text-sol-base01">{title}</h2>
+      {events.length === 0 ? (
+        <p className="text-sol-base1">No events.</p>
+      ) : (
+        categories.map((c) => {
+          const group = events.filter((e) => e.category === c)
+          return group.length ? <CategoryGroup key={c} category={c} events={group} /> : null
+        })
+      )}
+    </div>
+  )
+}
+
+// Upcoming market catalysts from the news project's catalyst calendar: the next
+// two weeks first, grouped macro → special events → earnings, then later events.
+export function EventsView() {
+  const [data, setData] = useState<EventsResponse | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/market/events')
+      .then((res) => res.json())
+      .then(setData)
+      .catch((err) => setError(err.message))
+  }, [])
+
+  if (error) {
+    return <div className="flex items-center justify-center h-64 text-sol-red">Error: {error}</div>
+  }
+  if (!data) {
+    return <div className="flex items-center justify-center h-64 text-sol-base1">Loading...</div>
+  }
+  if (data.events.length === 0) {
+    return <div className="flex items-center justify-center h-64 text-sol-base1">No upcoming events in the catalyst calendar.</div>
+  }
+
+  const near = data.events.filter((e) => e.days_away < NEAR_TERM_DAYS)
+  const later = data.events.filter((e) => e.days_away >= NEAR_TERM_DAYS)
+
+  return (
+    <div className="flex flex-col gap-8">
+      {data.updated && <p className="text-xs text-sol-base1 -mb-4">Calendar updated {data.updated}</p>}
+      <EventsBlock title="Next 14 days" events={near} categories={data.categories} />
+      {later.length > 0 && <EventsBlock title="Later" events={later} categories={data.categories} />}
+    </div>
+  )
+}

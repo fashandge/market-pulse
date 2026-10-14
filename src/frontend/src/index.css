@@ -31,6 +31,8 @@
   --color-sol-green: #859900;
   --color-sol-red: #dc322f;
   --color-sol-yellow: #b58900;
+  --color-sol-magenta: #d33682;
+  --color-sol-violet: #6c71c4;
   --font-sans: 'Atkinson Hyperlegible', ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: 'Geist Mono', ui-monospace, "SF Mono", Menlo, monospace;
 }
