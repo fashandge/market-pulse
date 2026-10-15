@@ -151,8 +151,8 @@ App.tsx
 │
 ├── MarketView.tsx
 │   ├── Persists selected sub-tab in sessionStorage (per browser tab)
-│   ├── Sub-tabs: Trading View | X | CFZH | General (signal digest) | Events
-│   ├── Events (EventsView.tsx): upcoming catalysts, "Next 14 days" then "Later",
+│   ├── Sub-tabs: Trading View | X | CFZH | General (signal digest) | Calendar
+│   ├── Calendar (EventsView.tsx): upcoming catalysts, "Next 14 days" then "Later",
 │   │   each grouped Macro (blue) → Special events (magenta, the catch-all) → Earnings (green),
 │   │   one fixed-width table per group; today/tomorrow dates in red, "first seen" date per row
 │   │   critical events: a "Critical ahead" strip at the top, and in their group a red-tinted

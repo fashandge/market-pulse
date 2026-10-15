@@ -53,7 +53,7 @@ const TAB_LABELS: Record<SourceTab, string> = {
   x: 'X',
   cfzh: 'CFZH',
   general: 'General',
-  events: 'Events',
+  events: 'Calendar',
 }
 
 export function MarketView() {
@@ -72,7 +72,7 @@ export function MarketView() {
   }
 
   useEffect(() => {
-    // The Events tab fetches its own data (EventsView).
+    // The Calendar tab fetches its own data (EventsView).
     if (activeSource === 'events') return
     setLoading(true)
     setError(null)
