@@ -438,7 +438,8 @@ def get_ai_news_briefs():
     for f in files:
         date_str = f.stem.split("_")[-1]
         brief_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
-        articles = [json.loads(line) for line in f.read_text().splitlines() if line.strip()]
+        # Not splitlines(): bodies are written with ensure_ascii=False, so U+2028 etc. occur raw.
+        articles = [json.loads(line) for line in f.read_text().split("\n") if line.strip()]
         for article in articles:
             # The full article text (for signal_digest) is not shown in the tab.
             article.pop("body", None)
