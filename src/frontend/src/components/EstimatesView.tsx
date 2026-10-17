@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { TickerSearch } from './TickerSearch'
+import { StatusMessage } from './StatusMessage'
 
 interface Year {
   fiscal_year: number
@@ -100,7 +101,7 @@ const signed = (v: number | null, digits = 0) => {
   return rounded === 0 ? '0%' : `${rounded > 0 ? '+' : '−'}${Math.abs(rounded).toFixed(digits)}%`
 }
 const changeColor = (v: number | null) =>
-  v == null || Math.round(v) === 0 ? 'text-sol-base00' : v > 0 ? 'text-sol-green' : 'text-sol-red'
+  v == null || Math.round(v) === 0 ? 'text-sol-base00' : v > 0 ? 'text-sol-up' : 'text-sol-down'
 const money = (v: number | null, digits = 2) =>
   v == null ? '—' : '$' + v.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })
 const billions = (v: number | null) => (v == null ? '—' : `$${(v / 1e9).toFixed(v >= 1e11 ? 0 : 1)}B`)
@@ -194,7 +195,7 @@ function YearCell({ year, value, className = '', first = false }: {
   first?: boolean
 }) {
   const edge = first ? 'border-l border-sol-base2' : ''
-  if (!year) return <td className={`px-1.5 py-1.5 text-right text-sol-base1 ${edge}`}>—</td>
+  if (!year) return <td className={`px-1.5 py-1.5 text-right text-sol-base00 ${edge}`}>—</td>
   return (
     <td
       className={`px-1.5 py-1.5 text-right font-semibold ${className} ${edge} ${isThin(year) ? 'opacity-50' : ''}`}
@@ -239,9 +240,9 @@ function ConsensusTable({ estimate }: { estimate: Estimate }) {
               <th key={y.fiscal_year} className={`${DETAIL_TH} ${isThin(y) ? 'opacity-50' : ''}`}>
                 <div>
                   FY{y.fiscal_year}{' '}
-                  <span className="font-normal text-sol-base1">{y.reported ? 'reported' : 'est.'}</span>
+                  <span className="font-normal text-sol-base00">{y.reported ? 'reported' : 'est.'}</span>
                 </div>
-                <div className="font-normal text-[0.7rem] text-sol-base1">ends {monthYear(y.period_end)}</div>
+                <div className="font-normal text-[0.7rem] text-sol-base00">ends {monthYear(y.period_end)}</div>
               </th>
             ))}
           </tr>
@@ -267,7 +268,7 @@ function RatingsDetail({ estimate }: { estimate: Estimate }) {
   const [showAll, setShowAll] = useState(false)
   const { by_quarter, latest_by_analyst } = estimate.ratings_summary
   if (estimate.ratings.length === 0) {
-    return <p className="text-sol-base1 text-[0.85rem]">finviz lists no rating or target changes.</p>
+    return <p className="text-sol-base00 text-[0.85rem]">finviz lists no rating or target changes.</p>
   }
   const count = (q: QuarterSummary, ...actions: string[]) =>
     actions.reduce((n, a) => n + (q.actions[a] ?? 0), 0) || ''
@@ -292,12 +293,12 @@ function RatingsDetail({ estimate }: { estimate: Estimate }) {
             {by_quarter.map((q) => (
               <tr key={q.quarter}>
                 <td className={DETAIL_TD_L}>{q.quarter.replace('Q', ' Q')}</td>
-                <td className={`${DETAIL_TD} text-sol-green`}>{count(q, 'Upgrade')}</td>
-                <td className={`${DETAIL_TD} text-sol-red`}>{count(q, 'Downgrade')}</td>
+                <td className={`${DETAIL_TD} text-sol-up`}>{count(q, 'Upgrade')}</td>
+                <td className={`${DETAIL_TD} text-sol-down`}>{count(q, 'Downgrade')}</td>
                 <td className={DETAIL_TD}>{count(q, 'Initiated', 'Resumed')}</td>
                 <td className={DETAIL_TD}>{count(q, 'Reiterated')}</td>
-                <td className={`${DETAIL_TD} text-sol-green`}>{q.target_raises || ''}</td>
-                <td className={`${DETAIL_TD} text-sol-red`}>{q.target_cuts || ''}</td>
+                <td className={`${DETAIL_TD} text-sol-up`}>{q.target_raises || ''}</td>
+                <td className={`${DETAIL_TD} text-sol-down`}>{q.target_cuts || ''}</td>
               </tr>
             ))}
           </tbody>
@@ -321,7 +322,7 @@ function RatingsDetail({ estimate }: { estimate: Estimate }) {
                 <td className={DETAIL_TD_L}>{b.analyst}</td>
                 <td className={DETAIL_TD_L}>{b.rating ?? ''}</td>
                 <td className={DETAIL_TD}>{target(b.target) ?? ''}</td>
-                <td className={`${DETAIL_TD} text-sol-base1`}>{target(b.previous_target) ?? ''}</td>
+                <td className={`${DETAIL_TD} text-sol-base00`}>{target(b.previous_target) ?? ''}</td>
               </tr>
             ))}
           </tbody>
@@ -330,7 +331,7 @@ function RatingsDetail({ estimate }: { estimate: Estimate }) {
 
       <div>
         <div className={heading}>
-          Change log <span className="font-normal text-sol-base1">({estimate.ratings.length} rows)</span>
+          Change log <span className="font-normal text-sol-base00">({estimate.ratings.length} rows)</span>
         </div>
         <table className="border-collapse text-[0.82rem]" style={NUM}>
           <thead>
@@ -346,7 +347,7 @@ function RatingsDetail({ estimate }: { estimate: Estimate }) {
                 <td className={`${DETAIL_TD_L} text-sol-base00`}>{shortDate(r.date)}</td>
                 <td
                   className={`${DETAIL_TD_L} ${
-                    r.action === 'Upgrade' ? 'text-sol-green' : r.action === 'Downgrade' ? 'text-sol-red' : ''
+                    r.action === 'Upgrade' ? 'text-sol-up' : r.action === 'Downgrade' ? 'text-sol-down' : ''
                   }`}
                 >
                   {r.action}
@@ -361,7 +362,7 @@ function RatingsDetail({ estimate }: { estimate: Estimate }) {
         {estimate.ratings.length > LOG_PREVIEW_ROWS && (
           <button
             onClick={() => setShowAll(!showAll)}
-            className="mt-1.5 text-[0.82rem] text-sol-blue hover:underline cursor-pointer"
+            className="mt-1.5 text-[0.82rem] text-sol-link hover:underline cursor-pointer"
           >
             {showAll ? 'Show fewer' : `Show all ${estimate.ratings.length}`}
           </button>
@@ -381,17 +382,17 @@ function Detail({ estimate, busy, onRefresh }: { estimate: Estimate; busy: boole
         <span className="text-sol-base00">{estimate.company}</span>
         <span className="text-[0.88rem]" style={NUM}>
           <span title={priceSource(estimate)}>{money(estimate.price)}</span>{' '}
-          <span className="text-sol-base1">{estimate.live ? (estimate.live.delay ? `${estimate.live.delay} delayed` : 'live') : 'at fetch'}</span>
+          <span className="text-sol-base00">{estimate.live ? (estimate.live.delay ? `${estimate.live.delay} delayed` : 'live') : 'at fetch'}</span>
           {' '}· mean target {money(estimate.target_mean, 0)}{' '}
           <span className={changeColor(estimate.target_gap_pct)}>({signed(estimate.target_gap_pct)})</span> · mean
           rating {estimate.recommendation?.toFixed(2) ?? '—'}
         </span>
-        <span className="ml-auto text-[0.82rem] text-sol-base1">fetched {dateTime(estimate.fetched_at)}</span>
+        <span className="ml-auto text-[0.82rem] text-sol-base00">fetched {dateTime(estimate.fetched_at)}</span>
         <button
           onClick={onRefresh}
           disabled={busy}
           title="Fetch again from the sources. A cache under an hour old is returned as is."
-          className="text-[0.82rem] text-sol-blue hover:underline cursor-pointer disabled:text-sol-base1 disabled:cursor-default disabled:no-underline"
+          className="text-[0.82rem] text-sol-link hover:underline cursor-pointer disabled:text-sol-base00 disabled:cursor-default disabled:no-underline"
         >
           {busy ? 'Fetching…' : 'Refresh'}
         </button>
@@ -399,12 +400,12 @@ function Detail({ estimate, busy, onRefresh }: { estimate: Estimate; busy: boole
       <section>
         <div className="font-semibold mb-1.5">
           Consensus by fiscal year{' '}
-          <span className="font-normal text-[0.82rem] text-sol-base1">
+          <span className="font-normal text-[0.82rem] text-sol-base00">
             Seeking Alpha; EPS is normalized (non-GAAP)
           </span>
         </div>
         <ConsensusTable estimate={estimate} />
-        <p className={`mt-2 text-[0.82rem] ${flagged.length ? 'text-sol-yellow' : 'text-sol-base00'}`}>
+        <p className={`mt-2 text-[0.82rem] ${flagged.length ? 'text-sol-amber' : 'text-sol-base00'}`}>
           {check.years.length === 0
             ? 'stockanalysis.com publishes no forecast year that overlaps these.'
             : flagged.length === 0
@@ -418,7 +419,7 @@ function Detail({ estimate, busy, onRefresh }: { estimate: Estimate; busy: boole
       </section>
       <section>
         <div className="font-semibold mb-1.5">
-          Rating and price-target changes <span className="font-normal text-[0.82rem] text-sol-base1">finviz</span>
+          Rating and price-target changes <span className="font-normal text-[0.82rem] text-sol-base00">finviz</span>
         </div>
         {/* Keyed so "Show all" resets when another ticker is selected. */}
         <RatingsDetail key={estimate.ticker} estimate={estimate} />
@@ -503,10 +504,10 @@ export function EstimatesView() {
   }
 
   if (error) {
-    return <div className="flex items-center justify-center h-64 text-sol-red">Error: {error}</div>
+    return <StatusMessage kind="error">Error: {error}</StatusMessage>
   }
   if (!data) {
-    return <div className="flex items-center justify-center h-64 text-sol-base1">Loading...</div>
+    return <StatusMessage kind="loading" />
   }
 
   const tickers = data.tickers.map((t) => withLive(t, live?.prices[t.ticker]))
@@ -525,7 +526,7 @@ export function EstimatesView() {
         <div className="w-full max-w-md">
           <TickerSearch onSelect={handleSearch} />
         </div>
-        <span className={`text-[0.85rem] ${fetchError ? 'text-sol-red' : 'text-sol-base00'}`}>
+        <span className={`text-[0.85rem] ${fetchError ? 'text-sol-down' : 'text-sol-base00'}`}>
           {busy
             ? `Fetching ${busy} from Seeking Alpha, stockanalysis.com and finviz…`
             : fetchError ?? 'Search any US stock: a ticker not listed below is fetched and added.'}
@@ -533,7 +534,7 @@ export function EstimatesView() {
       </div>
 
       {tickers.length === 0 ? (
-        <div className="flex items-center justify-center h-40 text-sol-base1">
+        <div className="flex items-center justify-center h-40 text-sol-base00">
           No estimates cached yet. Search for a ticker above to fetch its estimates.
         </div>
       ) : (
@@ -577,7 +578,7 @@ export function EstimatesView() {
                       <Fragment key={t.ticker}>
                         {index === firstOther && (
                           <tr>
-                            <td colSpan={COLUMNS} className="px-4 pt-3 pb-1 text-[0.74rem] font-semibold text-sol-base1 uppercase tracking-wide border-b border-sol-base2">
+                            <td colSpan={COLUMNS} className="px-4 pt-3 pb-1 text-[0.74rem] font-semibold text-sol-base00 uppercase tracking-wide border-b border-sol-base2">
                               Not in the portfolio
                             </td>
                           </tr>
@@ -593,7 +594,7 @@ export function EstimatesView() {
                             {t.ticker}
                           </td>
                           <td
-                            className={`px-1.5 py-1.5 text-right ${t.live ? '' : 'text-sol-base1'}`}
+                            className={`px-1.5 py-1.5 text-right ${t.live ? '' : 'text-sol-base00'}`}
                             style={NUM}
                             title={priceSource(t)}
                           >
@@ -631,14 +632,14 @@ export function EstimatesView() {
                           <td className="pl-2 pr-3 py-1.5 text-right whitespace-nowrap text-[0.8rem] border-l border-sol-base2">
                             {flagged && (
                               <span
-                                className="mr-1.5 text-sol-yellow"
+                                className="mr-1.5 text-sol-amber"
                                 title="stockanalysis.com shows a different EPS consensus; select the row for the figures"
                               >
                                 ●
                               </span>
                             )}
                             <span
-                              className={stale ? 'text-sol-yellow font-semibold' : 'text-sol-base00'}
+                              className={stale ? 'text-sol-amber font-semibold' : 'text-sol-base00'}
                               title={stale ? `More than ${STALE_DAYS} days old` : undefined}
                             >
                               {dayMonth(t.fetched_at)}
@@ -665,7 +666,7 @@ export function EstimatesView() {
         </>
       )}
 
-      <p className={`text-[0.8rem] max-w-[110ch] ${live?.error ? 'text-sol-yellow' : 'text-sol-base00'}`}>
+      <p className={`text-[0.8rem] max-w-[110ch] ${live?.error ? 'text-sol-amber' : 'text-sol-base00'}`}>
         {priceNote}
       </p>
       <p className="text-[0.8rem] text-sol-base00 max-w-[110ch]">
@@ -675,7 +676,7 @@ export function EstimatesView() {
         (strong buy) to 5 (sell). A yellow dot marks a ticker where stockanalysis.com shows a different EPS
         consensus.
       </p>
-      <p className="text-[0.8rem] text-sol-base1 max-w-[110ch]">
+      <p className="text-[0.8rem] text-sol-base00 max-w-[110ch]">
         Sources: Seeking Alpha consensus (normalized EPS, revenue), finviz (mean target, ratings, and the price
         when TradingView has none), TradingView (live price), stockanalysis.com as a cross-check. Holdings refresh every Sunday; other tickers are as old as their
         fetch date.

@@ -116,7 +116,7 @@ export function TickerSearch({ onSelect, selected }: TickerSearchProps) {
   }
 
   const sectionHeader = (text: string) => (
-    <li className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-sol-base1 bg-sol-base2/40 select-none">
+    <li className="px-4 py-1.5 text-[0.7rem] font-bold uppercase tracking-[0.12em] text-sol-base00 select-none">
       {text}
     </li>
   )
@@ -131,16 +131,20 @@ export function TickerSearch({ onSelect, selected }: TickerSearchProps) {
       }}
       onMouseEnter={() => setActiveIndex(globalIndex)}
       className={`px-4 py-2 cursor-pointer flex items-baseline gap-2 ${
-        globalIndex === activeIndex ? 'bg-sol-blue/15' : 'hover:bg-sol-base2/60'
+        globalIndex === activeIndex ? 'bg-sol-blue/12' : 'hover:bg-sol-base2/60'
       }`}
     >
-      <span className="font-semibold text-sol-base01">{r.symbol}</span>
-      {r.name && <span className="text-xs text-sol-base1 truncate">{r.name}</span>}
+      <span className="font-bold text-sol-base02">{r.symbol}</span>
+      {r.name && <span className="text-xs text-sol-base00 truncate">{r.name}</span>}
     </li>
   )
 
   return (
     <div ref={containerRef} className="relative max-w-md">
+      <svg aria-hidden viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"
+        className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-sol-base00 pointer-events-none">
+        <circle cx="7" cy="7" r="4.5" /><path d="m10.5 10.5 3 3" />
+      </svg>
       <input
         type="text"
         value={query}
@@ -152,10 +156,10 @@ export function TickerSearch({ onSelect, selected }: TickerSearchProps) {
         onClick={() => setOpen(true)}
         onKeyDown={onKeyDown}
         placeholder={selected ? `Search ticker (current: ${selected})` : 'Search ticker (e.g. NVDA, BTC)…'}
-        className="w-full px-4 py-2 text-sm bg-sol-base3 border border-sol-base1/40 rounded-lg text-sol-base01 placeholder-sol-base1 focus:outline-none focus:border-sol-blue focus:ring-1 focus:ring-sol-blue"
+        className="w-full pl-10 pr-4 py-2.5 text-[0.9rem] bg-sol-card border border-[var(--line-strong)] rounded-xl text-sol-base02 placeholder-sol-base00/70 transition-shadow focus:outline-none focus:border-sol-blue/60 focus:shadow-[0_0_0_3px_rgba(38,139,210,0.18)]"
       />
       {open && list.length > 0 && (
-        <ul className="absolute z-20 mt-1 w-full max-h-72 overflow-auto bg-sol-base3 border border-sol-base1/40 rounded-lg shadow-lg">
+        <ul className="absolute z-20 mt-1.5 w-full max-h-72 overflow-auto bg-sol-base3 border border-[var(--line-strong)] rounded-xl shadow-[0_12px_32px_-12px_rgba(7,54,66,0.28)] py-1">
           {hasQuery ? (
             list.map((r, i) => renderItem(r, i))
           ) : (

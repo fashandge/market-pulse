@@ -88,7 +88,7 @@ export function TickerView({ ticker }: TickerViewProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-sol-base1">Loading...</div>
+        <div className="text-sol-base00">Loading...</div>
       </div>
     )
   }
@@ -96,7 +96,7 @@ export function TickerView({ ticker }: TickerViewProps) {
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-sol-red">Error: {error}</div>
+        <div className="text-sol-down">Error: {error}</div>
       </div>
     )
   }
@@ -108,8 +108,8 @@ export function TickerView({ ticker }: TickerViewProps) {
   }
 
   const getChangeColor = (value: number | null) => {
-    if (value === null) return 'text-sol-base1'
-    return value >= 0 ? 'text-sol-green' : 'text-sol-red'
+    if (value === null) return 'text-sol-base00'
+    return value >= 0 ? 'text-sol-up' : 'text-sol-down'
   }
 
   const formatMarketCap = (value: number | null) => {
@@ -120,14 +120,14 @@ export function TickerView({ ticker }: TickerViewProps) {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-baseline gap-4">
-        <h2 className="text-2xl font-semibold text-sol-base01">{MARKET_CAP_LABELS[ticker] ?? ticker}</h2>
+        <h2 className="text-2xl font-bold tracking-[-0.01em] text-sol-base02">{MARKET_CAP_LABELS[ticker] ?? ticker}</h2>
         <span className="text-lg text-sol-base00">
           Market Cap:{' '}
           <a
             href="https://coinmarketcap.com/currencies/usd-coin/"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sol-blue hover:text-sol-cyan transition-colors duration-200"
+            className="text-sol-link hover:text-sol-cyan transition-colors duration-200"
           >
             {formatMarketCap(latestMarketCap)}
           </a>
@@ -135,46 +135,21 @@ export function TickerView({ ticker }: TickerViewProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        <span className="text-sm text-sol-base1">Range:</span>
-        <div className="inline-flex rounded-lg overflow-hidden shadow-sm">
-          <button
-            onClick={() => setTimeRange('YTD')}
-            className={`px-4 py-1.5 text-sm font-medium transition-all duration-200 ${
-              timeRange === 'YTD'
-                ? 'bg-sol-blue text-white'
-                : 'bg-sol-base2 text-sol-base00 hover:bg-sol-base1/20'
-            }`}
-          >
-            YTD
-          </button>
-          <button
-            onClick={() => setTimeRange('1Y')}
-            className={`px-4 py-1.5 text-sm font-medium border-l border-sol-base1/30 transition-all duration-200 ${
-              timeRange === '1Y'
-                ? 'bg-sol-blue text-white'
-                : 'bg-sol-base2 text-sol-base00 hover:bg-sol-base1/20'
-            }`}
-          >
-            1Y
-          </button>
-          <button
-            onClick={() => setTimeRange('3Y')}
-            className={`px-4 py-1.5 text-sm font-medium border-l border-sol-base1/30 transition-all duration-200 ${
-              timeRange === '3Y'
-                ? 'bg-sol-blue text-white'
-                : 'bg-sol-base2 text-sol-base00 hover:bg-sol-base1/20'
-            }`}
-          >
-            3Y
-          </button>
+        <span className="text-sm text-sol-base01">Range:</span>
+        <div className="mp-segment">
+          {(['YTD', '1Y', '3Y'] as const).map((r) => (
+            <button key={r} onClick={() => setTimeRange(r)} aria-pressed={timeRange === r}>
+              {r}
+            </button>
+          ))}
         </div>
       </div>
 
       <MarketCapChart data={chartData} title={`${MARKET_CAP_LABELS[ticker] ?? ticker} Market Cap (${timeRange})`} timeRange={timeRange} />
 
-      <div className="bg-sol-base3 rounded-lg border border-sol-base1/30 overflow-hidden max-w-md mx-auto shadow-sm">
+      <div className="mp-card overflow-hidden max-w-md mx-auto">
         <table className="w-full">
-          <thead className="bg-sol-base2">
+          <thead className="border-b border-[var(--line-strong)]">
             <tr>
               <th className="px-4 py-3 text-left text-sm font-medium text-sol-base01">
                 Period
@@ -184,35 +159,35 @@ export function TickerView({ ticker }: TickerViewProps) {
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-sol-base1/20">
+          <tbody className="divide-y divide-[var(--line)]">
             {changes && (
               <>
                 <tr className="hover:bg-sol-base2/50 transition-colors">
-                  <td className="px-4 py-3 text-sm text-sol-base00">1 Day</td>
+                  <td className="px-4 py-3 text-sm text-sol-base01">1 Day</td>
                   <td className={`px-4 py-3 text-sm text-right font-medium ${getChangeColor(changes['1d'])}`}>
                     {formatChange(changes['1d'])}
                   </td>
                 </tr>
                 <tr className="hover:bg-sol-base2/50 transition-colors">
-                  <td className="px-4 py-3 text-sm text-sol-base00">7 Days</td>
+                  <td className="px-4 py-3 text-sm text-sol-base01">7 Days</td>
                   <td className={`px-4 py-3 text-sm text-right font-medium ${getChangeColor(changes['7d'])}`}>
                     {formatChange(changes['7d'])}
                   </td>
                 </tr>
                 <tr className="hover:bg-sol-base2/50 transition-colors">
-                  <td className="px-4 py-3 text-sm text-sol-base00">30 Days</td>
+                  <td className="px-4 py-3 text-sm text-sol-base01">30 Days</td>
                   <td className={`px-4 py-3 text-sm text-right font-medium ${getChangeColor(changes['30d'])}`}>
                     {formatChange(changes['30d'])}
                   </td>
                 </tr>
                 <tr className="hover:bg-sol-base2/50 transition-colors">
-                  <td className="px-4 py-3 text-sm text-sol-base00">90 Days</td>
+                  <td className="px-4 py-3 text-sm text-sol-base01">90 Days</td>
                   <td className={`px-4 py-3 text-sm text-right font-medium ${getChangeColor(changes['90d'])}`}>
                     {formatChange(changes['90d'])}
                   </td>
                 </tr>
                 <tr className="hover:bg-sol-base2/50 transition-colors">
-                  <td className="px-4 py-3 text-sm text-sol-base00">YTD</td>
+                  <td className="px-4 py-3 text-sm text-sol-base01">YTD</td>
                   <td className={`px-4 py-3 text-sm text-right font-medium ${getChangeColor(changes.ytd)}`}>
                     {formatChange(changes.ytd)}
                   </td>

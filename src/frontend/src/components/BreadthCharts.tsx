@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { StatusMessage } from './StatusMessage'
 
 // Market breadth against SPY and QQQ: a vertical stack of panels sharing one
 // trading-day x-axis, so a breadth move and the price move it did (or did not)
@@ -291,8 +292,8 @@ export function BreadthCharts() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, smoothed, i0, i1, pw, logScale, show, fams])
 
-  if (error) return <div className="text-sol-red p-4">Error: {error}</div>
-  if (!data) return <div className="text-sol-base1 p-4">Loading breadth history...</div>
+  if (error) return <StatusMessage kind="error">Error: {error}</StatusMessage>
+  if (!data) return <StatusMessage kind="loading">Loading breadth history…</StatusMessage>
 
   const idxAt = (el: SVGSVGElement, clientX: number) => {
     const r = el.getBoundingClientRect()

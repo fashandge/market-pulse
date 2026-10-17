@@ -28,6 +28,9 @@ Market Pulse is a web dashboard for monitoring market and individual stock/crypt
 - Defined in `index.css` using `@theme` directive with `--color-sol-*` variables
 - Warm cream backgrounds (base3/base2), blue accents, green/red for changes
 - Applied consistently across all components including Plotly charts
+- Layering by tone, not shadow: page base3, cards `--color-sol-card` (#f7f0dc), sidebar `--color-sol-rail`, hairline `--line`/`--line-strong` borders (translucent base02); nothing brighter than base3
+- Text never uses the stock accents or base1, which are 2.3-4:1 on cream: muted text is base00, and accent *text* uses darkened inks that clear ~4.5:1 on cards — `sol-up` #46701a / `sol-down` #a8362b (price changes), `sol-link` #17598a, `sol-plum` #9c2a63, `sol-amber` #7a5c00. Stock hues stay for borders, tints, bars and chart lines
+- Shared component classes in `index.css` (`@layer components`): `.mp-tabs`/`.mp-tab` (via `Tabs.tsx`), `.mp-segment` (toggle groups; selected button carries `aria-pressed`), `.mp-card`, `.mp-fold` (collapsible day `<details>`), `.mp-notice`, `.mp-state` (via `StatusMessage.tsx`), `.mp-chevron` (via `Chevron.tsx`)
 - Markdown summaries (Market News tabs, China news) use the shared `.summary-prose` class: body/headings in base02 (~12:1 contrast) instead of the lighter base00/base01 greys (~4-5:1), links darkened to `#17598a` and underlined, inline code without the cyan tint or backticks
 - `.summary-prose` text uses "Atkinson Hyperlegible Reading", a self-hosted Latin-only copy (`public/fonts/`) with `size-adjust: 115%`: English renders ~20px while Chinese falls back to the system CJK font at its normal size
 
@@ -122,11 +125,13 @@ TradingView Scanner API              CoinMarketCap API                News Summa
 ```
 App.tsx
 ├── Persists selected navigation tab in sessionStorage (per browser tab)
-├── Sidebar.tsx
+├── Sidebar.tsx — sticky; groups Markets / News / Tickers, active item has a blue rail
 │   - Overview tab → OverviewView (default)
 │   - Market News tab → MarketView
+│   - China Market News → ChinaNewsView, AI News → AiNewsView
 │   - Tickers section (collapsible)
 │     └── CRCL tab → TickerView
+├── Shared UI: Tabs.tsx (tab bar), StatusMessage.tsx (loading/empty/error), Chevron.tsx
 │
 ├── OverviewView.tsx
 │   ├── Persists selected sub-tab in sessionStorage (per browser tab)
@@ -141,7 +146,7 @@ App.tsx
 │
 ├── MarketOverview.tsx
 │   ├── Sections: Overview | Critical Themes | Other Themes
-│   ├── Card grid (auto-fill, soft-shadow cards, collapsible groups)
+│   ├── Card grid (auto-fill, hairline `.mp-card` cards, collapsible groups)
 │   ├── Ticker rows: symbol | gradient magnitude bar | %chg | price
 │   ├── High-volume highlight: blue accent rail, vol ratio chip, bolder text
 │   ├── Hover tooltip: volume, avg volume, vol ratio, raw change

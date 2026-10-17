@@ -6,6 +6,8 @@ import { PnfChart } from './PnfChart'
 import { TrendSpiderView } from './TrendSpiderView'
 import { BreadthCharts } from './BreadthCharts'
 import { EstimatesView } from './EstimatesView'
+import { Tabs } from './Tabs'
+import { StatusMessage } from './StatusMessage'
 
 type OverviewTab = 'overview' | 'charts' | 'pnf' | 'trendspider' | 'breadth' | 'estimates'
 const TABS: { id: OverviewTab; label: string }[] = [
@@ -38,21 +40,7 @@ export function OverviewView() {
 
   return (
     <div className={activeTab === 'charts' || activeTab === 'pnf' ? 'max-w-6xl' : ''}>
-      <div className="flex gap-1 mb-6 border-b border-sol-base1/30">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => handleSelectTab(tab.id)}
-            className={`px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
-              activeTab === tab.id
-                ? 'text-sol-blue border-b-2 border-sol-blue'
-                : 'text-sol-base00 hover:text-sol-base01 hover:bg-sol-blue/20 rounded-t cursor-pointer'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <Tabs tabs={TABS} active={activeTab} onSelect={handleSelectTab} />
 
       {activeTab === 'overview' && <MarketOverview />}
 
@@ -62,9 +50,7 @@ export function OverviewView() {
           {chartTicker ? (
             <TaCharts ticker={chartTicker} />
           ) : (
-            <div className="flex items-center justify-center h-64 text-sol-base1">
-              Search for a ticker to view its charts.
-            </div>
+            <StatusMessage kind="empty">Search for a ticker to view its charts.</StatusMessage>
           )}
         </div>
       )}
@@ -75,9 +61,7 @@ export function OverviewView() {
           {chartTicker ? (
             <PnfChart ticker={chartTicker} />
           ) : (
-            <div className="flex items-center justify-center h-64 text-sol-base1">
-              Search for a ticker to view its Point &amp; Figure chart.
-            </div>
+            <StatusMessage kind="empty">Search for a ticker to view its Point &amp; Figure chart.</StatusMessage>
           )}
         </div>
       )}

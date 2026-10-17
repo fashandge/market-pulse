@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { StatusMessage } from './StatusMessage'
+import { Tabs } from './Tabs'
 
 interface ChinaNewsResponse {
   region: string
@@ -50,33 +52,27 @@ export function ChinaNewsView() {
   const renderContent = () => {
     if (loading) {
       return (
-        <div className="flex items-center justify-center h-64 text-sol-base1">
-          Loading...
-        </div>
+        <StatusMessage kind="loading" />
       )
     }
 
     if (error) {
       return (
-        <div className="flex items-center justify-center h-64 text-sol-red">
-          Error: {error}
-        </div>
+        <StatusMessage kind="error">Error: {error}</StatusMessage>
       )
     }
 
     if (!data?.content) {
       return (
-        <div className="flex items-center justify-center h-64 text-sol-base1">
-          No {REGION_LABELS[activeRegion]} market news summary available yet.
-        </div>
+        <StatusMessage kind="empty">No {REGION_LABELS[activeRegion]} market news summary available yet.</StatusMessage>
       )
     }
 
     return (
       <>
         {!data.is_today && (
-          <div className="mb-6 px-4 py-3 rounded-lg border border-sol-yellow/40 bg-sol-yellow/10 text-sol-base01 text-sm">
-            ⚠️ Today's {REGION_LABELS[activeRegion]} market news isn't generated yet. Showing the
+          <div className="mp-notice mb-6">
+            Today's {REGION_LABELS[activeRegion]} market news isn't generated yet. Showing the
             latest available summary from <strong>{data.date}</strong>.
           </div>
         )}
@@ -89,21 +85,11 @@ export function ChinaNewsView() {
 
   return (
     <div className="max-w-3xl">
-      <div className="flex gap-1 mb-6 border-b border-sol-base1/30">
-        {REGION_TABS.map((region) => (
-          <button
-            key={region}
-            onClick={() => handleSelectRegion(region)}
-            className={`px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
-              activeRegion === region
-                ? 'text-sol-blue border-b-2 border-sol-blue'
-                : 'text-sol-base00 hover:text-sol-base01 hover:bg-sol-blue/20 rounded-t cursor-pointer'
-            }`}
-          >
-            {REGION_LABELS[region]}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        tabs={REGION_TABS.map((id) => ({ id, label: REGION_LABELS[id] }))}
+        active={activeRegion}
+        onSelect={handleSelectRegion}
+      />
       {renderContent()}
     </div>
   )

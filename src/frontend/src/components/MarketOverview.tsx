@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { Chevron } from './Chevron'
+import { StatusMessage } from './StatusMessage'
 
 const TV_CHART_ID = '5JanKmS6'
 // The backend serves the overview from a background-refreshed snapshot, so a
@@ -6,6 +8,13 @@ const TV_CHART_ID = '5JanKmS6'
 // cadence, which is what makes the numbers track the tape while the tab is open.
 const LIVE_REFRESH_MS = 5000
 const BAR_MAX = 7
+// Text colours for gains/losses: --color-sol-up/--color-sol-down in index.css,
+// as hex so the alpha-suffixed tints below (`${UP}1f`) can be built from them.
+const UP = '#46701a'
+const DOWN = '#a8362b'
+const INK = 'var(--color-sol-base02)'
+const INK_2 = 'var(--color-sol-base01)'
+const MUTED = 'var(--color-sol-base00)'
 
 interface Ticker {
   symbol: string
@@ -94,9 +103,9 @@ function MagnitudeBar({ chg }: { chg: number }) {
 
   return (
     <div style={{ position: 'relative', width: '100%', height: 18, display: 'flex', alignItems: 'center' }}>
-      <div style={{ position: 'relative', width: '100%', height: 4, background: 'rgba(45,42,36,0.08)', borderRadius: 2 }}>
+      <div style={{ position: 'relative', width: '100%', height: 4, background: 'rgba(7,54,66,0.08)', borderRadius: 2 }}>
         {/* Center axis */}
-        <div style={{ position: 'absolute', left: '50%', top: -3, bottom: -3, width: 1, background: 'rgba(45,42,36,0.22)' }} />
+        <div style={{ position: 'absolute', left: '50%', top: -3, bottom: -3, width: 1, background: 'rgba(7,54,66,0.22)' }} />
         {/* Bar */}
         <div style={{
           position: 'absolute', top: 0, bottom: 0,
@@ -134,12 +143,14 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
         gap: 10,
         padding: `5px 0 5px ${highVol ? 8 : 0}px`,
         marginLeft: highVol ? -8 : 0,
-        borderLeft: highVol ? `2px solid ${chgVal >= 0 ? '#5A8A35' : '#B53A2C'}` : 'none',
-        background: highVol ? `linear-gradient(90deg, ${chgVal >= 0 ? '#5A8A35' : '#B53A2C'}1f, transparent 55%)` : 'transparent',
+        borderLeft: highVol ? `2px solid ${chgVal >= 0 ? UP : DOWN}` : 'none',
+        background: highVol ? `linear-gradient(90deg, ${chgVal >= 0 ? UP : DOWN}1f, transparent 55%)` : undefined,
         fontVariantNumeric: 'tabular-nums',
         cursor: 'default',
+        borderRadius: highVol ? '0 6px 6px 0' : 6,
         transition: 'background 0.15s',
       }}
+      className={highVol ? undefined : 'hover:bg-sol-base2/60'}
     >
       {/* Symbol + vol chip */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, minWidth: 0 }}>
@@ -149,7 +160,7 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
           rel="noopener noreferrer"
           style={{
             fontSize: 14.5, fontWeight: highVol ? 700 : 600,
-            color: '#2D2A24', letterSpacing: '0.02em',
+            color: INK, letterSpacing: '0.02em',
             textDecoration: 'none',
           }}
           className="hover:!text-sol-blue"
@@ -157,7 +168,7 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
           {ticker.symbol}
         </a>
         {highVol && ratio != null && !ticker.delay && (() => {
-          const chipColor = chgVal >= 0 ? '#5A8A35' : '#B53A2C'
+          const chipColor = chgVal >= 0 ? UP : DOWN
           return (
           <span style={{
             fontSize: 11, fontWeight: 700, color: chipColor,
@@ -171,8 +182,8 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
         })()}
         {ticker.delay && (
           <span style={{
-            fontSize: 9, fontWeight: 600, color: '#8A8478',
-            border: '1px solid rgba(45,42,36,0.18)',
+            fontSize: 9, fontWeight: 600, color: MUTED,
+            border: '1px solid rgba(7,54,66,0.18)',
             borderRadius: 3, padding: '0 3px', lineHeight: 1.35,
             whiteSpace: 'nowrap', letterSpacing: '0.02em',
           }}>
@@ -187,7 +198,7 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
       {/* Change % */}
       <div style={{
         fontSize: 13.5, fontWeight: highVol ? 700 : 600,
-        color: chgVal >= 0 ? '#5A8A35' : '#B53A2C',
+        color: chgVal >= 0 ? UP : DOWN,
         textAlign: 'right', whiteSpace: 'nowrap',
         fontVariantNumeric: 'tabular-nums',
       }}>
@@ -197,7 +208,7 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
       {/* Price */}
       <div style={{
         fontSize: 13, textAlign: 'right',
-        color: highVol ? '#2D2A24' : '#5B5547',
+        color: highVol ? INK : INK_2,
         fontWeight: highVol ? 600 : 400,
       }}>
         {formatPrice(ticker.price)}
@@ -208,32 +219,32 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
         <div style={{
           position: 'fixed',
           left: mousePos.x + 12, top: mousePos.y - 30,
-          background: '#FDF6E3', color: '#2D2A24',
-          border: '1px solid rgba(45,42,36,0.25)',
-          padding: '6px 10px', borderRadius: 6,
+          background: '#FDF6E3', color: INK,
+          border: '1px solid var(--line-strong)',
+          padding: '7px 11px', borderRadius: 8,
           fontSize: 12.5, whiteSpace: 'nowrap',
           zIndex: 1000, pointerEvents: 'none',
-          boxShadow: '0 6px 20px rgba(45,42,36,0.18)',
+          boxShadow: '0 8px 24px -6px rgba(7,54,66,0.22)',
           fontVariantNumeric: 'tabular-nums',
         }}>
           {ticker.delay && (
             <>
-              <span style={{ color: '#B58900', fontWeight: 600 }}>{delayNote(ticker.delay)}</span>
+              <span style={{ color: 'var(--color-sol-amber)', fontWeight: 600 }}>{delayNote(ticker.delay)}</span>
               {(ticker.volume || ticker.avg_volume || ticker.change_abs) && (
-                <span style={{ color: '#8A8478', margin: '0 6px' }}>·</span>
+                <span style={{ color: MUTED, margin: '0 6px' }}>·</span>
               )}
             </>
           )}
           {ticker.volume && <>Vol <span style={{
-            color: highVol ? (chgVal >= 0 ? '#5A8A35' : '#B53A2C') : 'inherit',
+            color: highVol ? (chgVal >= 0 ? UP : DOWN) : 'inherit',
             fontWeight: highVol ? 700 : 400,
           }}>{ticker.volume}</span></>}
-          {ticker.volume && ticker.avg_volume && <span style={{ color: '#8A8478', margin: '0 6px' }}>·</span>}
+          {ticker.volume && ticker.avg_volume && <span style={{ color: MUTED, margin: '0 6px' }}>·</span>}
           {ticker.avg_volume && <>Avg {ticker.avg_volume}</>}
           {ratio != null && (
             <span style={{
               marginLeft: 8,
-              color: highVol ? (chgVal >= 0 ? '#5A8A35' : '#B53A2C') : '#8A8478',
+              color: highVol ? (chgVal >= 0 ? UP : DOWN) : MUTED,
               fontWeight: highVol ? 700 : 500,
             }}>
               → {ratio.toFixed(2)}×
@@ -241,8 +252,8 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
           )}
           {ticker.change_abs && (
             <>
-              <span style={{ color: '#8A8478', margin: '0 6px' }}>·</span>
-              <span style={{ color: ticker.change_abs.startsWith('-') ? '#B53A2C' : '#5A8A35' }}>
+              <span style={{ color: MUTED, margin: '0 6px' }}>·</span>
+              <span style={{ color: ticker.change_abs.startsWith('-') ? DOWN : UP }}>
                 {!ticker.change_abs.startsWith('-') && !ticker.change_abs.startsWith('+') ? '+' : ''}{ticker.change_abs}
               </span>
             </>
@@ -258,34 +269,23 @@ function GroupCard({ group }: { group: Group }) {
   const groupUp = group.avg_change !== null && group.avg_change >= 0
 
   return (
-    <div style={{
-      background: '#EEE8D5',
-      border: 'none',
-      boxShadow: '0 1px 0 rgba(45,42,36,0.04), 0 4px 14px -8px rgba(45,42,36,0.10)',
-      borderRadius: 14,
-      padding: '14px 16px 8px',
-    }}>
+    <div className="mp-card" style={{ padding: '14px 16px 8px' }}>
       {/* Header */}
       <div
         onClick={() => setExpanded(!expanded)}
         style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
           padding: '0 0 10px', marginBottom: 4,
-          borderBottom: '1px solid rgba(45,42,36,0.07)',
+          borderBottom: '1px solid var(--line)',
           cursor: 'pointer', userSelect: 'none',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <span style={{
-            fontSize: 9.5, color: '#8A8478',
-            transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
-            transition: 'transform 0.18s',
-            display: 'inline-block',
-          }}>▶</span>
+          <span style={{ alignSelf: 'center', display: 'inline-flex' }}><Chevron open={expanded} /></span>
           <div style={{
-            fontSize: 13, letterSpacing: '0.14em',
+            fontSize: 12.5, letterSpacing: '0.12em',
             textTransform: 'uppercase' as const,
-            fontWeight: 700, color: '#2D2A24',
+            fontWeight: 700, color: INK_2,
           }}>{group.name}</div>
         </div>
         {group.avg_change !== null && (
@@ -293,15 +293,15 @@ function GroupCard({ group }: { group: Group }) {
             <div className="relative group/avg" style={{ display: 'inline-block' }}>
               <span style={{
                 fontSize: 14.5, fontWeight: 700,
-                color: groupUp ? '#5A8A35' : '#B53A2C',
+                color: groupUp ? UP : DOWN,
                 fontVariantNumeric: 'tabular-nums',
               }}>
                 {fmtPct(group.avg_change)}
               </span>
               {group.avg_note && (
                 <>
-                  <sup style={{ fontSize: '0.68rem', color: '#8A8478', marginLeft: 2 }}>*</sup>
-                  <span className="hidden group-hover/avg:block absolute -top-7 right-0 bg-sol-base3 text-sol-base01 border border-sol-base1/30 px-2 py-1 rounded text-[0.8rem] whitespace-nowrap z-10 shadow-lg font-normal normal-case tracking-normal">
+                  <sup style={{ fontSize: '0.68rem', color: MUTED, marginLeft: 2 }}>*</sup>
+                  <span className="hidden group-hover/avg:block absolute -top-7 right-0 bg-sol-base3 text-sol-base01 border border-sol-base1/30 px-2 py-1 rounded-md text-[0.8rem] whitespace-nowrap z-10 shadow-md font-normal normal-case tracking-normal">
                     {group.avg_note}
                   </span>
                 </>
@@ -311,7 +311,7 @@ function GroupCard({ group }: { group: Group }) {
               <div className="relative group/volratio">
                 <span style={{
                   fontSize: 11,
-                  color: group.avg_vol_ratio > 1 ? (groupUp ? '#5A8A35' : '#B53A2C') : '#8A8478',
+                  color: group.avg_vol_ratio > 1 ? (groupUp ? UP : DOWN) : MUTED,
                   fontWeight: group.avg_vol_ratio > 1 ? 700 : 500,
                   fontVariantNumeric: 'tabular-nums',
                   letterSpacing: '0.02em',
@@ -320,8 +320,8 @@ function GroupCard({ group }: { group: Group }) {
                 </span>
                 {group.avg_note && (
                   <>
-                    <sup style={{ fontSize: '0.58rem', color: '#8A8478', marginLeft: 2 }}>*</sup>
-                    <span className="hidden group-hover/volratio:block absolute -top-7 right-0 bg-sol-base3 text-sol-base01 border border-sol-base1/30 px-2 py-1 rounded text-[0.8rem] whitespace-nowrap z-10 shadow-lg font-normal">
+                    <sup style={{ fontSize: '0.58rem', color: MUTED, marginLeft: 2 }}>*</sup>
+                    <span className="hidden group-hover/volratio:block absolute -top-7 right-0 bg-sol-base3 text-sol-base01 border border-sol-base1/30 px-2 py-1 rounded-md text-[0.8rem] whitespace-nowrap z-10 shadow-md font-normal">
                       {group.avg_note}
                     </span>
                   </>
@@ -383,10 +383,10 @@ export function MarketOverview() {
   }
 
   if (loading) {
-    return <div className="text-sol-base1 p-4">Loading market overview...</div>
+    return <StatusMessage kind="loading">Loading market overview…</StatusMessage>
   }
   if (error && !data) {
-    return <div className="text-sol-red p-4">Error: {error}</div>
+    return <StatusMessage kind="error">Error: {error}</StatusMessage>
   }
   if (!data) return null
 
@@ -397,27 +397,23 @@ export function MarketOverview() {
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         marginBottom: 22,
       }}>
-        <span style={{ fontSize: 12.5, color: '#8A8478', letterSpacing: '0.04em' }}>
-          {data.updated_at}
+        <span style={{ fontSize: 13, color: INK_2, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <span aria-hidden style={{
+            width: 7, height: 7, borderRadius: 9999,
+            background: error ? DOWN : '#859900',
+            boxShadow: `0 0 0 3px ${error ? DOWN : '#859900'}26`,
+          }} />
+          {error ? 'Reconnecting · last update' : 'Live · updated'} {data.updated_at}
         </span>
         <button
           onClick={handleRefresh}
           disabled={refreshing}
-          style={{
-            background: 'transparent', border: 'none',
-            color: '#8A8478', padding: '4px 6px', fontSize: 12.5,
-            cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
-            fontFamily: 'inherit',
-            opacity: refreshing ? 0.5 : 0.7,
-            transition: 'opacity 0.15s',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.opacity = '1' }}
-          onMouseLeave={(e) => { e.currentTarget.style.opacity = refreshing ? '0.5' : '0.7' }}
+          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-[var(--line-strong)] text-[0.8rem] font-bold text-sol-base01 hover:text-sol-base02 hover:bg-sol-base2/60 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-default"
         >
           <svg
             width="14" height="14" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
-            style={{ animation: refreshing ? 'mb-spin 0.9s linear infinite' : 'none' }}
+            style={{ animation: refreshing ? 'mp-spin 0.9s linear infinite' : 'none' }}
           >
             <path d="M21 2v6h-6" />
             <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
@@ -430,16 +426,16 @@ export function MarketOverview() {
 
       {/* Sections */}
       {data.sections.map((section, idx) => (
-        <div key={section.name} style={{ marginTop: idx === 0 ? 0 : 28 }}>
+        <div key={section.name} style={{ marginTop: idx === 0 ? 0 : 34 }}>
           <div style={{
-            fontSize: 14.5, letterSpacing: '0.14em',
+            fontSize: 13, letterSpacing: '0.16em',
             textTransform: 'uppercase' as const,
-            color: '#3E3A30', fontWeight: 700,
-            marginBottom: 12,
+            color: INK, fontWeight: 700,
+            marginBottom: 14,
             display: 'flex', alignItems: 'center', gap: 10,
           }}>
             {section.name}
-            <div style={{ flex: 1, height: 1, background: 'rgba(45,42,36,0.07)' }} />
+            <div style={{ flex: 1, height: 1, background: 'var(--line-strong)' }} />
           </div>
           <div style={{
             display: 'grid',
@@ -454,9 +450,6 @@ export function MarketOverview() {
         </div>
       ))}
 
-      <style>{`
-        @keyframes mb-spin { from {transform:rotate(0)} to {transform:rotate(360deg)} }
-      `}</style>
     </div>
   )
 }

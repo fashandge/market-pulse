@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { StatusMessage } from './StatusMessage'
 
 type Category = 'macro' | 'special' | 'earnings'
 
@@ -24,9 +25,9 @@ const NEAR_TERM_DAYS = 14
 
 // Each category gets its own Solarized accent so the three main groups read apart at a glance.
 const CATEGORY_STYLE: Record<Category, { label: string; accent: string; text: string; tint: string }> = {
-  macro: { label: 'Macro', accent: 'border-sol-blue', text: 'text-sol-blue', tint: 'bg-sol-blue/10' },
-  special: { label: 'Special events', accent: 'border-sol-magenta', text: 'text-sol-magenta', tint: 'bg-sol-magenta/10' },
-  earnings: { label: 'Earnings', accent: 'border-sol-green', text: 'text-sol-green', tint: 'bg-sol-green/10' },
+  macro: { label: 'Macro', accent: 'border-l-sol-blue', text: 'text-sol-link', tint: 'bg-sol-blue/10' },
+  special: { label: 'Special events', accent: 'border-l-sol-magenta', text: 'text-sol-plum', tint: 'bg-sol-magenta/10' },
+  earnings: { label: 'Earnings', accent: 'border-l-sol-green', text: 'text-sol-up', tint: 'bg-sol-green/10' },
 }
 
 function formatDay(iso: string): string {
@@ -51,14 +52,14 @@ function CriticalBadge() {
 // The few market-moving events, listed above the groups so they can't be missed.
 function CriticalStrip({ events }: { events: CatalystEvent[] }) {
   return (
-    <div className="rounded-lg border border-sol-red/40 bg-sol-red/5 px-4 py-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-sol-red">Critical ahead</h2>
+    <div className="rounded-xl border border-sol-red/30 bg-sol-red/5 px-5 py-4">
+      <h2 className="text-[0.8rem] font-bold uppercase tracking-[0.12em] text-sol-down">Critical ahead</h2>
       <ul className="mt-1.5 flex flex-col gap-1 text-sm">
         {events.map((e) => (
           <li key={`${e.date}-${e.catalyst}`} className="text-sol-base02">
             <span className="font-medium">{formatDay(e.date)}</span>
-            <span className="text-sol-base1"> · {[e.time, relativeDay(e.days_away)].filter(Boolean).join(' · ')}</span>
-            <span className="mx-2 text-sol-base1">—</span>
+            <span className="text-sol-base00"> · {[e.time, relativeDay(e.days_away)].filter(Boolean).join(' · ')}</span>
+            <span className="mx-2 text-sol-base00">—</span>
             <span className="font-semibold">{e.catalyst}</span>
           </li>
         ))}
@@ -70,10 +71,10 @@ function CriticalStrip({ events }: { events: CatalystEvent[] }) {
 function CategoryGroup({ category, events }: { category: Category; events: CatalystEvent[] }) {
   const style = CATEGORY_STYLE[category]
   return (
-    <section className={`border-l-4 ${style.accent} rounded-r-lg overflow-hidden`}>
-      <h3 className={`px-4 py-2 ${style.tint} ${style.text} text-sm font-semibold uppercase tracking-wide`}>
+    <section className={`mp-card border-l-4 ${style.accent} overflow-hidden`}>
+      <h3 className={`px-4 py-2 ${style.tint} ${style.text} text-[0.8rem] font-bold uppercase tracking-[0.12em]`}>
         {style.label}
-        <span className="ml-2 font-normal normal-case tracking-normal text-sol-base1">{events.length}</span>
+        <span className="ml-2 font-normal normal-case tracking-normal text-sol-base00">{events.length}</span>
       </h3>
       <div className="overflow-x-auto">
         <table className="w-full table-fixed text-sm">
@@ -83,7 +84,7 @@ function CategoryGroup({ category, events }: { category: Category; events: Catal
             <col />
           </colgroup>
           <thead>
-            <tr className="text-left text-sol-base01 border-b border-sol-base2">
+            <tr className="text-left text-sol-base01 border-b border-[var(--line-strong)]">
               <th className="px-4 py-2 font-medium">When</th>
               <th className="px-4 py-2 font-medium">Catalyst</th>
               <th className="px-4 py-2 font-medium">Why it matters</th>
@@ -93,13 +94,13 @@ function CategoryGroup({ category, events }: { category: Category; events: Catal
             {events.map((e) => (
               <tr
                 key={`${e.date}-${e.catalyst}`}
-                className={`border-b border-sol-base2/60 last:border-0 align-top ${e.critical ? 'bg-sol-red/5' : ''}`}
+                className={`border-b border-[var(--line)] last:border-0 align-top ${e.critical ? 'bg-sol-red/5' : ''}`}
               >
                 <td className={`px-4 py-2.5 whitespace-nowrap ${e.critical ? 'shadow-[inset_3px_0_0_var(--color-sol-red)]' : ''}`}>
-                  <div className={`font-medium ${e.days_away <= 1 ? 'text-sol-red' : 'text-sol-base02'}`}>
+                  <div className={`font-medium ${e.days_away <= 1 ? 'text-sol-down' : 'text-sol-base02'}`}>
                     {formatDay(e.date)}
                   </div>
-                  <div className="text-xs text-sol-base1">
+                  <div className="text-xs text-sol-base00">
                     {[e.time, relativeDay(e.days_away)].filter(Boolean).join(' · ')}
                   </div>
                 </td>
@@ -107,7 +108,7 @@ function CategoryGroup({ category, events }: { category: Category; events: Catal
                   <span className={e.critical ? 'font-semibold' : ''}>{e.catalyst}</span>
                   {e.critical && <CriticalBadge />}
                   {e.first_seen && (
-                    <div className="text-xs text-sol-base1">first seen {formatDay(e.first_seen.slice(0, 10))}</div>
+                    <div className="text-xs text-sol-base00">first seen {formatDay(e.first_seen.slice(0, 10))}</div>
                   )}
                 </td>
                 <td className="px-4 py-2.5 text-sol-base00">{e.why_it_matters}</td>
@@ -123,9 +124,9 @@ function CategoryGroup({ category, events }: { category: Category; events: Catal
 function EventsBlock({ title, events, categories }: { title: string; events: CatalystEvent[]; categories: Category[] }) {
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="text-base font-semibold text-sol-base01">{title}</h2>
+      <h2 className="text-lg font-bold text-sol-base02">{title}</h2>
       {events.length === 0 ? (
-        <p className="text-sol-base1">No events.</p>
+        <p className="text-sol-base00">No events.</p>
       ) : (
         categories.map((c) => {
           const group = events.filter((e) => e.category === c)
@@ -150,13 +151,13 @@ export function EventsView() {
   }, [])
 
   if (error) {
-    return <div className="flex items-center justify-center h-64 text-sol-red">Error: {error}</div>
+    return <StatusMessage kind="error">Error: {error}</StatusMessage>
   }
   if (!data) {
-    return <div className="flex items-center justify-center h-64 text-sol-base1">Loading...</div>
+    return <StatusMessage kind="loading" />
   }
   if (data.events.length === 0) {
-    return <div className="flex items-center justify-center h-64 text-sol-base1">No upcoming events in the catalyst calendar.</div>
+    return <StatusMessage kind="empty">No upcoming events in the catalyst calendar.</StatusMessage>
   }
 
   const near = data.events.filter((e) => e.days_away < NEAR_TERM_DAYS)
@@ -165,7 +166,7 @@ export function EventsView() {
 
   return (
     <div className="flex flex-col gap-8">
-      {data.updated && <p className="text-xs text-sol-base1 -mb-4">Calendar updated {data.updated}</p>}
+      {data.updated && <p className="text-xs text-sol-base00 -mb-4">Calendar updated {data.updated}</p>}
       {critical.length > 0 && <CriticalStrip events={critical} />}
       <EventsBlock title="Next 14 days" events={near} categories={data.categories} />
       {later.length > 0 && <EventsBlock title="Later" events={later} categories={data.categories} />}

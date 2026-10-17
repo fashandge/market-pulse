@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { StatusMessage } from './StatusMessage'
 
 interface TrendSpiderPost {
   text: string
@@ -52,26 +53,24 @@ export function TrendSpiderView() {
   }, [lightboxUrl, closeLightbox])
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64 text-sol-base1">Loading...</div>
+    return <StatusMessage kind="loading" />
   }
   if (error) {
-    return <div className="flex items-center justify-center h-64 text-sol-red">Error: {error}</div>
+    return <StatusMessage kind="error">Error: {error}</StatusMessage>
   }
   if (posts.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-sol-base1">
-        No Trend Spider posts available yet.
-      </div>
+      <StatusMessage kind="empty">No Trend Spider posts available yet.</StatusMessage>
     )
   }
 
   return (
     <>
-      <div className="flex flex-col items-center gap-4">
+      <div className="flex flex-col items-center gap-5">
         {posts.map((post, index) => (
           <div
             key={index}
-            className="w-full max-w-xl bg-sol-base3 rounded-xl border border-sol-base2 shadow-sm overflow-hidden"
+            className="w-full max-w-xl mp-card overflow-hidden"
           >
             {post.media.length > 0 && (
               <div className="flex flex-col">
@@ -87,7 +86,7 @@ export function TrendSpiderView() {
               </div>
             )}
             <div className="px-5 py-4">
-              <p className="text-sol-base01 whitespace-pre-wrap text-base leading-relaxed">
+              <p className="text-sol-base02 whitespace-pre-wrap text-base leading-relaxed">
                 {post.text.replace(/\s*https?:\/\/\S+\s*$/, '')}
               </p>
               {(() => {
@@ -99,13 +98,13 @@ export function TrendSpiderView() {
                       href={urlMatch[1]}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sol-base1 text-sm mt-3 block hover:underline"
+                      className="text-sol-base00 text-sm mt-3 block hover:underline"
                     >
                       {time}
                     </a>
                   )
                 }
-                return <p className="text-sol-base1 text-sm mt-3">{time}</p>
+                return <p className="text-sol-base00 text-sm mt-3">{time}</p>
               })()}
             </div>
           </div>
@@ -114,7 +113,7 @@ export function TrendSpiderView() {
 
       {lightboxUrl && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 cursor-zoom-out"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-sol-base02/85 backdrop-blur-sm cursor-zoom-out"
           onClick={() => setLightboxUrl(null)}
         >
           <img

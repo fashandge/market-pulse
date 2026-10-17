@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { Chevron } from './Chevron'
 
 export interface SignalDigestRun {
   run_id: string
@@ -33,14 +34,14 @@ export function SignalDigestDay({ runs }: { runs: SignalDigestRun[] }) {
           <button
             onClick={() => setOpen(new Set(runs.map((r) => r.run_id)))}
             disabled={allOpen}
-            className="px-3 py-1.5 rounded border border-sol-base2 text-sol-base01 hover:bg-sol-base2/60 disabled:opacity-40 disabled:cursor-default cursor-pointer"
+            className="px-3 py-1 rounded-full border border-[var(--line-strong)] font-bold text-[0.8rem] text-sol-base01 hover:bg-sol-base2/60 hover:text-sol-base02 transition-colors disabled:opacity-40 disabled:cursor-default cursor-pointer"
           >
             Unfold all runs
           </button>
           <button
             onClick={() => setOpen(new Set())}
             disabled={noneOpen}
-            className="px-3 py-1.5 rounded border border-sol-base2 text-sol-base01 hover:bg-sol-base2/60 disabled:opacity-40 disabled:cursor-default cursor-pointer"
+            className="px-3 py-1 rounded-full border border-[var(--line-strong)] font-bold text-[0.8rem] text-sol-base01 hover:bg-sol-base2/60 hover:text-sol-base02 transition-colors disabled:opacity-40 disabled:cursor-default cursor-pointer"
           >
             Fold all runs
           </button>
@@ -53,13 +54,13 @@ export function SignalDigestDay({ runs }: { runs: SignalDigestRun[] }) {
             key={run.run_id}
             open={isOpen}
             onToggle={(e) => setRun(run.run_id, e.currentTarget.open)}
-            className="border-l-4 border-sol-base2 open:border-sol-blue/60 rounded-r"
+            className="border-l-[3px] border-sol-base2 open:border-sol-blue/60 rounded-r-lg"
           >
-            <summary className="flex gap-3 items-baseline px-3 py-2 cursor-pointer select-none hover:bg-sol-base2/40">
-              <span aria-hidden className="text-sol-base01 text-lg leading-none w-4 shrink-0">{isOpen ? '▾' : '▸'}</span>
+            <summary className="flex gap-3 items-center px-3 py-2 cursor-pointer select-none rounded-r-lg hover:bg-sol-base2/50 list-none [&::-webkit-details-marker]:hidden">
+              <Chevron open={isOpen} />
               <span className="font-semibold text-sol-base02 tabular-nums shrink-0">{run.time}</span>
               {i === 0 && (
-                <span className="text-xs uppercase tracking-wide text-sol-blue shrink-0">latest</span>
+                <span className="text-[0.7rem] font-bold uppercase tracking-wider text-sol-link bg-sol-blue/10 rounded-full px-2 py-0.5 shrink-0">latest</span>
               )}
               {!isOpen && run.verdict && (
                 <span className="text-sol-base01 truncate min-w-0">{run.verdict}</span>

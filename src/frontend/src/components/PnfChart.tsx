@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Plotly from 'react-plotly.js'
+import { StatusMessage } from './StatusMessage'
 
 // Handle ESM/CJS default export differences (same as MarketCapChart)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -168,23 +169,16 @@ export function PnfChart({ ticker }: { ticker: string }) {
     current: T,
     label: string,
     onClick: (v: T) => void,
-    i: number,
   ) => (
-    <button
-      key={String(value)}
-      onClick={() => onClick(value)}
-      className={`px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
-        i > 0 ? 'border-l border-sol-base1/30' : ''
-      } ${current === value ? 'bg-sol-blue text-white' : 'bg-sol-base2 text-sol-base00 hover:bg-sol-base1/20'}`}
-    >
+    <button key={String(value)} onClick={() => onClick(value)} aria-pressed={current === value}>
       {label}
     </button>
   )
 
   const control = (label: string, children: React.ReactNode) => (
     <div className="flex items-center gap-3">
-      <span className="text-sm text-sol-base1">{label}</span>
-      <div className="inline-flex rounded-lg overflow-hidden shadow-sm">{children}</div>
+      <span className="text-sm text-sol-base00">{label}</span>
+      <div className="mp-segment">{children}</div>
     </div>
   )
 
@@ -286,14 +280,14 @@ export function PnfChart({ ticker }: { ticker: string }) {
         {((b / data.last_close) * 100).toFixed(1)}% of last close), {data.reversal}-box reversal,{' '}
         {data.first_date} → {data.last_date}, {data.n_columns} columns, last {data.last_close.toFixed(2)}
         {data.source ? ` [${data.source}]` : ''}.{' '}
-        <span className="text-sol-green">X</span> = rising column, <span className="text-sol-red">O</span> = falling
+        <span className="text-sol-up">X</span> = rising column, <span className="text-sol-down">O</span> = falling
         column; hover a box for its column's dates.
         {data.has_volume &&
           ' Below: each column\'s volume relative to the 50-bar average before it (dotted line = 1×); right: volume traded at each price level.'}
         {data.has_volume && noBaseline > 0 && ` ${noBaseline} column${noBaseline === 1 ? '' : 's'} without a bar: fewer than 10 prior bars, so no 50-bar baseline (e.g. a new listing).`}
         {data.has_volume && relCapped && ` Volume axis capped at ${REL_VOL_AXIS_CAP}× (max ${maxRel.toFixed(1)}×) — hover a bar for the exact value.`}
         {data.notes.length > 0 && (
-          <span className="text-sol-yellow"> Note: {data.notes.join('; ')}.</span>
+          <span className="text-sol-amber"> Note: {data.notes.join('; ')}.</span>
         )}
       </>
     )
@@ -371,10 +365,10 @@ export function PnfChart({ ticker }: { ticker: string }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-        {control('Range:', RANGES.map((r, i) => segButton(r, range, r, setRange, i)))}
+        {control('Range:', RANGES.map((r) => segButton(r, range, r, setRange)))}
         {control(
           'Box:',
-          BOX_PRESETS.map((p, i) => segButton(p, boxPreset, p === 'custom' ? 'Custom' : p, setBoxPreset, i)),
+          BOX_PRESETS.map((p) => segButton(p, boxPreset, p === 'custom' ? 'Custom' : p, setBoxPreset)),
         )}
         {boxPreset === 'custom' && (
           <input
@@ -390,31 +384,31 @@ export function PnfChart({ ticker }: { ticker: string }) {
           />
         )}
         {control('Reversal:', [
-          segButton<Reversal>(3, reversal, '3-box', setReversal, 0),
-          segButton<Reversal>(1, reversal, '1-box (Wyckoff)', setReversal, 1),
+          segButton<Reversal>(3, reversal, '3-box', setReversal),
+          segButton<Reversal>(1, reversal, '1-box (Wyckoff)', setReversal),
         ])}
         {control('Style:', [
-          segButton<Style>('xo', style, 'X / O', setStyle, 0),
-          segButton<Style>('price', style, 'Price', setStyle, 1),
+          segButton<Style>('xo', style, 'X / O', setStyle),
+          segButton<Style>('price', style, 'Price', setStyle),
         ])}
       </div>
 
       {!customBoxValid && (
-        <div className="flex items-center justify-center h-64 text-sol-base1">Enter a positive box size.</div>
+        <StatusMessage kind="empty">Enter a positive box size.</StatusMessage>
       )}
       {customBoxValid && loading && (
-        <div className="flex items-center justify-center h-64 text-sol-base1">Loading {ticker}…</div>
+        <StatusMessage kind="loading">Loading {ticker}…</StatusMessage>
       )}
       {customBoxValid && error && (
-        <div className="flex items-center justify-center h-64 text-sol-red">Error: {error}</div>
+        <StatusMessage kind="error">Error: {error}</StatusMessage>
       )}
       {customBoxValid && !loading && !error && data && data.boxes.length === 0 && (
-        <div className="flex items-center justify-center h-64 text-sol-base1">No P&F data for {ticker}.</div>
+        <StatusMessage kind="empty">No P&F data for {ticker}.</StatusMessage>
       )}
       {customBoxValid && !loading && !error && plot && <p className="text-sm text-sol-base00">{caption}</p>}
       <div
         ref={wrapRef}
-        className={`w-full rounded-lg border border-sol-base1/30 overflow-x-auto ${
+        className={`w-full rounded-xl border border-[var(--line-strong)] overflow-x-auto ${
           customBoxValid && !loading && !error && plot ? '' : 'hidden'
         }`}
       >

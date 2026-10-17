@@ -3,6 +3,9 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { SignalDigestDay, type SignalDigestRun } from './SignalDigestDay'
 import { EventsView } from './EventsView'
+import { StatusMessage } from './StatusMessage'
+import { Tabs } from './Tabs'
+import { Chevron } from './Chevron'
 
 interface SummaryResponse {
   date: string
@@ -111,17 +114,13 @@ export function MarketView() {
 
     if (loading) {
       return (
-        <div className="flex items-center justify-center h-64 text-sol-base1">
-          Loading...
-        </div>
+        <StatusMessage kind="loading" />
       )
     }
 
     if (error) {
       return (
-        <div className="flex items-center justify-center h-64 text-sol-red">
-          Error: {error}
-        </div>
+        <StatusMessage kind="error">Error: {error}</StatusMessage>
       )
     }
 
@@ -129,9 +128,7 @@ export function MarketView() {
     if (multiDay) {
       if (dailySummaries.length === 0 || dailySummaries.every((s) => !s.content && !s.runs?.length)) {
         return (
-          <div className="flex items-center justify-center h-64 text-sol-base1">
-            {multiDay.emptyMessage}
-          </div>
+          <StatusMessage kind="empty">{multiDay.emptyMessage}</StatusMessage>
         )
       }
       return (
@@ -140,17 +137,18 @@ export function MarketView() {
             <details
               key={s.date}
               open={i === 0}
-              className="border border-sol-base2 rounded-lg overflow-hidden"
+              className="mp-fold"
             >
-              <summary className="px-4 py-3 bg-sol-base3 cursor-pointer font-medium text-sol-base01 hover:bg-sol-base2/50 select-none">
+              <summary>
+                <Chevron />
                 {s.date}
                 {s.runs && (
-                  <span className="ml-2 text-sm font-normal text-sol-base1">
+                  <span className="text-sm font-normal text-sol-base00">
                     {s.runs.length} {s.runs.length === 1 ? 'run' : 'runs'}
                   </span>
                 )}
               </summary>
-              <div className="px-4 py-3">
+              <div className="px-5 py-4">
                 {s.runs?.length ? (
                   <SignalDigestDay runs={s.runs} />
                 ) : s.content ? (
@@ -161,7 +159,7 @@ export function MarketView() {
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{s.content}</ReactMarkdown>
                   </div>
                 ) : (
-                  <p className="text-sol-base1">No summary for {s.date}.</p>
+                  <p className="text-sol-base00">No summary for {s.date}.</p>
                 )}
               </div>
             </details>
@@ -172,9 +170,7 @@ export function MarketView() {
 
     if (!summary?.content) {
       return (
-        <div className="flex items-center justify-center h-64 text-sol-base1">
-          {SOURCE_CONFIG[activeSource].noDataMessage} {summary?.date} yet.
-        </div>
+        <StatusMessage kind="empty">{SOURCE_CONFIG[activeSource].noDataMessage} {summary?.date} yet.</StatusMessage>
       )
     }
 
@@ -187,21 +183,11 @@ export function MarketView() {
 
   return (
     <div className="max-w-3xl">
-      <div className="flex gap-1 mb-6 border-b border-sol-base1/30">
-        {SOURCE_TABS.map((source) => (
-          <button
-            key={source}
-            onClick={() => handleSelectSource(source)}
-            className={`px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
-              activeSource === source
-                ? 'text-sol-blue border-b-2 border-sol-blue'
-                : 'text-sol-base00 hover:text-sol-base01 hover:bg-sol-blue/20 rounded-t cursor-pointer'
-            }`}
-          >
-            {TAB_LABELS[source]}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        tabs={SOURCE_TABS.map((id) => ({ id, label: TAB_LABELS[id] }))}
+        active={activeSource}
+        onSelect={handleSelectSource}
+      />
       {renderContent()}
     </div>
   )

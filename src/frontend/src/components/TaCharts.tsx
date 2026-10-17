@@ -16,6 +16,7 @@ import {
   type Time,
 } from 'lightweight-charts'
 import type { CanvasRenderingTarget2D } from 'fancy-canvas'
+import { StatusMessage } from './StatusMessage'
 
 // One OHLCV+indicators bar. Keys vary by timeframe (week_start vs date, the MA
 // set, roc_12 vs cci_20, …) so we keep it loosely typed and read by config.
@@ -629,46 +630,26 @@ export function TaCharts({ ticker }: { ticker: string }) {
     ['weekly', 'Weekly'],
     ['monthly', 'Monthly'],
   ]
-  const tfButton = (tf: Timeframe, label: string, i: number) => (
-    <button
-      key={tf}
-      onClick={() => handleTimeframe(tf)}
-      className={`px-4 py-1.5 text-sm font-medium transition-all duration-200 ${
-        i > 0 ? 'border-l border-sol-base1/30' : ''
-      } ${
-        timeframe === tf
-          ? 'bg-sol-blue text-white'
-          : 'bg-sol-base2 text-sol-base00 hover:bg-sol-base1/20'
-      }`}
-    >
+  const tfButton = (tf: Timeframe, label: string) => (
+    <button key={tf} onClick={() => handleTimeframe(tf)} aria-pressed={timeframe === tf}>
       {label}
     </button>
   )
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-6">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="flex items-center gap-3">
-          <span className="text-sm text-sol-base1">Timeframe:</span>
-          <div className="inline-flex rounded-lg overflow-hidden shadow-sm">
-            {timeframes.map(([tf, label], i) => tfButton(tf, label, i))}
+          <span className="text-sm text-sol-base00">Timeframe:</span>
+          <div className="mp-segment">
+            {timeframes.map(([tf, label]) => tfButton(tf, label))}
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-sol-base1">Range:</span>
-          <div className="inline-flex rounded-lg overflow-hidden shadow-sm">
-            {cfg.ranges.map((r, i) => (
-              <button
-                key={r}
-                onClick={() => setRange(r)}
-                className={`px-4 py-1.5 text-sm font-medium transition-all duration-200 ${
-                  i > 0 ? 'border-l border-sol-base1/30' : ''
-                } ${
-                  range === r
-                    ? 'bg-sol-blue text-white'
-                    : 'bg-sol-base2 text-sol-base00 hover:bg-sol-base1/20'
-                }`}
-              >
+          <span className="text-sm text-sol-base00">Range:</span>
+          <div className="mp-segment">
+            {cfg.ranges.map((r) => (
+              <button key={r} onClick={() => setRange(r)} aria-pressed={range === r}>
                 {r}
               </button>
             ))}
@@ -676,15 +657,15 @@ export function TaCharts({ ticker }: { ticker: string }) {
         </div>
       </div>
 
-      {loading && <div className="flex items-center justify-center h-64 text-sol-base1">Loading {ticker}…</div>}
-      {error && <div className="flex items-center justify-center h-64 text-sol-red">Error: {error}</div>}
+      {loading && <StatusMessage kind="loading">Loading {ticker}…</StatusMessage>}
+      {error && <StatusMessage kind="error">Error: {error}</StatusMessage>}
       {!loading && !error && rows.length === 0 && (
-        <div className="flex items-center justify-center h-64 text-sol-base1">No {timeframe} data for {ticker}.</div>
+        <StatusMessage kind="empty">No {timeframe} data for {ticker}.</StatusMessage>
       )}
 
       <div
         ref={containerRef}
-        className={`w-full rounded-lg border border-sol-base1/30 overflow-hidden ${
+        className={`w-full rounded-xl border border-[var(--line-strong)] overflow-hidden ${
           loading || error || rows.length === 0 ? 'hidden' : ''
         }`}
       />

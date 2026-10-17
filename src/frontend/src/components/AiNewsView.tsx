@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { StatusMessage } from './StatusMessage'
+import { Chevron } from './Chevron'
 
 interface AiNewsArticle {
   title: string
@@ -66,28 +68,26 @@ export function AiNewsView() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 text-sol-base1">Loading...</div>
+      <StatusMessage kind="loading" />
     )
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64 text-sol-red">Error: {error}</div>
+      <StatusMessage kind="error">Error: {error}</StatusMessage>
     )
   }
 
   if (!data || data.briefs.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-sol-base1">
-        No AI news briefs available yet.
-      </div>
+      <StatusMessage kind="empty">No AI news briefs available yet.</StatusMessage>
     )
   }
 
   return (
     <div className="max-w-3xl">
       {!data.today_available && (
-        <div className="rounded-lg border border-sol-yellow/40 bg-sol-yellow/10 px-4 py-3 text-sm text-sol-yellow mb-6">
+        <div className="mp-notice mb-6">
           Today's AI news brief has not been generated yet.
         </div>
       )}
@@ -99,28 +99,25 @@ export function AiNewsView() {
             <div key={brief.date}>
               <button
                 onClick={() => toggle(brief.date)}
-                className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-sol-base01 hover:bg-sol-base2/50 transition-all duration-200"
+                aria-expanded={isOpen}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg font-bold text-sol-base02 hover:bg-sol-base2/60 transition-colors cursor-pointer"
               >
-                <span
-                  className={`transform transition-transform duration-200 text-xs ${isOpen ? 'rotate-90' : ''}`}
-                >
-                  ▶
-                </span>
+                <Chevron open={isOpen} />
                 <span>{formatDateHeading(brief.date)}</span>
-                <span className="text-sol-base1 font-normal ml-1">
-                  ({brief.articles.length})
+                <span className="text-[0.75rem] font-bold text-sol-base01 bg-sol-base2 rounded-full px-2 py-0.5">
+                  {brief.articles.length}
                 </span>
               </button>
 
               {isOpen && (
-                <div className="flex flex-col items-center gap-4 mt-2 mb-4">
+                <div className="flex flex-col gap-3 mt-2 mb-6">
                   {brief.articles.map((article, index) => {
                     const titleNode = article.url ? (
                       <a
                         href={article.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-bold text-lg leading-snug hover:underline"
+                        className="font-bold text-lg leading-snug text-sol-base02 hover:text-sol-link hover:underline underline-offset-4 decoration-1"
                       >
                         {article.title}
                       </a>
@@ -133,16 +130,16 @@ export function AiNewsView() {
                       <div
                         key={index}
                         lang="zh-CN"
-                        className="reading-text w-full max-w-xl bg-sol-base3 rounded-xl border border-sol-base2 shadow-sm px-5 py-4"
+                        className="reading-text mp-card px-6 py-5"
                       >
                         <div className="flex flex-wrap gap-1.5 mb-2">
                           {article.category && (
-                            <span className="inline-block rounded-full bg-sol-base2 text-sol-base01 text-xs px-2 py-0.5">
-                              {article.category}
+                            <span className="inline-block rounded-full bg-sol-cyan/10 text-[#1d6f69] text-xs font-bold px-2.5 py-0.5 tracking-wide">
+                              {article.category.replace(/_/g, ' ')}
                             </span>
                           )}
                           {article.account && (
-                            <span className="inline-block text-sol-base1 text-[11px] px-1.5 py-0.5">
+                            <span className="inline-block text-sol-base00 text-xs px-1 py-0.5">
                               {ACCOUNT_LABELS[article.account] ?? article.account}
                             </span>
                           )}
