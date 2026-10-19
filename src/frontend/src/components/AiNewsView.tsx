@@ -134,7 +134,7 @@ export function AiNewsView() {
                       >
                         <div className="flex flex-wrap gap-1.5 mb-2">
                           {article.category && (
-                            <span className="inline-block rounded-full bg-sol-cyan/10 text-[#1d6f69] text-xs font-bold px-2.5 py-0.5 tracking-wide">
+                            <span className="inline-block text-sol-base1 text-xs py-0.5">
                               {article.category.replace(/_/g, ' ')}
                             </span>
                           )}
