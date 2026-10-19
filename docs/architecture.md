@@ -58,17 +58,17 @@ Market Pulse is a web dashboard for monitoring market and individual stock/crypt
 ## Data Flow
 
 ```
-TradingView Scanner API              CoinMarketCap API                News Summaries + Feeds
-(scanner.tradingview.com, JSON)           ↓                          (NDX, CFZH, X, signal digest, TrendSpider, Zhihu AI)
-       ↓                            FastAPI Backend (port 8000)            ↓
-   quotes.py                         - Fetches data                  - Reads .md/.jsonl files
-   - One batched POST, ~1s           - Converts UTC → LA time        - Returns summaries/posts
-   - EXCHANGE:SYMBOL from ticker.csv - Computes changes                    ↓
+TradingView Scanner API                                               News Summaries + Feeds
+(scanner.tradingview.com, JSON)                                       (NDX, CFZH, X, signal digest, TrendSpider, Zhihu AI)
+       ↓                                                                   ↓
+   quotes.py                                                         - Reads .md/.jsonl files
+   - One batched POST, ~1s                                           - Returns summaries/posts
+   - EXCHANGE:SYMBOL from ticker.csv                                       ↓
    - Real-time via logged-in TV                            React Frontend (port 5173)
      session (tv_session.py)                            - MarketView sub-tabs: TV, X, CFZH, General
    - Covers ~170 symbols                                   - Markdown rendering
-       ↓                                                    - Renders Plotly chart
-   tv_session.py (session cookies)                         - Displays changes table
+       ↓
+   tv_session.py (session cookies)
    - Reads sessionid/sessionid_sign from the crawl4ai
      profile (~3s browser launch, TTL-cached 6h);
      anonymous fallback = delayed quotes
@@ -99,8 +99,6 @@ TradingView Scanner API              CoinMarketCap API                News Summa
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/tickers/crcl/market-cap` | GET | Returns 3Y market cap time series |
-| `/api/tickers/crcl/changes` | GET | Returns percentage changes |
 | `/api/market/ndx-summary` | GET | Returns today's NDX/Trading View summary |
 | `/api/market/cfzh-summary` | GET | Returns today's CFZH forum summary |
 | `/api/market/x-summary` | GET | Returns today's X market news summary |
@@ -125,12 +123,10 @@ TradingView Scanner API              CoinMarketCap API                News Summa
 ```
 App.tsx
 ├── Persists selected navigation tab in sessionStorage (per browser tab)
-├── Sidebar.tsx — sticky; groups Markets / News / Tickers, active item has a blue rail
+├── Sidebar.tsx — sticky; groups Markets / News, active item has a blue rail
 │   - Overview tab → OverviewView (default)
 │   - Market News tab → MarketView
 │   - China Market News → ChinaNewsView, AI News → AiNewsView
-│   - Tickers section (collapsible)
-│     └── CRCL tab → TickerView
 ├── Shared UI: Tabs.tsx (tab bar), StatusMessage.tsx (loading/empty/error), Chevron.tsx
 │
 ├── OverviewView.tsx
@@ -229,31 +225,15 @@ App.tsx
 │   RSI pane has a soft 30–70 band fill + dashed 30/50/70 guides; KDJ pane has
 │   green/red K≥D regime bands + dashed 80/20 guides (custom lightweight-charts
 │   primitives drawn behind the series)
-│
-└── TickerView.tsx
-    ├── Header (ticker name, market cap link)
-    ├── Time range toggle (YTD, 1Y, 3Y)
-    ├── MarketCapChart.tsx (Plotly)
-    └── Changes table
 ```
 
 ## Key Design Decisions
 
 ### 1. Timestamps in LA Time
-- Data from CoinMarketCap is UTC
-- Converted to America/Los_Angeles in backend
+- Source timestamps are converted to America/Los_Angeles in the backend
 - Users see dates in Pacific time
 
-### 2. Client-side Time Filtering
-- Backend returns full 3Y data
-- Frontend filters by YTD/1Y/3Y
-- Avoids multiple API calls for different ranges
-
-### 3. Market Cap as Link
-- The market cap value links to source (CoinMarketCap)
-- Cleaner than separate "Source" link
-
-### 4. Vite Proxy for API
+### 2. Vite Proxy for API
 - Frontend dev server proxies `/api` to backend
 - No CORS issues in development
 - `vite.config.ts` configures proxy
@@ -351,12 +331,6 @@ The `Portfolio` section mirrors the TradingView watchlist named **`portfolio`**;
 - A missing/unreadable CSV yields an empty holdings list, which omits the section rather than falling back to a guess.
 
 ## Future Considerations
-
-### Adding New Tickers
-1. Create `src/backend/tickers/{ticker}.py` with data fetching
-2. Add API endpoints in `src/backend/main.py`
-3. Add ticker to sidebar in `Sidebar.tsx`
-4. Make TickerView generic (pass source URL as prop)
 
 ### Production Deployment
 - Build frontend: `npm run build`

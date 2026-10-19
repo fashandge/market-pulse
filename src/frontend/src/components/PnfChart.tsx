@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Plotly from 'react-plotly.js'
 import { StatusMessage } from './StatusMessage'
 
-// Handle ESM/CJS default export differences (same as MarketCapChart)
+// Handle ESM/CJS default export differences (react-plotly.js)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Plot = (Plotly as any).default || Plotly
 

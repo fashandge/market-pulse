@@ -10,8 +10,8 @@ Market Pulse - A web dashboard for monitoring market and individual stock/crypto
 
 - **Frontend**: React + Vite + TypeScript + Tailwind CSS v4 (Solarized Light theme, `--color-sol-*` variables in `index.css`)
 - **Backend**: FastAPI (Python, `ml` conda env per global CLAUDE.md)
-- **Charts**: Plotly (react-plotly.js) for market-cap and Point & Figure; TradingView Lightweight Charts v5 for weekly + monthly + daily TA charts
-- **Data Sources**: CoinMarketCap API; TradingView scanner JSON API for live quotes (`quotes.py`), with the five licensed-feed vol indices from CBOE's and Deribit's own JSON APIs (`vol_indices.py`) and FRED economic series (DFII10, T10YIE) straight from fredgraph.csv; news summaries (NDX, CFZH forum, X market news, signal digest), TrendSpider posts, Zhihu AI briefs (all from the `news` project); OHLCV, precomputed indicators and market breadth read-only from the `investment` project duckdb (`~/projects/investment/data/stocks/stocks.duckdb`)
+- **Charts**: Plotly (react-plotly.js) for Point & Figure; TradingView Lightweight Charts v5 for weekly + monthly + daily TA charts
+- **Data Sources**: TradingView scanner JSON API for live quotes (`quotes.py`), with the five licensed-feed vol indices from CBOE's and Deribit's own JSON APIs (`vol_indices.py`) and FRED economic series (DFII10, T10YIE) straight from fredgraph.csv; news summaries (NDX, CFZH forum, X market news, signal digest), TrendSpider posts, Zhihu AI briefs (all from the `news` project); OHLCV, precomputed indicators and market breadth read-only from the `investment` project duckdb (`~/projects/investment/data/stocks/stocks.duckdb`)
 
 ## Project Structure
 
@@ -33,7 +33,7 @@ src/
 │   ├── tickers/pnf.py        # Point & Figure columns/boxes via investment.src.charts.pnf (duckdb bars, Yahoo fallback)
 │   └── scripts/              # start_tunnel.sh, ensure_up.sh
 └── frontend/                 # React + Vite (port 5173); components in src/components/
-                              # (OverviewView, MarketOverview, MarketView, TaCharts, PnfChart, BreadthCharts, EstimatesView, TickerView, …)
+                              # (OverviewView, MarketOverview, MarketView, TaCharts, PnfChart, BreadthCharts, EstimatesView, …)
 ```
 
 Full component list and data flow: [docs/architecture.md](docs/architecture.md).
@@ -57,7 +57,6 @@ Open http://localhost:5173
 ## Key Conventions
 
 - All timestamps are in LA time (America/Los_Angeles)
-- Market cap values are displayed in billions (e.g., "$77.61B")
 - **Not every quote is real-time, and no code change can fix that** — it is a TradingView account data entitlement. 153/174 symbols stream live; CBOE indices and CME futures are 10-15 min delayed. Delayed tiles are labelled in the UI (`delay` field, from the scanner's `update_mode` column). Audit with `python -m src.backend.scripts.check_quote_delay`; details in [docs/architecture.md](docs/architecture.md#vol-indices-and-the-background-snapshot).
 - Backend API endpoints are under `/api/tickers/{ticker}/` and `/api/market/`
 - Temp files (screenshots, logs, etc.) go in `tmp/` folder

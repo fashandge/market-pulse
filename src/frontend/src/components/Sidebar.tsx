@@ -1,5 +1,4 @@
-import { useState, type ReactNode } from 'react'
-import { Chevron } from './Chevron'
+import type { ReactNode } from 'react'
 
 interface SidebarProps {
   selectedTab: string
@@ -66,10 +65,6 @@ function GroupLabel({ children }: { children: ReactNode }) {
 }
 
 export function Sidebar({ selectedTab, onSelectTab }: SidebarProps) {
-  const [tickersExpanded, setTickersExpanded] = useState(true)
-
-  const tickers = ['CRCL']
-
   return (
     <aside className="w-56 shrink-0 sticky top-0 h-screen overflow-y-auto bg-sol-rail border-r border-[var(--line)] px-3 py-5">
       <div className="flex items-center gap-2.5 px-2 mb-7">
@@ -99,27 +94,6 @@ export function Sidebar({ selectedTab, onSelectTab }: SidebarProps) {
             </div>
           </div>
         ))}
-
-        <div>
-          <button
-            onClick={() => setTickersExpanded(!tickersExpanded)}
-            aria-expanded={tickersExpanded}
-            className="w-full flex items-center justify-between pr-2 cursor-pointer rounded-md"
-          >
-            <GroupLabel>Tickers</GroupLabel>
-            <span className="mb-1.5"><Chevron open={tickersExpanded} /></span>
-          </button>
-
-          {tickersExpanded && (
-            <div className="flex flex-col gap-0.5">
-              {tickers.map((ticker) => (
-                <NavItem key={ticker} active={selectedTab === ticker} onClick={() => onSelectTab(ticker)}>
-                  <span className="font-mono text-[0.85rem] tracking-wide">{ticker}</span>
-                </NavItem>
-              ))}
-            </div>
-          )}
-        </div>
       </nav>
     </aside>
   )

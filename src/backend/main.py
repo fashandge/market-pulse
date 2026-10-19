@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from news.src.catalyst_calendar import calendar_note
 from news.src.catalyst_calendar import state as catalyst_state
-from src.backend.tickers import crcl, charts, pnf
+from src.backend.tickers import charts, pnf
 from src.backend import breadth, estimates, overview_cache, portfolio
 
 NEWS_BASE_PATH = Path.home() / "projects/news/data/market_news"
@@ -146,36 +146,6 @@ def get_pnf_chart(
         return pnf.get_pnf_chart(ticker.upper(), since, box, box_pct, reversal, end)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-
-
-@app.get("/api/tickers/crcl/market-cap")
-def get_crcl_market_cap():
-    """Get CRCL (USDC) market cap time series for the past year."""
-    df = crcl.get_usdc_market_cap_1y()
-    return {
-        "data": [
-            {
-                "timestamp": row["timestamp"].isoformat(),
-                "market_cap": row["market_cap"],
-            }
-            for _, row in df.iterrows()
-        ]
-    }
-
-
-@app.get("/api/tickers/crcl/changes")
-def get_crcl_changes():
-    """Get CRCL (USDC) market cap percentage changes."""
-    df = crcl.get_usdc_market_cap_1y()
-    changes = crcl.compute_changes(df)
-
-    # Get latest market cap value
-    latest_market_cap = df.iloc[-1]["market_cap"] if not df.empty else None
-
-    return {
-        "latest_market_cap": latest_market_cap,
-        "changes": changes,
-    }
 
 
 @app.get("/api/market/ndx-summary")

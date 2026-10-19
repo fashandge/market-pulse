@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Sidebar } from './components/Sidebar'
-import { TickerView } from './components/TickerView'
 import { MarketView } from './components/MarketView'
 import { OverviewView } from './components/OverviewView'
 import { AiNewsView } from './components/AiNewsView'
@@ -17,9 +16,6 @@ function App() {
   }
 
   const renderContent = () => {
-    if (selectedTab === 'overview') {
-      return <OverviewView />
-    }
     if (selectedTab === 'market') {
       return <MarketView />
     }
@@ -30,7 +26,7 @@ function App() {
       return <AiNewsView />
     }
 
-    return <TickerView ticker={selectedTab} />
+    return <OverviewView />
   }
 
   return (
