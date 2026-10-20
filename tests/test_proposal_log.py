@@ -114,3 +114,18 @@ def test_second_start_while_running_is_refused(tmp_path):
     with pytest.raises(proposal_log.AlreadyRunning):
         proposal_log.start(run, [1], jobs)
     _wait(status["job_id"], jobs)
+
+
+def test_note_links_point_at_the_logged_section(tmp_path):
+    vault = tmp_path / "vault"
+    register = vault / proposal_log.PREMISE_REGISTER_NOTE
+    register.parent.mkdir(parents=True)
+    register.write_text("# Register\n\n## P1 — Capex grows\n\n## P2 — Supply stays tight, so pricing holds\n")
+    run = _run(tmp_path)
+    out = proposal_log.proposals(run, {}, vault)
+    watch_items = "http://127.0.0.1:8765/note?path=wiki%2FInvestment%2FInvestment%20system%2FWatch%20Items.md"
+    assert out[0]["note_label"] == "Watch Items · NVDA" and out[0]["note_url"] == f"{watch_items}#NVDA"
+    assert out[1]["note_label"] == "Premise Register · P2"
+    assert out[1]["note_url"].endswith("Register.md#P2-%E2%80%94-Supply-stays-tight,-so-pricing-holds")
+    register.unlink()  # heading not found: link to the note without an anchor
+    assert proposal_log.proposals(run, {}, vault)[1]["note_url"].endswith("Portfolio%20Premise%20Register.md")

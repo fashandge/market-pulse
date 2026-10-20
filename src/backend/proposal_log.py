@@ -17,6 +17,7 @@ import json
 import re
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote, urlencode
 from zoneinfo import ZoneInfo
 
 from agents import coding_agents_cli
@@ -26,6 +27,13 @@ JOBS_DIR = Path(__file__).resolve().parents[2] / "tmp/proposal_logs"
 MODEL = "opus"
 EFFORT = "high"
 JOB_TIMEOUT_SECONDS = 45 * 60
+# The notes the skill writes to, as vault-relative paths (portfolio_brief.py's
+# DEFAULT_SYSTEM_DIR + WATCH_LOG_NAME / REGISTER_NAME), and the notes-search web
+# UI that renders them with one id per heading (the heading text, spaces → "-").
+NOTES_VAULT = Path.home() / "notes"
+WATCH_ITEMS_NOTE = "wiki/Investment/Investment system/Watch Items.md"
+PREMISE_REGISTER_NOTE = "wiki/Investment/Investment system/Portfolio Premise Register.md"
+NOTES_SEARCH_URL = "http://127.0.0.1:8765"
 # A numbered line of the report's "## Proposed log" section: "1. watch NVDA · against — …".
 _REPORT_LINE_RE = re.compile(r"^(\d+)\.\s+(.+)$")
 
@@ -72,10 +80,41 @@ def load_proposals(run_dir: Path) -> list[dict]:
         return []
 
 
-def proposals(run_dir: Path, report_labels: dict[int, str]) -> list[dict]:
-    """One ``{"n", "label"}`` per proposal; labels come from the report's numbered
-    list when it has that number, else are built from the proposal's args."""
-    return [{"n": n, "label": report_labels.get(n) or _fallback_label(p)}
+def note_link(note: str, heading: str | None) -> str:
+    """notes-search URL of a vault note, scrolled to ``heading`` when given."""
+    url = f"{NOTES_SEARCH_URL}/note?{urlencode({'path': note}, quote_via=quote)}"
+    return f"{url}#{quote('-'.join(heading.split()), safe=',')}" if heading else url
+
+
+def _premise_heading(premise: str, vault: Path) -> str | None:
+    """The register's full ``## P2 — …`` heading text for ``premise``, if found."""
+    try:
+        text = (vault / PREMISE_REGISTER_NOTE).read_text()
+    except OSError:
+        return None
+    m = re.search(rf"^## ({re.escape(premise)}\b.*)$", text, re.MULTILINE)
+    return m.group(1).strip() if m else None
+
+
+def _note_target(proposal: dict, vault: Path) -> dict | None:
+    """Where a logged proposal lands: ``{"note_label", "note_url"}``, or None for an unknown kind."""
+    args = proposal.get("args", {})
+    if proposal.get("kind") == "watch":
+        ticker = args.get("ticker")
+        return {"note_label": f"Watch Items · {ticker}", "note_url": note_link(WATCH_ITEMS_NOTE, ticker)}
+    if proposal.get("kind") == "premise_evidence":
+        premise = args.get("premise", "")
+        return {"note_label": f"Premise Register · {premise}",
+                "note_url": note_link(PREMISE_REGISTER_NOTE, _premise_heading(premise, vault))}
+    return None
+
+
+def proposals(run_dir: Path, report_labels: dict[int, str], vault: Path = NOTES_VAULT) -> list[dict]:
+    """One ``{"n", "label", "note_label", "note_url"}`` per proposal. Labels come
+    from the report's numbered list when it has that number, else are built from
+    the proposal's args; the note link is the section the skill logs it under."""
+    return [{"n": n, "label": report_labels.get(n) or _fallback_label(p),
+             **(_note_target(p, vault) or {"note_label": None, "note_url": None})}
             for n, p in enumerate(load_proposals(run_dir), 1)]
 
 

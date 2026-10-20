@@ -5,6 +5,8 @@ import remarkGfm from 'remark-gfm'
 export interface Proposal {
   n: number
   label: string
+  note_label: string | null  // the vault note section the skill logs it under
+  note_url: string | null    // that section in the notes-search web UI
 }
 
 export interface LogJob {
@@ -20,6 +22,15 @@ export interface LogJob {
 const POLL_MS = 5000
 
 const formatTime = (iso: string) => iso.slice(11, 16)
+
+// One link per note section the job's proposals were logged under.
+const noteLinks = (proposals: Proposal[], only: number[]) => {
+  const links = new Map<string, string>()
+  for (const p of proposals) {
+    if (only.includes(p.n) && p.note_url && p.note_label) links.set(p.note_url, p.note_label)
+  }
+  return [...links].map(([url, label]) => ({ url, label }))
+}
 
 // A signal-digest run's proposed log entries with a checkbox each (all checked
 // by default) and a button that applies the checked ones through
@@ -126,6 +137,16 @@ export function ProposedLog({ runId, proposals, initialJob }: {
             <div className="mt-1 prose prose-sm summary-prose">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{job.output}</ReactMarkdown>
             </div>
+          )}
+          {job.state === 'done' && noteLinks(proposals, job.only).length > 0 && (
+            <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+              <span className="text-sol-base00">Open in notes:</span>
+              {noteLinks(proposals, job.only).map(({ url, label }) => (
+                <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="text-sol-link hover:underline">
+                  {label} ↗
+                </a>
+              ))}
+            </p>
           )}
           {job.error && (
             <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap text-xs text-sol-base01">{job.error}</pre>
