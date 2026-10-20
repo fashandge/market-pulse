@@ -1,5 +1,6 @@
 """FastAPI backend for the market dashboard."""
 
+import ipaddress
 import json
 import re
 from contextlib import asynccontextmanager
@@ -7,7 +8,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -240,10 +241,46 @@ def _split_signal_report(text: str) -> tuple[str, str]:
     return body, verdict
 
 
+LOCAL_HOSTS = {"localhost", "127.0.0.1", "[::1]"}
+
+
+def _is_loopback(address: str) -> bool:
+    try:
+        ip = ipaddress.ip_address(address.strip())
+    except ValueError:
+        return False
+    return ip.is_loopback or bool(getattr(ip, "ipv4_mapped", None) and ip.ipv4_mapped.is_loopback)
+
+
+def is_local_request(request: Request) -> bool:
+    """True only for a browser on this machine (http://localhost:5173 or 127.0.0.1).
+
+    The client IP alone proves nothing: every request arrives from 127.0.0.1
+    through the Vite proxy, whether it came from this Mac, a Wi-Fi device or a
+    tunnel. The proxy (``xfwd``) appends the real client address to
+    X-Forwarded-For, so every hop listed there must be loopback too; a device
+    can add fake entries but not remove its own. The Host must also be local,
+    which also refuses a Wi-Fi device should the proxy ever stop adding the
+    header. Fails closed on anything unexpected.
+    """
+    host = request.headers.get("host", "").rsplit(":", 1)[0]
+    hops = [request.client.host if request.client else ""]
+    if "x-forwarded-for" in request.headers:
+        hops += request.headers["x-forwarded-for"].split(",")
+    return host in LOCAL_HOSTS and all(_is_loopback(hop) for hop in hops)
+
+
+def _require_local(request: Request) -> None:
+    if not is_local_request(request):
+        raise HTTPException(status_code=403, detail="proposal logging is only available from this machine")
+
+
 def load_signal_digests(runs_path: Path, today: date, days: int = 4,
-                        jobs_dir: Path = proposal_log.JOBS_DIR) -> list[dict]:
+                        jobs_dir: Path = proposal_log.JOBS_DIR,
+                        include_proposals: bool = True) -> list[dict]:
     """Every signal-digest run with a report, grouped by day, for ``today`` and
-    the previous days.
+    the previous days. Without ``include_proposals`` (a remote viewer) runs carry
+    no ``proposals``/``log_job`` and keep the report's plain "Proposed log" list.
 
     Days without a report are omitted, so at most ``days`` entries come back,
     newest first; each day's ``runs`` are newest first too.
@@ -264,7 +301,7 @@ def load_signal_digests(runs_path: Path, today: date, days: int = 4,
         for (hhmm, _), run in sorted(by_day[day], reverse=True):
             body, verdict = _split_signal_report((run / "report.md").read_text())
             proposals = []
-            if (run / "proposed_log.json").is_file():
+            if include_proposals and (run / "proposed_log.json").is_file():
                 # The checkbox panel replaces the report's numbered "Proposed log" list.
                 trimmed, labels = proposal_log.split_proposed_log_section(body)
                 proposals = proposal_log.proposals(run, labels)
@@ -278,10 +315,12 @@ def load_signal_digests(runs_path: Path, today: date, days: int = 4,
 
 
 @app.get("/api/market/signal-digests")
-def get_signal_digests():
-    """Get every signal-digest run for today and each of the previous 3 days, grouped by day."""
+def get_signal_digests(request: Request):
+    """Get every signal-digest run for today and each of the previous 3 days, grouped by day.
+    The proposal-log panel's data is served only to a browser on this machine."""
     today = datetime.now(ZoneInfo("America/Los_Angeles")).date()
-    return {"summaries": load_signal_digests(SIGNAL_DIGEST_RUNS_PATH, today)}
+    return {"summaries": load_signal_digests(SIGNAL_DIGEST_RUNS_PATH, today,
+                                             include_proposals=is_local_request(request))}
 
 
 def _signal_digest_run_dir(run_id: str) -> Path:
@@ -297,12 +336,14 @@ class LogProposalsRequest(BaseModel):
 
 
 @app.post("/api/market/signal-digests/{run_id}/log-proposals")
-def log_signal_digest_proposals(run_id: str, request: LogProposalsRequest):
+def log_signal_digest_proposals(run_id: str, request: LogProposalsRequest, http_request: Request):
     """Apply the selected (1-based) proposals of the run's proposed_log.json via a
     headless ``claude -p`` running stock_picker's /portfolio-brief skill, with the
     user's free-text ``instructions`` added to its prompt. Returns the job status
-    at once; poll the GET below. 400 for a bad selection, 409 while an earlier
-    job for the run is still running."""
+    at once; poll the GET below. 403 unless the request comes from a browser on
+    this machine (never through the tunnel), 400 for a bad selection, 409 while
+    an earlier job for the run is still running."""
+    _require_local(http_request)
     run = _signal_digest_run_dir(run_id)
     try:
         return proposal_log.start(run, request.only, instructions=request.instructions)
@@ -313,8 +354,10 @@ def log_signal_digest_proposals(run_id: str, request: LogProposalsRequest):
 
 
 @app.get("/api/market/signal-digests/{run_id}/log-proposals")
-def get_signal_digest_log_job(run_id: str):
-    """The run's latest proposal-log job (``state``: running/done/failed/lost), or null."""
+def get_signal_digest_log_job(run_id: str, request: Request):
+    """The run's latest proposal-log job (``state``: running/done/failed/lost), or
+    null. 403 unless the request comes from this machine."""
+    _require_local(request)
     return proposal_log.latest_job(_signal_digest_run_dir(run_id).name)
 
 

@@ -35,9 +35,27 @@ cd /Users/jianfuchen/projects/market-pulse/src/frontend
 npm run dev
 ```
 
-## Public access (temporary tunnel)
+## Home Wi-Fi access
 
-To share the running app on a temporary public URL (e.g. to view it off-machine):
+Other devices on the home Wi-Fi open `http://<Mac's LAN IP>:5173` (Vite prints it as `Network:` in
+`tmp/frontend.log`). `vite.config.ts` sets `server.host: true` so Vite listens on the LAN; the backend
+stays bound to 127.0.0.1 and is reached only through Vite's `/api` proxy. Nothing is on the public
+internet. Chrome shows "Not secure" because it is plain HTTP; there is no login either, so anyone on
+the Wi-Fi can open it. If that ever matters, `tailscale serve` (real HTTPS, own devices only) beats a
+self-signed or mkcert certificate, which every device would have to trust.
+
+The proxy runs with `xfwd: true`, appending the real client address to `X-Forwarded-For` — without it
+every proxied request reaches the backend as 127.0.0.1. `is_local_request` (`main.py`) treats a request
+as this Mac only when the Host is localhost/127.0.0.1/[::1] **and** the client plus every
+`X-Forwarded-For` hop are loopback. The General tab's proposal-log panel (which launches a headless
+`claude -p` with user-typed instructions) is served only to such requests: other devices see the
+report's plain "Proposed log" list, and the log-proposals endpoints return 403. Opening the Mac's own
+LAN IP from the Mac counts as a Wi-Fi device too — use `localhost:5173` there.
+
+## Public access (temporary tunnel) — off by default
+
+The public tunnel is **not** started by the supervisor any more (it was public with no auth). To
+share the running app on a temporary public URL anyway, start it by hand and stop it after:
 
 ```bash
 src/backend/scripts/start_tunnel.sh         # start the tunnel (detached) and print the URL
@@ -92,22 +110,23 @@ this class of failure instead of showing a blank page.
 
 ## Auto-start on login (LaunchAgent)
 
-A LaunchAgent keeps the app and tunnel running without manual commands:
+A LaunchAgent keeps the app running without manual commands:
 
 - `deploy/launchd/com.jianfuchen.market-pulse.plist` — symlinked into `~/Library/LaunchAgents/`.
 - It runs `src/backend/scripts/ensure_up.sh`, a **long-running supervisor daemon** started at
   login (`RunAtLoad`) and kept alive by launchd (`KeepAlive`). The daemon loops forever,
-  re-checking every 60s and (re)starting the app servers (`market-pulse-server`) and the ngrok
-  tunnel (`start_tunnel.sh`) only if they are down; it is silent in the log when everything is
-  healthy. This gives login-start **plus** crash / wake-from-sleep recovery within ~a minute (a
-  sleeping Mac drops the tunnel, but it comes back on wake).
+  re-checking every 60s and (re)starting the app servers (`market-pulse-server`) only if they
+  are down; it is silent in the log when everything is healthy. This gives login-start **plus**
+  crash / wake-from-sleep recovery within ~a minute. It does not start the ngrok tunnel.
 - It must NOT be a one-shot (`StartInterval`/`RunAtLoad`-then-exit): under launchd, when a job's
   main process exits, launchd kills the whole job — including the `nohup`/`disown`'d backend,
-  frontend and ngrok it just started. The daemon stays running so the servers (in its process
+  frontend it just started. The daemon stays running so the servers (in its process
   group) stay up; `KeepAlive` only restarts the daemon itself if it ever dies.
-- It runs via `/bin/zsh` so `~/.zshenv` supplies the full PATH (node/npm live in `~/.local/bin`,
-  ngrok in `/opt/homebrew/bin`) that launchd's minimal default PATH would otherwise miss.
+- It runs via `/bin/zsh` so `~/.zshenv` supplies the full PATH (node/npm live in `~/.local/bin`)
+  that launchd's minimal default PATH would otherwise miss.
 - Logs: `tmp/supervisor.log` (actions only) and `tmp/launchd.{out,err}.log`.
+- After editing `ensure_up.sh`, reload the running daemon with
+  `launchctl kickstart -k gui/$(id -u)/com.jianfuchen.market-pulse` — the old loop keeps running otherwise.
 
 Enable/disable:
 

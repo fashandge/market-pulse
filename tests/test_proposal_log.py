@@ -72,6 +72,53 @@ def test_run_without_proposal_file_keeps_report(tmp_path):
     assert run["proposals"] == [] and "## Proposed log" in run["content"]
 
 
+def test_remote_viewer_gets_no_proposal_panel(tmp_path):
+    (tmp_path / "runs").mkdir()
+    _run(tmp_path / "runs")
+    run = main.load_signal_digests(tmp_path / "runs", date(2026, 10, 10), jobs_dir=tmp_path / "jobs",
+                                   include_proposals=False)[0]["runs"][0]
+    assert run["proposals"] == [] and run["log_job"] is None
+    assert "1. watch NVDA" in run["content"]
+
+
+def _request(host, client="127.0.0.1", **headers):
+    raw = [(b"host", host.encode())] + [(k.replace("_", "-").encode(), v.encode()) for k, v in headers.items()]
+    return main.Request({"type": "http", "headers": raw, "client": (client, 50000)})
+
+
+@pytest.mark.parametrize("request_, local", [
+    # A browser on this Mac, through the Vite proxy (xfwd) or straight to :8000.
+    (_request("localhost:5173", x_forwarded_for="127.0.0.1"), True),
+    (_request("localhost:5173", x_forwarded_for="::ffff:127.0.0.1"), True),
+    (_request("127.0.0.1:5173", x_forwarded_for="::1"), True),
+    (_request("[::1]:5173", client="::1"), True),
+    (_request("localhost:8000"), True),
+    # A Wi-Fi device: the proxy appends its address even when it fakes Host and the header.
+    (_request("192.168.1.5:5173", x_forwarded_for="192.168.1.20"), False),
+    (_request("localhost:5173", x_forwarded_for="::ffff:192.168.1.20"), False),
+    (_request("localhost:5173", x_forwarded_for="127.0.0.1, 192.168.1.20"), False),
+    (_request("192.168.1.5:5173"), False),
+    # A tunnel (ngrok → Vite → backend): the client IP is still loopback.
+    (_request("sanctuary-appealing-dosage.ngrok-free.dev", x_forwarded_for="209.237.159.26,127.0.0.1"), False),
+    (_request("localhost:5173", client="192.168.1.20"), False),
+    (_request("localhost:5173", x_forwarded_for="garbage"), False),
+    (_request(""), False),
+])
+def test_only_this_machine_counts_as_local(request_, local):
+    assert main.is_local_request(request_) is local
+
+
+def test_tunnel_cannot_start_or_read_log_jobs(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(main, "SIGNAL_DIGEST_RUNS_PATH", tmp_path)
+    run = _run(tmp_path)
+    client = TestClient(main.app)  # its client host "testclient" is not loopback
+    url = f"/api/market/signal-digests/{run.name}/log-proposals"
+    headers = {"host": "sanctuary-appealing-dosage.ngrok-free.dev", "x-forwarded-for": "1.2.3.4"}
+    assert client.post(url, json={"only": [1], "instructions": "x"}, headers=headers).status_code == 403
+    assert client.get(url, headers=headers).status_code == 403
+
+
 @pytest.fixture(autouse=True)
 def fake_agent(monkeypatch):
     monkeypatch.setattr(coding_agents_cli, "_BACKGROUND_CHILD_CODE", FAKE_CHILD)

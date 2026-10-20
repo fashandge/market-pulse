@@ -50,9 +50,8 @@ Open http://localhost:5173
 
 - **Always prefer `market-pulse-server` over raw `uvicorn`/`npm run dev`** — from a cmux/Claude Code shell, a dangling cmux `NODE_OPTIONS` shim crashes every spawned `node` (symptom: `tv_session` can't launch, so quotes silently go delayed); the wrapper strips it. If you must run uvicorn from a cmux shell, prefix `env -u NODE_OPTIONS`. Details + manual two-terminal commands: [docs/operations.md](docs/operations.md).
 - Server logs: `tmp/backend.log`, `tmp/frontend.log`.
-- Public URL: `src/backend/scripts/start_tunnel.sh [status|stop]` (ngrok, detached). Details: [docs/operations.md](docs/operations.md).
-- **Blank page on the ngrok URL is the free-tier interstitial, not a dead server** — ngrok answers every request (JS modules and `/api` included) with the warning page as HTTP 200 `text/html` until a per-browser cookie dismisses it. Clear that host's cookies + Cmd+Shift+R + "Visit Site". Full explanation: [docs/operations.md](docs/operations.md#tunnel-url-shows-a-blank-page-ngrok-free-tier-interstitial).
-- Auto-start on login: LaunchAgent `com.jianfuchen.market-pulse` runs the `ensure_up.sh` supervisor daemon (restarts app + tunnel within ~1 min of a crash/wake). Enable/disable + design constraints: [docs/operations.md](docs/operations.md).
+- Other devices: home Wi-Fi only, at `http://<Mac's LAN IP>:5173` (Vite `host: true`; the backend stays on 127.0.0.1). The proposal-log panel and its endpoints serve only a browser on this Mac (`is_local_request` in `main.py`, 403 otherwise). The public ngrok tunnel is **off** and not auto-started; `src/backend/scripts/start_tunnel.sh [status|stop]` still works by hand. Details: [docs/operations.md](docs/operations.md#home-wi-fi-access).
+- Auto-start on login: LaunchAgent `com.jianfuchen.market-pulse` runs the `ensure_up.sh` supervisor daemon (restarts the app within ~1 min of a crash/wake). Enable/disable + design constraints: [docs/operations.md](docs/operations.md).
 - Backend tests: `python -m pytest tests/ -q` **from the repo root** (`pytest tests/` alone can't import `src.backend` — nothing puts the root on `sys.path`).
 
 ## Key Conventions
@@ -66,4 +65,4 @@ Open http://localhost:5173
 ## Documentation
 
 - [Architecture & Design Decisions](docs/architecture.md) — tech stack rationale, data flow, API endpoints, components, Market Overview data sourcing
-- [Operations](docs/operations.md) — market-pulse-server & the cmux NODE_OPTIONS trap, ngrok tunnel, auto-start LaunchAgent
+- [Operations](docs/operations.md) — market-pulse-server & the cmux NODE_OPTIONS trap, Wi-Fi access, ngrok tunnel (manual, off), auto-start LaunchAgent
