@@ -29,6 +29,7 @@ src/
 │   ├── portfolio.py          # Holdings from stock_picker's data/portfolio.csv (mirror of the TradingView "portfolio" watchlist)
 │   ├── estimates.py          # Analyst estimates for the Estimates tab: reads stock_picker's data/estimates/*.json; fetches an uncached ticker on demand via stock_picker's fetch_estimates (rate-limited)
 │   ├── breadth.py            # S&P 500 / Nasdaq-100 breadth + SPY/QQQ closes for the Breadth tab (reads investment duckdb)
+│   ├── proposal_log.py       # General tab: apply a signal-digest run's selected proposed_log.json entries via a detached headless `claude -p` running stock_picker's /portfolio-brief
 │   ├── tickers/charts.py     # Weekly/monthly/daily OHLCV + indicators (reads investment duckdb)
 │   ├── tickers/pnf.py        # Point & Figure columns/boxes via investment.src.charts.pnf (duckdb bars, Yahoo fallback)
 │   └── scripts/              # start_tunnel.sh, ensure_up.sh

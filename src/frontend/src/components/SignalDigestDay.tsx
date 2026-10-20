@@ -2,12 +2,15 @@ import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Chevron } from './Chevron'
+import { ProposedLog, type LogJob, type Proposal } from './ProposedLog'
 
 export interface SignalDigestRun {
   run_id: string
   time: string
   verdict: string
   content: string
+  proposals?: Proposal[]  // from proposed_log.json; replaces the report's "Proposed log" list
+  log_job?: LogJob | null
 }
 
 // One day's signal-digest runs (newest first) inside the day's fold: each run
@@ -66,8 +69,13 @@ export function SignalDigestDay({ runs }: { runs: SignalDigestRun[] }) {
                 <span className="text-sol-base01 truncate min-w-0">{run.verdict}</span>
               )}
             </summary>
-            <div className="px-3 pt-1 pb-3 prose prose-base summary-prose">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{run.content}</ReactMarkdown>
+            <div className="px-3 pt-1 pb-3">
+              <div className="prose prose-base summary-prose">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{run.content}</ReactMarkdown>
+              </div>
+              {run.proposals && run.proposals.length > 0 && (
+                <ProposedLog runId={run.run_id} proposals={run.proposals} initialJob={run.log_job ?? null} />
+              )}
             </div>
           </details>
         )

@@ -9,11 +9,12 @@ from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from news.src.catalyst_calendar import calendar_note
 from news.src.catalyst_calendar import state as catalyst_state
 from src.backend.tickers import charts, pnf
-from src.backend import breadth, estimates, overview_cache, portfolio
+from src.backend import breadth, estimates, overview_cache, portfolio, proposal_log
 
 NEWS_BASE_PATH = Path.home() / "projects/news/data/market_news"
 CFZH_PATH = Path.home() / "projects/news/data/cfzh_forum_summaries"
@@ -239,7 +240,8 @@ def _split_signal_report(text: str) -> tuple[str, str]:
     return body, verdict
 
 
-def load_signal_digests(runs_path: Path, today: date, days: int = 4) -> list[dict]:
+def load_signal_digests(runs_path: Path, today: date, days: int = 4,
+                        jobs_dir: Path = proposal_log.JOBS_DIR) -> list[dict]:
     """Every signal-digest run with a report, grouped by day, for ``today`` and
     the previous days.
 
@@ -261,8 +263,16 @@ def load_signal_digests(runs_path: Path, today: date, days: int = 4) -> list[dic
         runs = []
         for (hhmm, _), run in sorted(by_day[day], reverse=True):
             body, verdict = _split_signal_report((run / "report.md").read_text())
+            proposals = []
+            if (run / "proposed_log.json").is_file():
+                # The checkbox panel replaces the report's numbered "Proposed log" list.
+                trimmed, labels = proposal_log.split_proposed_log_section(body)
+                proposals = proposal_log.proposals(run, labels)
+                if proposals:
+                    body = trimmed
             runs.append({"run_id": run.name, "time": f"{hhmm[:2]}:{hhmm[2:]}",
-                         "verdict": verdict, "content": body})
+                         "verdict": verdict, "content": body, "proposals": proposals,
+                         "log_job": proposal_log.latest_job(run.name, jobs_dir) if proposals else None})
         summaries.append({"date": formatted_date, "content": None, "runs": runs})
     return summaries
 
@@ -272,6 +282,38 @@ def get_signal_digests():
     """Get every signal-digest run for today and each of the previous 3 days, grouped by day."""
     today = datetime.now(ZoneInfo("America/Los_Angeles")).date()
     return {"summaries": load_signal_digests(SIGNAL_DIGEST_RUNS_PATH, today)}
+
+
+def _signal_digest_run_dir(run_id: str) -> Path:
+    run = SIGNAL_DIGEST_RUNS_PATH / run_id
+    if not SIGNAL_DIGEST_RUN_RE.match(run_id) or not run.is_dir():
+        raise HTTPException(status_code=404, detail=f"no signal-digest run {run_id}")
+    return run
+
+
+class LogProposalsRequest(BaseModel):
+    only: list[int]
+
+
+@app.post("/api/market/signal-digests/{run_id}/log-proposals")
+def log_signal_digest_proposals(run_id: str, request: LogProposalsRequest):
+    """Apply the selected (1-based) proposals of the run's proposed_log.json via a
+    headless ``claude -p`` running stock_picker's /portfolio-brief skill. Returns
+    the job status at once; poll the GET below. 400 for a bad selection, 409
+    while an earlier job for the run is still running."""
+    run = _signal_digest_run_dir(run_id)
+    try:
+        return proposal_log.start(run, request.only)
+    except proposal_log.InvalidSelection as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except proposal_log.AlreadyRunning as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@app.get("/api/market/signal-digests/{run_id}/log-proposals")
+def get_signal_digest_log_job(run_id: str):
+    """The run's latest proposal-log job (``state``: running/done/failed/lost), or null."""
+    return proposal_log.latest_job(_signal_digest_run_dir(run_id).name)
 
 
 @app.get("/api/market/x-summary")
