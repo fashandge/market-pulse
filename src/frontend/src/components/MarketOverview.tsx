@@ -155,7 +155,7 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
       {/* Symbol + vol chip */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, minWidth: 0 }}>
         <a
-          href={`https://www.tradingview.com/chart/${TV_CHART_ID}/?symbol=${encodeURIComponent(ticker.formal_symbol)}`}
+          href={`https://www.tradingview.com/chart/${TV_CHART_ID}/?symbol=${encodeURIComponent(ticker.formal_symbol)}&interval=W`}
           target="_blank"
           rel="noopener noreferrer"
           style={{
