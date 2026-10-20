@@ -134,9 +134,10 @@ def build_prompt(run_id: str, path: Path, only: list[int], total: int) -> str:
 
 
 def agent_config() -> coding_agents_cli.AgentConfig:
-    """Headless ``claude -p`` in stock_picker, so its ``.claude/skills`` resolve."""
+    """Headless ``claude -p`` in stock_picker, so its ``.claude/skills`` resolve,
+    in auto mode: a classifier reviews each action instead of bypassing permissions."""
     return coding_agents_cli.AgentConfig(
-        agent="claude", model=MODEL, claude_effort=EFFORT,
+        agent="claude", model=MODEL, claude_effort=EFFORT, auto_mode=True,
         claude_disable_mcp=True, claude_working_dir=STOCK_PICKER_DIR,
     )
 

@@ -14,7 +14,7 @@ FAKE_CHILD = (
     "def fake(p, cfg, timeout=None, **kw):\n"
     "    if 'numbers 3 ' in p: time.sleep(2)\n"
     "    failed = 'numbers 2 ' in p\n"
-    "    return c.AgentResult(output=f'{cfg.model} {cfg.claude_effort} {cfg.claude_working_dir}\\n' + p,\n"
+    "    return c.AgentResult(output=f'{cfg.model} {cfg.claude_effort} {cfg.auto_mode} {cfg.claude_working_dir}\\n' + p,\n"
     "                         returncode=3 if failed else 0, stderr='boom' if failed else '', agent=cfg.agent)\n"
     "c.run_with_config = fake\n"
     "sys.exit(c.run_background_job(sys.argv[1]))"
@@ -92,7 +92,7 @@ def test_start_runs_portfolio_brief_in_stock_picker(tmp_path):
     done = _wait(status["job_id"], jobs)
     assert done["state"] == "done"
     config_line, prompt = done["output"].split("\n", 1)
-    assert config_line == f"opus high {proposal_log.STOCK_PICKER_DIR}"
+    assert config_line == f"opus high True {proposal_log.STOCK_PICKER_DIR}"
     assert prompt.startswith("/portfolio-brief ")
     assert "numbers 1,3" in prompt and str(run / "proposed_log.json") in prompt
     assert proposal_log.latest_job(run.name, jobs)["job_id"] == status["job_id"]
