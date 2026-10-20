@@ -13,6 +13,7 @@ export interface LogJob {
   job_id: string
   run_id: string
   only: number[]
+  instructions?: string  // the user's free-text additions to the agent's prompt
   started: string
   state: 'running' | 'done' | 'failed' | 'lost'
   output: string
@@ -33,8 +34,10 @@ const noteLinks = (proposals: Proposal[], only: number[]) => {
 }
 
 // A signal-digest run's proposed log entries with a checkbox each (all checked
-// by default) and a button that applies the checked ones through
-// stock_picker's /portfolio-brief skill in a headless `claude -p` session.
+// by default), a free-text box for extra instructions and sources, and a
+// button that applies the checked ones through stock_picker's /portfolio-brief
+// skill in a headless `claude -p` session, with that text added to its prompt
+// (the text alone is enough when nothing is checked).
 // While that job runs the panel polls its status; the agent's final reply is
 // shown when it finishes.
 export function ProposedLog({ runId, proposals, initialJob }: {
@@ -43,6 +46,7 @@ export function ProposedLog({ runId, proposals, initialJob }: {
   initialJob: LogJob | null
 }) {
   const [selected, setSelected] = useState<Set<number>>(() => new Set(proposals.map((p) => p.n)))
+  const [instructions, setInstructions] = useState('')
   const [job, setJob] = useState<LogJob | null>(initialJob)
   const [submitting, setSubmitting] = useState(false)
   const [requestError, setRequestError] = useState<string | null>(null)
@@ -78,7 +82,7 @@ export function ProposedLog({ runId, proposals, initialJob }: {
     fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ only: [...selected].sort((a, b) => a - b) }),
+      body: JSON.stringify({ only: [...selected].sort((a, b) => a - b), instructions }),
     })
       .then(async (res) => {
         const body = await res.json().catch(() => ({}))
@@ -95,10 +99,14 @@ export function ProposedLog({ runId, proposals, initialJob }: {
         <h2 className="text-base font-bold text-sol-base02">Proposed log</h2>
         <button
           onClick={submit}
-          disabled={selected.size === 0 || running || submitting}
+          disabled={(selected.size === 0 && !instructions.trim()) || running || submitting}
           className="px-3 py-1 rounded-full border border-[var(--line-strong)] font-bold text-[0.8rem] text-sol-link hover:bg-sol-blue/10 transition-colors disabled:opacity-40 disabled:cursor-default cursor-pointer"
         >
-          {running ? 'Logging…' : `Log ${selected.size} selected with /portfolio-brief`}
+          {running
+            ? 'Logging…'
+            : selected.size === 0
+              ? 'Log instructions only with /portfolio-brief'
+              : `Log ${selected.size} selected with /portfolio-brief`}
         </button>
       </div>
       <ul className="mt-2 flex flex-col gap-1.5">
@@ -119,6 +127,17 @@ export function ProposedLog({ runId, proposals, initialJob }: {
           </li>
         ))}
       </ul>
+      <label className="mt-3 block text-sm text-sol-base00">
+        Additional instructions and sources (optional)
+        <textarea
+          value={running ? job.instructions ?? '' : instructions}
+          onChange={(e) => setInstructions(e.target.value)}
+          disabled={running}
+          rows={3}
+          placeholder="e.g. weigh the TSMC Q3 call transcript (URL or note path) before logging NVDA; reword INTC as a for-premise"
+          className="mt-1 block w-full rounded-lg border border-[var(--line)] bg-sol-base3 px-2 py-1.5 text-sol-base01 placeholder:text-sol-base1 focus:outline-none focus:border-[var(--line-strong)] disabled:opacity-60"
+        />
+      </label>
       {requestError && <p className="mt-2 text-sm text-sol-down">Could not start: {requestError}</p>}
       {job && (
         <div className="mt-3 border-t border-[var(--line)] pt-2 text-sm">
@@ -130,7 +149,7 @@ export function ProposedLog({ runId, proposals, initialJob }: {
               failed: 'Failed',
               lost: 'Stopped without a result',
             }[job.state]}{' '}
-            — proposals {job.only.join(', ')}, started {formatTime(job.started)}
+            — {job.only.length ? `proposals ${job.only.join(', ')}` : 'instructions only'}, started {formatTime(job.started)}
             {running && `, ${Math.max(0, Math.floor((now - Date.parse(job.started)) / 60000))} min so far`}
           </p>
           {job.output && (

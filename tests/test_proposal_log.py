@@ -98,6 +98,33 @@ def test_start_runs_portfolio_brief_in_stock_picker(tmp_path):
     assert proposal_log.latest_job(run.name, jobs)["job_id"] == status["job_id"]
 
 
+def test_user_instructions_reach_the_prompt(tmp_path):
+    run = _run(tmp_path)
+    jobs = tmp_path / "jobs"
+    status = proposal_log.start(run, [1], jobs, instructions="  Read https://example.com/tsmc first.\n")
+    assert status["instructions"] == "Read https://example.com/tsmc first."
+    prompt = _wait(status["job_id"], jobs)["output"].split("\n", 1)[1]
+    assert "<user_instructions>\nRead https://example.com/tsmc first.\n</user_instructions>" in prompt
+    assert prompt.rstrip().endswith("dropped (why).")
+
+
+def test_prompt_without_instructions_has_no_block(tmp_path):
+    prompt = proposal_log.build_prompt("r", tmp_path / "x.json", [1], 2, "   ")
+    assert "user_instructions" not in prompt
+
+
+def test_instructions_alone_start_a_job(tmp_path):
+    run = _run(tmp_path)
+    jobs = tmp_path / "jobs"
+    with pytest.raises(proposal_log.InvalidSelection):
+        proposal_log.start(run, [], jobs, instructions="   ")
+    status = proposal_log.start(run, [], jobs, instructions="Log AMD's MI450 win as a watch item.")
+    prompt = _wait(status["job_id"], jobs)["output"].split("\n", 1)[1]
+    assert "selected none of them" in prompt and "--only" not in prompt
+    assert str(run / "report.md") in prompt and str(run / "shortlist.md") in prompt
+    assert "<user_instructions>\nLog AMD's MI450 win as a watch item.\n</user_instructions>" in prompt
+
+
 def test_failed_job_reports_stderr(tmp_path):
     run = _run(tmp_path)
     jobs = tmp_path / "jobs"

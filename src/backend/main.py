@@ -293,17 +293,19 @@ def _signal_digest_run_dir(run_id: str) -> Path:
 
 class LogProposalsRequest(BaseModel):
     only: list[int]
+    instructions: str = ""  # free-text extra guidance and sources for the agent
 
 
 @app.post("/api/market/signal-digests/{run_id}/log-proposals")
 def log_signal_digest_proposals(run_id: str, request: LogProposalsRequest):
     """Apply the selected (1-based) proposals of the run's proposed_log.json via a
-    headless ``claude -p`` running stock_picker's /portfolio-brief skill. Returns
-    the job status at once; poll the GET below. 400 for a bad selection, 409
-    while an earlier job for the run is still running."""
+    headless ``claude -p`` running stock_picker's /portfolio-brief skill, with the
+    user's free-text ``instructions`` added to its prompt. Returns the job status
+    at once; poll the GET below. 400 for a bad selection, 409 while an earlier
+    job for the run is still running."""
     run = _signal_digest_run_dir(run_id)
     try:
-        return proposal_log.start(run, request.only)
+        return proposal_log.start(run, request.only, instructions=request.instructions)
     except proposal_log.InvalidSelection as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except proposal_log.AlreadyRunning as exc:

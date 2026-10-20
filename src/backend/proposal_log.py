@@ -38,7 +38,8 @@ NOTES_SEARCH_URL = "http://127.0.0.1:8765"
 _REPORT_LINE_RE = re.compile(r"^(\d+)\.\s+(.+)$")
 
 class InvalidSelection(ValueError):
-    """The run has no proposals, or a number is outside 1..len(proposals)."""
+    """The run has no proposals, a number is outside 1..len(proposals), or
+    neither proposals nor instructions were given."""
 
 
 class AlreadyRunning(RuntimeError):
@@ -118,18 +119,44 @@ def proposals(run_dir: Path, report_labels: dict[int, str], vault: Path = NOTES_
             for n, p in enumerate(load_proposals(run_dir), 1)]
 
 
-def build_prompt(run_id: str, path: Path, only: list[int], total: int) -> str:
+def build_prompt(run_id: str, path: Path, only: list[int], total: int, instructions: str = "") -> str:
+    """The ``/portfolio-brief`` prompt; ``instructions`` is the user's free text
+    (extra guidance and sources) from the dashboard, quoted verbatim when given.
+    With no proposals selected, the instructions alone say what to log."""
+    instructions = instructions.strip()
+    run_dir = path.parent
+    extra = (
+        f"The user added these instructions and sources for this logging; follow them and "
+        f"read every source they name (URLs, files, notes) before deciding what to log. They "
+        f"wrote them while reading this run's digest report, {run_dir / 'report.md'}, so read "
+        f"it to resolve any item, story or claim they refer to; for items the report left out, "
+        f"search {run_dir / 'shortlist.md'} (every candidate) and {run_dir / 'discarded.md'}.\n\n"
+        f"<user_instructions>\n{instructions}\n</user_instructions>\n\n"
+        if instructions else ""
+    )
+    head = (
+        f"/portfolio-brief Log the digest proposals of signal-digest run {run_id}: {path}\n\n"
+        f"The user reviewed this run's {total} proposals in the market-pulse dashboard and "
+    )
+    if not only:
+        return (
+            f"{head}selected none of them; they are all declined, so do not apply any. This is a "
+            f"headless session, so do not ask for confirmation. Log only what the user's "
+            f"instructions below ask for, through the skill's own workflow and checks against the "
+            f"vault as it is now.\n\n"
+            f"{extra}"
+            f"Finish with one line per entry you logged, or why you logged nothing."
+        )
     numbers = ",".join(map(str, only))
     return (
-        f"/portfolio-brief Log the digest proposals of signal-digest run {run_id}: {path}\n\n"
-        f"The user reviewed this run's {total} proposals in the market-pulse dashboard and selected "
-        f"numbers {numbers} (1-based, as numbered in the file). That selection is the go-ahead to "
-        f"apply them; the rest are declined. This is a headless session, so do not ask for "
-        f"confirmation. Run the skill's checks against the vault as it is now, drop or reword any "
-        f"selected proposal an earlier approval already covers or that is wrong, then apply the "
-        f"survivors with `apply-proposals {path} --only <numbers>` (`--dry-run` first if you "
-        f"edited any). Finish with one line per selected proposal: applied, reworded (how) or "
-        f"dropped (why)."
+        f"{head}selected numbers {numbers} (1-based, as numbered in the file). That selection is "
+        f"the go-ahead to apply them; the rest are declined. This is a headless session, so do "
+        f"not ask for confirmation. Run the skill's checks against the vault as it is now, drop "
+        f"or reword any selected proposal an earlier approval already covers or that is wrong, "
+        f"then apply the survivors with `apply-proposals {path} --only <numbers>` (`--dry-run` "
+        f"first if you edited any).\n\n"
+        f"{extra}"
+        f"Finish with one line per selected proposal: applied, reworded (how) or dropped (why)."
     )
 
 
@@ -162,14 +189,16 @@ def latest_job(run_id: str, jobs_dir: Path = JOBS_DIR) -> dict | None:
     return job_status(ids[-1], jobs_dir) if ids else None
 
 
-def start(run_dir: Path, only: list[int], jobs_dir: Path = JOBS_DIR) -> dict:
-    """Spawn the headless session for ``only`` and return its status."""
+def start(run_dir: Path, only: list[int], jobs_dir: Path = JOBS_DIR, instructions: str = "") -> dict:
+    """Spawn the headless session for ``only`` (plus the user's free-text
+    ``instructions``) and return its status."""
     total = len(load_proposals(run_dir))
     if not total:
         raise InvalidSelection(f"run {run_dir.name} has no proposed_log.json proposals")
+    instructions = instructions.strip()
     bad = [n for n in only if not 1 <= n <= total]
-    if not only or bad:
-        raise InvalidSelection(f"select proposal numbers from 1 to {total}, got {only}")
+    if bad or not (only or instructions):
+        raise InvalidSelection(f"select proposal numbers from 1 to {total} or give instructions, got {only}")
     current = latest_job(run_dir.name, jobs_dir)
     if current and current["state"] == "running":
         raise AlreadyRunning(f"a log job for run {run_dir.name} is still running")
@@ -177,10 +206,10 @@ def start(run_dir: Path, only: list[int], jobs_dir: Path = JOBS_DIR) -> dict:
     started = datetime.now(ZoneInfo("America/Los_Angeles"))
     job_id = f"{run_dir.name}__{started:%Y%m%d_%H%M%S}"
     only = sorted(set(only))
-    prompt = build_prompt(run_dir.name, run_dir / "proposed_log.json", only, total)
+    prompt = build_prompt(run_dir.name, run_dir / "proposed_log.json", only, total, instructions)
     jobs_dir.mkdir(parents=True, exist_ok=True)
     (jobs_dir / f"{job_id}.json").write_text(json.dumps({
-        "run_id": run_dir.name, "only": only,
+        "run_id": run_dir.name, "only": only, "instructions": instructions,
         "started": started.isoformat(timespec="seconds"), "model": MODEL, "effort": EFFORT,
     }))
     coding_agents_cli.run_background(prompt, agent_config(), jobs_dir / job_id,
