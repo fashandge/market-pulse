@@ -130,7 +130,10 @@ def build_prompt(run_id: str, path: Path, only: list[int], total: int, instructi
         f"read every source they name (URLs, files, notes) before deciding what to log. They "
         f"wrote them while reading this run's digest report, {run_dir / 'report.md'}, so read "
         f"it to resolve any item, story or claim they refer to; for items the report left out, "
-        f"search {run_dir / 'shortlist.md'} (every candidate) and {run_dir / 'discarded.md'}.\n\n"
+        f"search {run_dir / 'shortlist.md'} (every candidate) and {run_dir / 'discarded.md'}. "
+        f"A bare number in them (\"for 2, …\") is a proposal number as the dashboard showed it, "
+        f"the same as in the file and the report's `## Proposed log` list, not a premise id "
+        f"such as P2.\n\n"
         f"<user_instructions>\n{instructions}\n</user_instructions>\n\n"
         if instructions else ""
     )
