@@ -155,11 +155,14 @@ App.tsx
 ├── MarketView.tsx
 │   ├── Persists selected sub-tab in sessionStorage (per browser tab)
 │   ├── Sub-tabs: Trading View | X | CFZH | General (signal digest) | Calendar
-│   ├── Calendar (EventsView.tsx): upcoming catalysts, "Next 14 days" then "Later",
-│   │   each grouped Macro (blue) → Special events (magenta, the catch-all) → Earnings (green),
-│   │   one fixed-width table per group; today/tomorrow dates in red, "first seen" date per row
-│   │   critical events: a "Critical ahead" strip at the top, and in their group a red-tinted
-│   │   row with a red left bar, bold catalyst and a CRITICAL badge
+│   ├── Calendar (EventsView.tsx): upcoming catalysts as a week grid (Mon–Fri wide, Sat/Sun
+│   │   stacked in one narrow column): every week overlapping the next 14 days, then only weeks
+│   │   holding an event — each run of empty weeks collapses into one torn "quiet weeks skipped" band
+│   │   cells show event titles colour-coded Macro (blue) / Special events (magenta) / Earnings (green);
+│   │   hover (or keyboard focus) shows a viewport-fixed tooltip with "why it matters" and first-seen date
+│   │   critical events: a "Critical ahead" strip at the top, and a red-ringed chip with a CRITICAL badge
+│   │   new events (first_seen within 24 h, compared in LA wall-clock time): a "New on the calendar"
+│   │   strip under the critical one, and a yellow-ringed chip with a NEW badge
 │   ├── CFZH and General show the last 4 days as collapsible sections (newest open)
 │   ├── General nests each day's runs (SignalDigestDay.tsx): each run folds on its own,
 │   │   folded runs show time + verdict, only the latest run starts open, and
