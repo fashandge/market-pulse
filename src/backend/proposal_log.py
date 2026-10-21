@@ -21,6 +21,7 @@ from urllib.parse import quote, urlencode
 from zoneinfo import ZoneInfo
 
 from agents import coding_agents_cli
+from stock_picker.src.attention_layer import watch_item_files
 
 STOCK_PICKER_DIR = Path.home() / "projects/stock_picker"
 JOBS_DIR = Path(__file__).resolve().parents[2] / "tmp/proposal_logs"
@@ -28,10 +29,12 @@ MODEL = "opus"
 EFFORT = "high"
 JOB_TIMEOUT_SECONDS = 45 * 60
 # The notes the skill writes to, as vault-relative paths (portfolio_brief.py's
-# DEFAULT_SYSTEM_DIR + WATCH_LOG_NAME / REGISTER_NAME), and the notes-search web
-# UI that renders them with one id per heading (the heading text, spaces → "-").
+# DEFAULT_SYSTEM_DIR + WATCH_LOG_NAME / REGISTER_NAME, and the per-ticker watch
+# files under DEFAULT_WIKI_ROOT), and the notes-search web UI that renders them
+# with one id per heading (the heading text, spaces → "-").
 NOTES_VAULT = Path.home() / "notes"
-WATCH_ITEMS_NOTE = "wiki/Investment/Investment system/Watch Items.md"
+WATCH_ITEMS_NOTE = "wiki/Investment/Investment system/Watch Items.md"   # open-items index across the book
+WATCH_ITEMS_ROOT = "wiki/Investment/Micro fundamentals"   # holds <theme>/<ticker dir>/<TICKER> Watch Items.md
 PREMISE_REGISTER_NOTE = "wiki/Investment/Investment system/Portfolio Premise Register.md"
 NOTES_SEARCH_URL = "http://127.0.0.1:8765"
 # A numbered line of the report's "## Proposed log" section: "1. watch NVDA · against — …".
@@ -97,12 +100,29 @@ def _premise_heading(premise: str, vault: Path) -> str | None:
     return m.group(1).strip() if m else None
 
 
+def _watch_target(ticker: str, title: str, vault: Path) -> tuple[str, str | None]:
+    """(vault-relative note, heading) for a watch item: the ticker's watch file and the
+    ``### date · direction · source type — title`` heading once it is logged; the
+    cross-book index when the ticker has no file yet."""
+    files = watch_item_files.find(vault / WATCH_ITEMS_ROOT, ticker)
+    if not files:
+        return WATCH_ITEMS_NOTE, None
+    note = files[0]
+    try:
+        text = note.read_text()
+    except OSError:
+        text = ""
+    m = re.search(rf"^### (.+ — {re.escape(title)})\s*$", text, re.MULTILINE) if title else None
+    return str(note.relative_to(vault)), m.group(1).strip() if m else None
+
+
 def _note_target(proposal: dict, vault: Path) -> dict | None:
     """Where a logged proposal lands: ``{"note_label", "note_url"}``, or None for an unknown kind."""
     args = proposal.get("args", {})
     if proposal.get("kind") == "watch":
-        ticker = args.get("ticker")
-        return {"note_label": f"Watch Items · {ticker}", "note_url": note_link(WATCH_ITEMS_NOTE, ticker)}
+        ticker = (args.get("ticker") or "").upper()
+        return {"note_label": f"Watch Items · {ticker}",
+                "note_url": note_link(*_watch_target(ticker, args.get("title", ""), vault))}
     if proposal.get("kind") == "premise_evidence":
         premise = args.get("premise", "")
         return {"note_label": f"Premise Register · {premise}",

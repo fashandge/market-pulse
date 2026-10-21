@@ -197,9 +197,17 @@ def test_note_links_point_at_the_logged_section(tmp_path):
     register.write_text("# Register\n\n## P1 — Capex grows\n\n## P2 — Supply stays tight, so pricing holds\n")
     run = _run(tmp_path)
     out = proposal_log.proposals(run, {}, vault)
-    watch_items = "http://127.0.0.1:8765/note?path=wiki%2FInvestment%2FInvestment%20system%2FWatch%20Items.md"
-    assert out[0]["note_label"] == "Watch Items · NVDA" and out[0]["note_url"] == f"{watch_items}#NVDA"
+    watch_index = "http://127.0.0.1:8765/note?path=wiki%2FInvestment%2FInvestment%20system%2FWatch%20Items.md"
+    assert out[0]["note_label"] == "Watch Items · NVDA" and out[0]["note_url"] == watch_index   # no NVDA file yet
     assert out[1]["note_label"] == "Premise Register · P2"
     assert out[1]["note_url"].endswith("Register.md#P2-%E2%80%94-Supply-stays-tight,-so-pricing-holds")
+    nvda = vault / proposal_log.WATCH_ITEMS_ROOT / "AI Chips & Foundry" / "NVDA" / "NVDA Watch Items.md"
+    nvda.parent.mkdir(parents=True)
+    nvda.write_text("# NVDA Watch Items\n\n### 2026-10-19 · against · secondary — TPU cost lead\n")
+    nvda_url = proposal_log.proposals(run, {}, vault)[0]["note_url"]
+    assert nvda_url == ("http://127.0.0.1:8765/note?path=wiki%2FInvestment%2FMicro%20fundamentals%2FAI%20Chips%20%26%20Foundry"
+                        "%2FNVDA%2FNVDA%20Watch%20Items.md#2026-10-19-%C2%B7-against-%C2%B7-secondary-%E2%80%94-TPU-cost-lead")
+    nvda.write_text("# NVDA Watch Items\n")   # item not logged yet: the ticker's file, no anchor
+    assert proposal_log.proposals(run, {}, vault)[0]["note_url"].endswith("NVDA%20Watch%20Items.md")
     register.unlink()  # heading not found: link to the note without an anchor
     assert proposal_log.proposals(run, {}, vault)[1]["note_url"].endswith("Portfolio%20Premise%20Register.md")
