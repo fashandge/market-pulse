@@ -91,7 +91,7 @@ TradingView Scanner API                                               News Summa
    MarketOverview.tsx (Overview sub-tab of OverviewView, the default view)
    - One request, no second phase: every tile is in the first payload
    - Polls every 5s while the browser tab is visible
-   - Card grid by section; clickable tickers → TradingView charts
+   - Card grid by section; clickable tickers → your saved TradingView "weekly" layout (`TV_WEEKLY_CHART_ID` in `MarketOverview.tsx`; list layout ids with `GET tradingview.com/my-charts/` using `tv_session` cookies)
    - Hover tooltips with volume data
 ```
 

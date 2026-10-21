@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Chevron } from './Chevron'
 import { StatusMessage } from './StatusMessage'
 
-const TV_CHART_ID = '5JanKmS6'
+const TV_WEEKLY_CHART_ID = '3Y50znV2'  // TradingView saved layout "weekly" (my-charts)
 // The backend serves the overview from a background-refreshed snapshot, so a
 // poll costs it no network I/O — and polling keeps it in its fast refresh
 // cadence, which is what makes the numbers track the tape while the tab is open.
@@ -155,7 +155,7 @@ function TickerRow({ ticker }: { ticker: Ticker }) {
       {/* Symbol + vol chip */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, minWidth: 0 }}>
         <a
-          href={`https://www.tradingview.com/chart/${TV_CHART_ID}/?symbol=${encodeURIComponent(ticker.formal_symbol)}&interval=W`}
+          href={`https://www.tradingview.com/chart/${TV_WEEKLY_CHART_ID}/?symbol=${encodeURIComponent(ticker.formal_symbol)}&interval=W`}
           target="_blank"
           rel="noopener noreferrer"
           style={{
