@@ -73,8 +73,8 @@ TradingView Scanner API                                               News Summa
      profile (~3s browser launch, TTL-cached 6h);
      anonymous fallback = delayed quotes
        ↓
-   vol_indices.py (the 5 symbols the scanner won't serve)
-   - VIX3M/GVZ/VXSLV from CBOE's delayed-quotes JSON
+   vol_indices.py (the 6 symbols the scanner won't serve)
+   - VIX3M/GVZ/VXSLV/VXSMH from CBOE's delayed-quotes JSON
    - DVOL/ETHDVOL from Deribit's volatility-index API
    - fetched concurrently with the scanner batch by
      quotes.fetch_all_quotes(), TTL 60s
@@ -269,7 +269,7 @@ Market Overview loads ticker groups from `~/projects/stock_picker/data/ticker.cs
 
 Two changes (Sep 2026) took the Overview tab from ~1.3s + an 18s tail down to a ~5ms response.
 
-### The five symbols TradingView won't serve
+### The symbols TradingView won't serve
 
 `VIX3M`, `GVZ`, `VXSLV`, `DVOL` and `ETHDVOL` are licensed real-time feeds. The free scanner
 returns no row for them at any spelling, and the single-symbol endpoint
@@ -277,12 +277,14 @@ returns no row for them at any spelling, and the single-symbol endpoint
 session cookie — verified, not assumed. They used to be filled in by a headless crawl4ai scrape
 of the TradingView watchlist page behind `/api/market/overview/gaps`: 18s per refresh, and by
 Sep 2026 it had stopped matching any of the five, so all five tiles rendered `—`.
+`VXSMH` (Cboe's SMH semiconductor-ETF volatility index, added Oct 2026) is missing from the
+scanner too (`CBOE:VXSMH` returns no row), so it takes the same CBOE path.
 
 `vol_indices.py` fetches them from the publishers instead, concurrently, TTL-cached 60s:
 
 | Symbols | Source |
 |---|---|
-| VIX3M, GVZ, VXSLV | `cdn.cboe.com/api/global/delayed_quotes/quotes/_SYM.json` (15-min delayed — **the same delay TradingView serves this account**, see above, so nothing is lost by not going through TV) |
+| VIX3M, GVZ, VXSLV, VXSMH | `cdn.cboe.com/api/global/delayed_quotes/quotes/_SYM.json` (15-min delayed — **the same delay TradingView serves this account**, see above, so nothing is lost by not going through TV) |
 | DVOL, ETHDVOL | `deribit.com/api/v2/public/get_volatility_index_data` (BTC / ETH, daily candles) |
 
 The one subtlety is the **previous close**. CBOE's quote payload carries `prev_day_close`, but for

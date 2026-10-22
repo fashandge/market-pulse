@@ -1,15 +1,16 @@
 """Volatility-index quotes from CBOE's and Deribit's own JSON APIs.
 
-TradingView's scanner serves no data for these five symbols at any spelling —
+TradingView's scanner serves no data for these six symbols at any spelling —
 they are licensed real-time feeds, and the single-symbol endpoint returns
-``null`` for them even with a logged-in session. They used to be filled in by a
-headless crawl4ai scrape of the TradingView watchlist page, which cost ~18s per
-refresh and (as of Sep 2026) had stopped matching any of them, so every tile
-rendered "—".
+``null`` for them even with a logged-in session. The original five used to be
+filled in by a headless crawl4ai scrape of the TradingView watchlist page, which
+cost ~18s per refresh and (as of Sep 2026) had stopped matching any of them, so
+every tile rendered "—". ``VXSMH`` (Cboe's SMH semiconductor-ETF volatility
+index), added Oct 2026, is absent from the scanner too.
 
 Both vendors publish the numbers directly:
 
-* **CBOE** (``VIX3M``, ``GVZ``, ``VXSLV``) — ``delayed_quotes/quotes/_SYM.json``
+* **CBOE** (``VIX3M``, ``GVZ``, ``VXSLV``, ``VXSMH``) — ``delayed_quotes/quotes/_SYM.json``
   carries the current level and the session date. Its ``prev_day_close`` is
   unreliable for the thinner indices (GVZ/VXSLV come off a different feed and
   report it equal to the current price, i.e. a flat 0.00% change), so the
@@ -47,7 +48,7 @@ DERIBIT_URL = (
     "&start_timestamp={start}&end_timestamp={end}"
 )
 
-CBOE_SYMBOLS = ("VIX3M", "GVZ", "VXSLV")
+CBOE_SYMBOLS = ("VIX3M", "GVZ", "VXSLV", "VXSMH")
 DERIBIT_CURRENCIES = {"DVOL": "BTC", "ETHDVOL": "ETH"}
 EXCHANGES = {
     **{s: "CBOE" for s in CBOE_SYMBOLS},
@@ -148,7 +149,7 @@ def _fetch_one(symbol: str) -> dict:
 
 
 def fetch_vol_quotes() -> dict[str, dict]:
-    """All five vol-index quotes, fetched concurrently and TTL-cached.
+    """All six vol-index quotes, fetched concurrently and TTL-cached.
 
     A symbol whose fetch fails keeps its previously cached value; if it never
     had one it is simply absent, which renders as "—".

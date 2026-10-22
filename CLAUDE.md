@@ -11,7 +11,7 @@ Market Pulse - A web dashboard for monitoring market and individual stock/crypto
 - **Frontend**: React + Vite + TypeScript + Tailwind CSS v4 (Solarized Light theme, `--color-sol-*` variables in `index.css`)
 - **Backend**: FastAPI (Python, `ml` conda env per global CLAUDE.md)
 - **Charts**: Plotly (react-plotly.js) for Point & Figure; TradingView Lightweight Charts v5 for weekly + monthly + daily TA charts
-- **Data Sources**: TradingView scanner JSON API for live quotes (`quotes.py`), with the five licensed-feed vol indices from CBOE's and Deribit's own JSON APIs (`vol_indices.py`) and FRED economic series (DFII10, T10YIE) straight from fredgraph.csv, falling back to Treasury's own yield-curve CSVs when FRED is down (`treasury_yields.py`); news summaries (NDX, CFZH forum, X market news, signal digest), TrendSpider posts, Zhihu AI briefs (all from the `news` project); OHLCV, precomputed indicators and market breadth read-only from the `investment` project duckdb (`~/projects/investment/data/stocks/stocks.duckdb`)
+- **Data Sources**: TradingView scanner JSON API for live quotes (`quotes.py`), with the six vol indices the scanner won't serve from CBOE's and Deribit's own JSON APIs (`vol_indices.py`) and FRED economic series (DFII10, T10YIE) straight from fredgraph.csv, falling back to Treasury's own yield-curve CSVs when FRED is down (`treasury_yields.py`); news summaries (NDX, CFZH forum, X market news, signal digest), TrendSpider posts, Zhihu AI briefs (all from the `news` project); OHLCV, precomputed indicators and market breadth read-only from the `investment` project duckdb (`~/projects/investment/data/stocks/stocks.duckdb`)
 
 ## Project Structure
 
@@ -22,7 +22,7 @@ src/
 │   ├── quotes.py             # Live quotes via TradingView scanner JSON API (CSV-driven EXCHANGE:SYMBOL); real-time via logged-in TV session (tv_session.py), delayed anonymous fallback
 │   ├── scripts/check_quote_delay.py  # Which symbols are real-time vs exchange-delayed (TradingView update_mode)
 │   ├── tv_session.py         # Logged-in TradingView session cookies from the crawl4ai profile (playwright, TTL-cached) for real-time scanner quotes
-│   ├── vol_indices.py        # VIX3M/GVZ/VXSLV (CBOE) + DVOL/ETHDVOL (Deribit) — the 5 symbols the scanner won't serve
+│   ├── vol_indices.py        # VIX3M/GVZ/VXSLV/VXSMH (CBOE) + DVOL/ETHDVOL (Deribit) — the 6 symbols the scanner won't serve
 │   ├── treasury_yields.py    # DFII10/T10YIE from Treasury's daily par yield curves — fallback when FRED is down
 │   ├── quote_format.py       # Shared quote-dict shape/formatting for every quote producer
 │   ├── overview_cache.py     # Background-refreshed overview snapshot; /api/market/overview serves it with no network I/O
