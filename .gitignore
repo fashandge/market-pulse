@@ -25,3 +25,6 @@ tmp/
 
 # OS
 .DS_Store
+
+# Credit tab: append-only FRED history (machine-local)
+data/credit/

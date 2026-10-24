@@ -110,6 +110,7 @@ TradingView Scanner API                                               News Summa
 | `/api/market/ai-news-brief` | GET | Returns the latest Zhihu AI news daily brief (`date`, `is_stale`, `articles[]`) from `~/projects/news/data/zhihu/daily_briefs/zhihu_brief_YYYYMMDD.jsonl` |
 | `/api/market/overview` | GET | Returns market overview: tickers grouped by theme with prices, changes, volume, plus `age_seconds` (how old the served snapshot is). Served from `overview_cache`'s background-refreshed snapshot, so the normal response does **no** network I/O (~5ms); it fetches synchronously only when the snapshot is older than `MAX_SERVE_AGE` or `force=1` is passed (~0.9s) |
 | `/api/market/breadth` | GET | Full-history S&P 500 / Nasdaq-100 breadth (% of members above 20/50/200-day SMA, net new 52-week highs, advancers − decliners) with SPY/QQQ adjusted closes and 5-week distribution-day counts, columnar (`dates` + one array per series), read-only from the investment duckdb (`breadth.py`); cached on the DB file's mtime |
+| `/api/market/credit` | GET | Credit-stress history for the Credit tab (`credit.py`), two columnar blocks (`dates` + one array per series). `fred`: ICE BofA option-adjusted spreads (IG, BBB, HY, CCC) in basis points, STLFSI4 and NFCI (weekly, null on other days), and SOFR − IORB in bp, plus `last` (latest date per series). Fetched one series per fredgraph.csv request (a mixed daily/weekly multi-series request returns a zip), at most once an hour, and merged into the append-only `data/credit/fred_history.csv` (gitignored) — FRED serves only a rolling three years of the ICE series, so older history exists only there; when FRED is down the block comes from the file and `fred_live` is false. `prices`: adjusted closes for credit ETFs, lenders, AI borrowers and SOXX/IGV/SPY (BKLN split-adjusted only, so its price slide is not hidden by its payout) plus VIX and 10/30-year yields and the HYG/IEI and LQD/IEF ratios, from the investment duckdb, cached on its mtime. `tv`: France/Italy/Spain 10-year yields minus Germany's in bp and the MOVE index, from TradingView's unofficial chart-data websocket via `investment.src.scripts.validate_daily_prices_tradingview.fetch_tv_daily` (full history on a symbol's first fetch, the last 30 bars after), merged into `data/credit/tradingview_history.csv` the same way; `tv_live` false means that feed failed |
 | `/api/market/estimates` | GET | Analyst estimates for every ticker with a cache file in `~/projects/stock_picker/data/estimates/` (`estimates.py`): per ticker, consensus EPS and revenue by fiscal year, price, mean target, mean rating, the stockanalysis.com cross-check and the rating-change log, passed through unchanged plus `in_portfolio`. Holdings first in watchlist order, then the rest alphabetically; files that are not valid or lack required fields are named in `unreadable`. A plain per-request folder read — no network, no cache |
 | `/api/market/estimates/prices` | GET | Live price of every cached estimates ticker (`estimates.live_prices`): one TradingView `america/scan` request filtered on the bare `name` column (`quotes.fetch_us_prices`), so no exchange is needed for tickers outside `ticker.csv`. Returns `{prices: {ticker: {price, delay, formal_symbol}}, error}`; a scanner failure is an `error` string with no prices. Never writes the cache files |
 | `/api/market/estimates/{ticker}` | POST | One ticker's estimates for the Estimates tab's search box and Refresh link: the cache file when it is under an hour old, otherwise a live fetch through stock_picker's `fetch_estimates.fetch_ticker` (three outbound requests, ~2s) that also writes the cache. Bounded because the tunnel has no auth: 404 unless the symbol is in the chart ticker universe, 429 past 30 fetches an hour (one at a time), 502 when a source refuses or has no estimates (ETFs) |
@@ -133,13 +134,14 @@ App.tsx
 │
 ├── OverviewView.tsx
 │   ├── Persists selected sub-tab in sessionStorage (per browser tab)
-│   ├── Sub-tabs: Overview | Charts | P&F | Trend Spider | Breadth | Estimates
+│   ├── Sub-tabs: Overview | Charts | P&F | Trend Spider | Breadth | Credit | Estimates
 │   ├── Overview tab → MarketOverview
 │   ├── Charts tab: TickerSearch (search full duckdb universe) + TaCharts, with a
 │   │   Daily/Weekly/Monthly timeframe toggle (default weekly, remembered in sessionStorage)
 │   ├── P&F tab: the same TickerSearch (shared selected ticker) + PnfChart
 │   ├── Trend Spider tab → TrendSpiderView
 │   ├── Breadth tab → BreadthCharts
+│   ├── Credit tab → CreditCharts
 │   └── Estimates tab → EstimatesView
 │
 ├── MarketOverview.tsx
@@ -186,6 +188,14 @@ App.tsx
 │   200/50/20-day averages, net new 52-week highs, cumulative A/D line,
 │   distribution days; synced crosshair readouts, drag-to-zoom, range presets
 │   (3M–Max), SPY-drawdown shading, and a latest-readings table.
+│
+├── CreditCharts.tsx — credit stress read top-down (/api/market/credit): status tiles
+│   (CCC/HY/BBB spreads, CoreWeave, semis vs software, system gauges), then SVG
+│   panel grids for the ratings ladder, AI borrowers and semis, traded credit/
+│   leveraged loans/lenders/VIX, rates (Treasury yields, MOVE, euro sovereign
+│   spreads), and stress indexes/repo funding. Each panel has its own date
+│   axis (weekly and daily series mix); range presets (3M–Max) slice all panels and
+│   price panels rebase to 100 at range start.
 │
 ├── EstimatesView.tsx — analyst estimates, laid out as search → comparison table →
 │   detail panel:

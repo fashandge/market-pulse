@@ -11,7 +11,7 @@ Market Pulse - A web dashboard for monitoring market and individual stock/crypto
 - **Frontend**: React + Vite + TypeScript + Tailwind CSS v4 (Solarized Light theme, `--color-sol-*` variables in `index.css`)
 - **Backend**: FastAPI (Python, `ml` conda env per global CLAUDE.md)
 - **Charts**: Plotly (react-plotly.js) for Point & Figure; TradingView Lightweight Charts v5 for weekly + monthly + daily TA charts
-- **Data Sources**: TradingView scanner JSON API for live quotes (`quotes.py`), with the six vol indices the scanner won't serve from CBOE's and Deribit's own JSON APIs (`vol_indices.py`) and FRED economic series (DFII10, T10YIE) straight from fredgraph.csv, falling back to Treasury's own yield-curve CSVs when FRED is down (`treasury_yields.py`); news summaries (NDX, CFZH forum, X market news, signal digest), TrendSpider posts, Zhihu AI briefs (all from the `news` project); OHLCV, precomputed indicators and market breadth read-only from the `investment` project duckdb (`~/projects/investment/data/stocks/stocks.duckdb`)
+- **Data Sources**: TradingView scanner JSON API for live quotes (`quotes.py`), with the six vol indices the scanner won't serve from CBOE's and Deribit's own JSON APIs (`vol_indices.py`) and FRED economic series (DFII10, T10YIE; the Credit tab's spreads and stress indexes) straight from fredgraph.csv, falling back to Treasury's own yield-curve CSVs when FRED is down (`treasury_yields.py`); news summaries (NDX, CFZH forum, X market news, signal digest), TrendSpider posts, Zhihu AI briefs (all from the `news` project); OHLCV, precomputed indicators and market breadth read-only from the `investment` project duckdb (`~/projects/investment/data/stocks/stocks.duckdb`)
 
 ## Project Structure
 
@@ -30,12 +30,13 @@ src/
 │   ├── portfolio.py          # Holdings from stock_picker's data/portfolio.csv (mirror of the TradingView "portfolio" watchlist)
 │   ├── estimates.py          # Analyst estimates for the Estimates tab: reads stock_picker's data/estimates/*.json; fetches an uncached ticker on demand via stock_picker's fetch_estimates (rate-limited)
 │   ├── breadth.py            # S&P 500 / Nasdaq-100 breadth + SPY/QQQ closes for the Breadth tab (reads investment duckdb)
+│   ├── credit.py             # Credit tab: FRED spreads/stress indexes and TradingView euro yields/MOVE merged into data/credit/*.csv + credit/AI-borrower closes (investment duckdb)
 │   ├── proposal_log.py       # General tab: apply a signal-digest run's selected proposed_log.json entries via a background headless `claude -p` (agents' `run_background`) running stock_picker's /portfolio-brief
 │   ├── tickers/charts.py     # Weekly/monthly/daily OHLCV + indicators (reads investment duckdb)
 │   ├── tickers/pnf.py        # Point & Figure columns/boxes via investment.src.charts.pnf (duckdb bars, Yahoo fallback)
 │   └── scripts/              # start_tunnel.sh, ensure_up.sh
 └── frontend/                 # React + Vite (port 5173); components in src/components/
-                              # (OverviewView, MarketOverview, MarketView, TaCharts, PnfChart, BreadthCharts, EstimatesView, …)
+                              # (OverviewView, MarketOverview, MarketView, TaCharts, PnfChart, BreadthCharts, CreditCharts, EstimatesView, …)
 ```
 
 Full component list and data flow: [docs/architecture.md](docs/architecture.md).

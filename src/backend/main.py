@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from news.src.catalyst_calendar import calendar_note
 from news.src.catalyst_calendar import state as catalyst_state
 from src.backend.tickers import charts, pnf
-from src.backend import breadth, estimates, overview_cache, portfolio, proposal_log
+from src.backend import breadth, credit, estimates, overview_cache, portfolio, proposal_log
 
 NEWS_BASE_PATH = Path.home() / "projects/news/data/market_news"
 CFZH_PATH = Path.home() / "projects/news/data/cfzh_forum_summaries"
@@ -64,6 +64,15 @@ def get_market_breadth():
     """Full-history S&P 500 / Nasdaq-100 breadth with SPY and QQQ closes
     (columnar, from the investment duckdb) for the Overview Breadth tab."""
     return breadth.get_breadth()
+
+
+@app.get("/api/market/credit")
+def get_market_credit():
+    """Credit-stress history for the Overview Credit tab: ICE BofA spreads,
+    Fed stress indexes and repo funding pressure from FRED (merged into a local
+    history file, since FRED keeps only three years of the ICE series), plus
+    credit-ETF, lender and AI-borrower closes from the investment duckdb."""
+    return credit.get_credit()
 
 
 @app.get("/api/market/estimates")

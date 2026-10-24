@@ -5,17 +5,19 @@ import { TaCharts } from './TaCharts'
 import { PnfChart } from './PnfChart'
 import { TrendSpiderView } from './TrendSpiderView'
 import { BreadthCharts } from './BreadthCharts'
+import { CreditCharts } from './CreditCharts'
 import { EstimatesView } from './EstimatesView'
 import { Tabs } from './Tabs'
 import { StatusMessage } from './StatusMessage'
 
-type OverviewTab = 'overview' | 'charts' | 'pnf' | 'trendspider' | 'breadth' | 'estimates'
+type OverviewTab = 'overview' | 'charts' | 'pnf' | 'trendspider' | 'breadth' | 'credit' | 'estimates'
 const TABS: { id: OverviewTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'charts', label: 'Charts' },
   { id: 'pnf', label: 'P&F' },
   { id: 'trendspider', label: 'Trend Spider' },
   { id: 'breadth', label: 'Breadth' },
+  { id: 'credit', label: 'Credit' },
   { id: 'estimates', label: 'Estimates' },
 ]
 
@@ -69,6 +71,8 @@ export function OverviewView() {
       {activeTab === 'trendspider' && <TrendSpiderView />}
 
       {activeTab === 'breadth' && <BreadthCharts />}
+
+      {activeTab === 'credit' && <CreditCharts />}
 
       {activeTab === 'estimates' && <EstimatesView />}
     </div>
