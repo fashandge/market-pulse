@@ -27,7 +27,9 @@ The Goldman Short Index charts are also read into daily values
 ``goldman_short_history.csv``: for each day the reading from the chart with the
 most pixels per day wins (a 34-day chart over a year-to-date one), the newer
 chart breaking ties. The digitized points ride along with each chart so the
-tab can draw them over the original image for checking.
+tab can draw them over the original image for checking. ``goldman_overlay_page``
+serves that history as a smoothing playground (``overlay_playground``) against
+our own most-shorted basket and the ETFs.
 """
 
 import csv
@@ -42,7 +44,7 @@ from pathlib import Path
 
 import duckdb
 
-from src.backend import chart_digitizer
+from src.backend import chart_digitizer, overlay_playground
 
 SITE_URL = "https://thecreditbubblebulletin.com/"
 CACHE_DIR = Path(__file__).resolve().parents[2] / "data/credit/cbb_charts"
@@ -231,7 +233,7 @@ def _digitize_new(manifest: dict[str, list[dict]]) -> None:
             _write_history(group, history)
 
 
-BENCHMARKS = ("QQQ", "SPY")
+BENCHMARKS = overlay_playground.ETFS
 _bench_cache: tuple[tuple, dict] | None = None
 
 
@@ -302,6 +304,45 @@ def list_charts() -> dict:
         except Exception:  # noqa: BLE001 -- the charts still show without the comparison lines
             benchmarks = {}
         return {"groups": groups, "series": series, "benchmarks": benchmarks, "source_url": SITE_URL, "live": _state["live"]}
+
+
+def read_goldman_overlay(con: duckdb.DuckDBPyConnection, history: dict[str, dict]) -> dict:
+    """The Goldman Short Index playground page config: the digitized history,
+    our most-shorted basket (total return, the only form it has) and the ETFs'
+    split-adjusted closes (price, to compare with a price index) on the
+    history's days."""
+    dates = sorted(history)
+    ours = dict(con.execute(
+        "SELECT strftime(date, '%Y-%m-%d'), value FROM most_shorted_basket_daily WHERE date BETWEEN ?::DATE AND ?::DATE",
+        [dates[0], dates[-1]]).fetchall()) if dates else {}
+    return {
+        "title": "Goldman Short Index Overlay",
+        "heading": "Goldman Short Index overlay",
+        "intro": f"Goldman's most-shorted basket, digitized from the Credit Bubble Bulletin's weekly charts since {dates[0] if dates else '—'}, vs our own basket and ETFs (price).",
+        "note": "Goldman values are read off chart images: about ±0.3 points from the 34-day chart, ±2 from the year-to-date one. The history only starts with the year-to-date chart, so ranges longer than that show it all. Our basket is total return; the ETFs are price, like Goldman's index.",
+        "subject": "the Goldman Short Index (digitized)",
+        "sources": "market-pulse data/credit/cbb_charts/goldman_short_history.csv, most_shorted_basket_daily.value and daily_bars_adjusted.close_split_adjusted in the investment duckdb",
+        "default_range": "Max",
+        "dates": dates,
+        "lines": [overlay_playground.line("GOLDMAN", "Goldman", [history[d]["value"] for d in dates], overlay_playground.INDEX_COLOR, True, 2.6),
+                  overlay_playground.line("BASKET", "Our basket", [None if ours.get(d) is None else round(float(ours[d]), 4) for d in dates],
+                                          overlay_playground.COLORS["Basket"], True),
+                  *overlay_playground.etf_lines(overlay_playground.closes_on(con, dates, "close_split_adjusted"))],
+    }
+
+
+def goldman_overlay_page() -> str:
+    """The Goldman Short Index playground HTML with the stored digitized history
+    (as of the last scrape; the page does not scrape) and the latest DB data."""
+    def build():
+        con = duckdb.connect(str(INVESTMENT_DB), read_only=True)
+        try:
+            return overlay_playground.render(read_goldman_overlay(con, _read_history("goldman_short")))
+        finally:
+            con.close()
+    history = _history_path("goldman_short")
+    mtimes = (INVESTMENT_DB.stat().st_mtime, history.stat().st_mtime if history.exists() else 0)
+    return overlay_playground.cached("goldman_short", mtimes, build)
 
 
 def image_path(name: str) -> Path | None:

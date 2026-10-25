@@ -1,7 +1,9 @@
 """Unit tests for the Credit Bubble Bulletin chart scrape. No network."""
 
+import datetime as dt
 import json
 
+import duckdb
 import pytest
 
 from src.backend import cbb_charts as g
@@ -145,3 +147,20 @@ def test_unreadable_chart_records_an_error_and_keeps_the_image(monkeypatch):
     chart = out["groups"]["goldman_short"][0]
     assert "error" in chart["digitized"]
     assert out["series"] == {}
+
+
+def test_goldman_overlay_lines_up_our_basket_and_etf_prices_on_the_digitized_days():
+    con = duckdb.connect()
+    con.execute("CREATE TABLE most_shorted_basket_daily (date DATE, value DOUBLE)")
+    con.executemany("INSERT INTO most_shorted_basket_daily VALUES (?, ?)",
+                    [(dt.date(2026, 10, 21), 150.0), (dt.date(2026, 10, 22), 164.1), (dt.date(2026, 10, 23), 162.6)])
+    con.execute("CREATE TABLE daily_bars_adjusted (ticker VARCHAR, date TIMESTAMP, close_split_adjusted DOUBLE)")
+    con.executemany("INSERT INTO daily_bars_adjusted VALUES (?, ?, ?)",
+                    [("QQQ", dt.datetime(2026, 10, 22), 700.0), ("QQQ", dt.datetime(2026, 10, 23), 704.4)])
+    history = {"2026-10-23": {"value": 273.0}, "2026-10-22": {"value": 280.5}}
+
+    page = g.read_goldman_overlay(con, history)
+    assert page["dates"] == ["2026-10-22", "2026-10-23"]
+    assert [(x["key"], x["values"], x["visible"]) for x in page["lines"][:3]] == [
+        ("GOLDMAN", [280.5, 273.0], True), ("BASKET", [164.1, 162.6], True), ("QQQ", [700.0, 704.4], True)]
+    assert [x["key"] for x in page["lines"][3:]] == ["SPY", "SMH", "SOXX"]

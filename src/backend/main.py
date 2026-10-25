@@ -87,9 +87,17 @@ def get_most_shorted_basket():
 @app.get("/api/market/credit/most-shorted/overlay", response_class=HTMLResponse)
 def get_most_shorted_overlay():
     """Overlay playground for the Credit tab's most-shorted chart: the basket
-    against QQQ, SPY, SMH and SOXX with SMA/EMA smoothing and range controls,
-    opened in its own browser tab with the latest data inlined."""
+    against QQQ, SPY, SMH and SOXX with SMA/EMA smoothing and range controls
+    (overlay_playground), opened in its own browser tab with the latest data."""
     return HTMLResponse(most_shorted.overlay_page(), headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/api/market/credit/goldman-short/overlay", response_class=HTMLResponse)
+def get_goldman_short_overlay():
+    """Overlay playground for the Credit tab's digitized Goldman Short Index:
+    the stored daily history against our most-shorted basket and QQQ, SPY, SMH
+    and SOXX, opened in its own browser tab."""
+    return HTMLResponse(cbb_charts.goldman_overlay_page(), headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/api/market/credit/cbb-charts")

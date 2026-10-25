@@ -42,9 +42,13 @@ const C = {
   ok: '#46701a',
 }
 const LINE = ['#268bd2', '#d33682', '#b58900', '#2aa198', '#6c71c4', '#cb4b16'] // validated CVD-safe order on base3
-// Most-shorted chart: the basket alone is red, so no ETF uses a red-adjacent hue (magenta, orange).
-// Same colors as the overlay playground (src/backend/most_shorted_overlay.html).
-const MOST_SHORTED_COLORS: Record<string, string> = { Basket: '#dc322f', QQQ: '#268bd2', SPY: '#859900', SMH: '#2aa198', SOXX: '#6c71c4' }
+// Short-index charts (most-shorted basket, digitized Goldman): the index alone is red, so no other
+// line uses a red-adjacent hue (magenta, orange). Same colors as the smoothing playground
+// (src/backend/overlay_playground.py COLORS).
+const SHORT_INDEX_COLOR = '#dc322f', OUR_BASKET_COLOR = '#586e75'
+const ETF_KEYS = ['QQQ', 'SPY', 'SMH', 'SOXX'] as const
+type EtfKey = typeof ETF_KEYS[number]
+const ETF_COLORS: Record<EtfKey, string> = { QQQ: '#268bd2', SPY: '#859900', SMH: '#2aa198', SOXX: '#6c71c4' }
 const MONO = "'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace"
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -432,7 +436,7 @@ interface Digitized {
   error?: string
 }
 type BenchKey = 'QQQ' | 'SPY'
-type Benchmarks = Partial<Record<BenchKey, { dates: string[]; closes: number[] }>>
+type Benchmarks = Partial<Record<EtfKey, { dates: string[]; closes: number[] }>>  // BenchKey's are drawn on the images
 interface CbbChart { name: string; label: string; updated: string | null; digitized?: Digitized }
 interface MostShortedPayload {
   dates: string[]
@@ -677,28 +681,33 @@ export function CreditCharts() {
       { id: 'vix', title: 'VIX', note: 'Spreads widening while VIX stays under 20 means bonds see the risk and stocks do not yet.',
         series: [sp('VIX', 'vix')], fmt: (v) => v.toFixed(1), refs: [{ y: 20, label: '20' }] },
     ]
+    // A short index rebased against the ETFs (only QQQ shown at first), with a new-tab smoothing playground.
+    const shortIndexPanel = (id: string, title: string, note: string, index: SeriesDef, others: SeriesDef[], playground: string): PanelDef => ({
+      id, title, note, series: [{ ...index, color: SHORT_INDEX_COLOR }, ...others], fmt: idx, rebase: true, baseline: 100,
+      hideable: true, defaultHidden: ['SPY', 'SMH', 'SOXX'], link: { href: playground, label: 'Smoothing playground' },
+    })
+    const ourBasket = mostShorted && mostShorted.dates.length > 1
+      ? { label: 'Basket', pts: mostShorted.dates.map((d, i) => ({ t: T(d), d, v: mostShorted.values[i] })) } : null
     const gs = cbb?.series.goldman_short
     if (gs && gs.dates.length > 1) {
       const sharpFrom = gs.dates[gs.px_per_day.findIndex((p) => p >= 20)]
-      spreading.push({
-        id: 'goldmanDigitized', title: 'Goldman Short Index, digitized from the weekly charts',
-        note: `Daily values read off the Credit Bubble Bulletin's Bloomberg charts (check them against the overlay below). ${sharpFrom ? `From ${fmtDate(sharpFrom)} the 34-day chart is used, accurate to a few tenths of a point; earlier days` : 'Days'} come from the year-to-date chart, accurate to about 2 points, with one-day spikes the least accurate. Each week's charts extend the stored history.`,
-        series: [{ label: 'Goldman', pts: gs.dates.map((d, i) => ({ t: T(d), d, v: gs.values[i] })) }],
-        fmt: (v) => v.toFixed(1),
+      // ETFs as split-adjusted price, like Goldman's price index (the images' overlay uses the same closes).
+      const bench = ETF_KEYS.flatMap((k) => {
+        const b = cbb?.benchmarks?.[k]
+        return b ? [{ label: k, pts: b.dates.map((d, i) => ({ t: T(d), d, v: b.closes[i] })), color: ETF_COLORS[k] }] : []
       })
+      spreading.push(shortIndexPanel('goldmanDigitized', 'Goldman Short Index, digitized from the weekly charts, against our basket, QQQ, SPY and semiconductors, rebased to 100',
+        `Daily values read off the Credit Bubble Bulletin's Bloomberg charts (check them against the overlay below). ${sharpFrom ? `From ${fmtDate(sharpFrom)} the 34-day chart is used, accurate to a few tenths of a point; earlier days` : 'Days'} come from the year-to-date chart, accurate to about 2 points, with one-day spikes the least accurate. Each week's charts extend the stored history, which starts with this year's chart. Our most-shorted basket (below) is total return; the ETFs are price, like Goldman's index.`,
+        { label: 'Goldman', pts: gs.dates.map((d, i) => ({ t: T(d), d, v: gs.values[i] })) },
+        [...(ourBasket ? [{ ...ourBasket, label: 'Our basket', color: OUR_BASKET_COLOR }] : []), ...bench],
+        '/api/market/credit/goldman-short/overlay'))
     }
-    if (mostShorted && mostShorted.dates.length > 1) {
+    if (mostShorted && ourBasket) {
       const top = mostShorted.members.slice(0, 8).map((x) => `${x.ticker} ${x.short_pct}%`).join(', ')
-      spreading.push({
-        id: 'mostShorted', title: 'Most-shorted basket (free stand-in for the Goldman Short Index) against QQQ, SPY and semiconductors, rebased to 100',
-        note: `The 50 US stocks with the highest short interest as a share of shares outstanding (market value ≥ $1B, price ≥ $5), equal-weighted and rebuilt monthly from FINRA short interest and SEC share counts. Tracks the Goldman index's turning points, not its level. QQQ, SPY and the semiconductor ETFs SMH and SOXX are total return like the basket, all rebased on the same day. Current basket from FINRA's ${mostShorted.settlement ? fmtDate(mostShorted.settlement) : '—'} data, most shorted first: ${top}.`,
-        series: [
-          { label: 'Basket', pts: mostShorted.dates.map((d, i) => ({ t: T(d), d, v: mostShorted.values[i] })) },
-          sp('QQQ', 'QQQ'), sp('SPY', 'SPY'), sp('SMH', 'SMH'), sp('SOXX', 'SOXX'),
-        ].map((x) => ({ ...x, color: MOST_SHORTED_COLORS[x.label] })),
-        fmt: idx, rebase: true, baseline: 100, hideable: true, defaultHidden: ['SPY', 'SMH', 'SOXX'],
-        link: { href: '/api/market/credit/most-shorted/overlay', label: 'Smoothing playground' },
-      })
+      spreading.push(shortIndexPanel('mostShorted', 'Most-shorted basket (free stand-in for the Goldman Short Index) against QQQ, SPY and semiconductors, rebased to 100',
+        `The 50 US stocks with the highest short interest as a share of shares outstanding (market value ≥ $1B, price ≥ $5), equal-weighted and rebuilt monthly from FINRA short interest and SEC share counts. Tracks the Goldman index's turning points, not its level. QQQ, SPY and the semiconductor ETFs SMH and SOXX are total return like the basket, all rebased on the same day. Current basket from FINRA's ${mostShorted.settlement ? fmtDate(mostShorted.settlement) : '—'} data, most shorted first: ${top}.`,
+        ourBasket, ETF_KEYS.map((k) => ({ ...sp(k, k), color: ETF_COLORS[k] })),
+        '/api/market/credit/most-shorted/overlay'))
     }
     const rates: PanelDef[] = [
       { id: 'yields', title: 'Treasury yields', note: 'The rate shock. Higher base rates and wider spreads compound for borrowers with negative free cash flow.',

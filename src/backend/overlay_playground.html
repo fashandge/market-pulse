@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Most-Shorted Basket Overlay</title>
+<title>Short Index Overlay</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <style>
 /* Layout: control rail left, chart stack right; stacks to one column on phones. Solarized Light, like the rest of market-pulse. */
@@ -31,6 +31,7 @@ h2{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--mute
 .chip.on .dot{background:#fdf6e3}
 .seg button{border:1px solid var(--line);background:var(--bg);color:var(--ink-soft);font:inherit;
   font-size:13.5px;padding:3px 10px;border-radius:6px;cursor:pointer}
+.seg button:disabled{opacity:.4;cursor:default}
 .seg button.on{background:var(--strong);color:var(--on-strong);border-color:var(--strong)}
 button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .row{display:flex;align-items:center;gap:8px;margin-top:8px}
@@ -60,15 +61,15 @@ canvas{width:100%;display:block;touch-action:pan-y}
 <body>
 <div class="app">
 <aside>
-  <h1>Most-shorted basket overlay</h1>
-  <div class="sub">Equal-weight top-50 short-interest basket (FINRA, monthly rebalance) vs ETFs. All lines rebased to 100 at the first visible session.</div>
+  <h1 id="heading"></h1>
+  <div class="sub"><span id="intro"></span> All lines rebased to 100 at the first visible session.</div>
 
   <h2>Presets</h2>
   <div class="seg presets" id="presets"></div>
 
   <h2>Series</h2>
   <div class="chips" id="chips"></div>
-  <label class="tog"><input type="checkbox" id="ratio"> Lower pane: basket ÷ QQQ (relative strength)</label>
+  <label class="tog"><input type="checkbox" id="ratio"> <span>Lower pane: <span id="ratioName"></span> (relative strength)</span></label>
 
   <h2>Smoothing</h2>
   <div class="seg" id="smooth"></div>
@@ -100,21 +101,24 @@ canvas{width:100%;display:block;touch-action:pan-y}
 </div>
 
 <script>
-const DATA = __DATA__;
+// Filled in by overlay_playground.render(): page text plus one entry per line, the short index first.
+const CONFIG = __CONFIG__;
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const D = DATA.dates, S = DATA.series;
-const META = {
-  BASKET:{label:'Most-shorted', color:'#dc322f', width:2.6},
-  QQQ:{label:'QQQ', color:'#268bd2', width:2},
-  SPY:{label:'SPY', color:'#859900', width:2},
-  SMH:{label:'SMH', color:'#2aa198', width:2},
-  SOXX:{label:'SOXX', color:'#6c71c4', width:2},
-};
-const KEYS = Object.keys(META);
+const D = CONFIG.dates;
+const S = Object.fromEntries(CONFIG.lines.map(l => [l.key, l.values]));
+const META = Object.fromEntries(CONFIG.lines.map(l => [l.key, {label:l.label, color:l.color, width:l.width}]));
+const KEYS = CONFIG.lines.map(l => l.key), INDEX = KEYS[0];
+const RATIO_NAME = `${META[INDEX].label} ÷ QQQ`, RATIO_COLOR = '#b58900';
 const RANGES = {'3M':0.25,'6M':0.5,'1Y':1,'2Y':2,'3Y':3,'Max':null};
+document.title = CONFIG.title;
+document.getElementById('heading').textContent = CONFIG.heading;
+document.getElementById('intro').textContent = CONFIG.intro;
+document.getElementById('ratioName').textContent = RATIO_NAME;
+// The short index plus the given keys.
+const only = ks => Object.fromEntries(KEYS.map(k => [k, k === INDEX || ks.includes(k)]));
 
-const DEFAULTS = {visible:{BASKET:true,QQQ:true,SPY:false,SMH:false,SOXX:false},
-  smooth:'none', n:20, showRaw:true, range:'3Y', from:null, scale:'linear', ratio:false};
+const DEFAULTS = {visible:Object.fromEntries(CONFIG.lines.map(l => [l.key, l.visible])),
+  smooth:'none', n:20, showRaw:true, range:CONFIG.default_range, from:null, scale:'linear', ratio:false};
 const clone = o => JSON.parse(JSON.stringify(o));
 let state = clone(DEFAULTS);
 
@@ -122,8 +126,8 @@ const PRESETS = {
   'Default — raw, QQQ only': {},
   'Swing — 10 EMA, 1Y': {smooth:'ema', n:10, range:'1Y'},
   'Trend — 50 SMA, 3Y, ratio': {smooth:'sma', n:50, range:'3Y', ratio:true},
-  'Semis vs shorts — 20 EMA, 2Y': {visible:{BASKET:true,QQQ:false,SPY:false,SMH:true,SOXX:true}, smooth:'ema', n:20, range:'2Y'},
-  'Full history — log, 100 SMA': {visible:{BASKET:true,QQQ:true,SPY:true,SMH:true,SOXX:true}, smooth:'sma', n:100, range:'Max', scale:'log', showRaw:false},
+  'Semis vs shorts — 20 EMA, 2Y': {visible:only(['SMH','SOXX']), smooth:'ema', n:20, range:'2Y'},
+  'Full history — log, 100 SMA': {visible:only(KEYS), smooth:'sma', n:100, range:'Max', scale:'log', showRaw:false},
 };
 
 // ---------- math ----------
@@ -149,15 +153,20 @@ function ema(a, n){
   return out;
 }
 const smoothFn = a => state.smooth === 'sma' ? sma(a, state.n) : state.smooth === 'ema' ? ema(a, state.n) : a;
-const ratioRaw = S.BASKET.map((b,i) => b != null && S.QQQ[i] != null ? b / S.QQQ[i] : null);
+const ratioRaw = S[INDEX].map((b,i) => b != null && S.QQQ[i] != null ? b / S.QQQ[i] : null);
 
+function rangeFrom(yrs){
+  const d = new Date(D[D.length-1]); d.setDate(d.getDate() - Math.round(yrs*365.25));
+  return d.toISOString().slice(0,10);
+}
+// A range reaching before the first session shows the same window as Max.
+const coversAll = r => RANGES[r] == null || rangeFrom(RANGES[r]) <= D[0];
 function startIndex(){
   let from = state.from;
   if (!from){
     const yrs = RANGES[state.range];
     if (yrs == null) return 0;
-    const d = new Date(D[D.length-1]); d.setDate(d.getDate() - Math.round(yrs*365.25));
-    from = d.toISOString().slice(0,10);
+    from = rangeFrom(yrs);
   }
   const i = D.findIndex(x => x >= from);
   return i < 0 ? 0 : i;
@@ -256,9 +265,9 @@ function render(){
   if (ratio){
     const rp = {x:left, y:mainH + 22, w, h:140};
     const rs = [];
-    if (state.smooth !== 'none' && state.showRaw) rs.push({color:'#b58900', width:1.2, ys:ratio.raw, faint:true});
-    rs.push({color:'#b58900', width:2, ys:ratio.sm});
-    drawPane(rp, rs, i0, n, 'Basket ÷ QQQ (rising = shorts beating QQQ)');
+    if (state.smooth !== 'none' && state.showRaw) rs.push({color:RATIO_COLOR, width:1.2, ys:ratio.raw, faint:true});
+    rs.push({color:RATIO_COLOR, width:2, ys:ratio.sm});
+    drawPane(rp, rs, i0, n, `${RATIO_NAME} (rising = shorts beating QQQ)`);
     panes.push(rp);
   }
   const last = panes[panes.length-1];
@@ -283,7 +292,7 @@ function renderLegend(i){
   let h = `<span class="it"><b>${D[i]}</b></span>`;
   for (const l of lines){ if (l.faint) continue;
     h += `<span class="it"><span class="sw" style="background:${META[l.k].color}"></span>${META[l.k].label}${tag} <span class="v">${fmt(l.ys[i])}</span></span>`; }
-  if (ratio) h += `<span class="it"><span class="sw" style="background:#b58900"></span>Basket÷QQQ${tag} <span class="v">${fmt(ratio.sm[i])}</span></span>`;
+  if (ratio) h += `<span class="it"><span class="sw" style="background:${RATIO_COLOR}"></span>${RATIO_NAME}${tag} <span class="v">${fmt(ratio.sm[i])}</span></span>`;
   el.innerHTML = h;
 }
 function renderStats(){
@@ -296,7 +305,7 @@ function renderStats(){
   }
   document.getElementById('stats').innerHTML =
     `Raw return ${D[i0]} → ${D[n-1]}: ` + parts.join(' · ') +
-    `<br>Basket is equal-weight, rebalanced monthly from FINRA short interest; it tracks the turning points of Goldman's GSCBMSAL, not its level.`;
+    `<br>${CONFIG.note}`;
 }
 cv.addEventListener('mousemove', e => {
   if (!layout) return;
@@ -338,7 +347,11 @@ fromEl.onchange = e => { state.from = e.target.value || null; updateAll(); };
 function syncControls(){
   for (const [id, key] of [['smooth','smooth'],['range','range'],['scale','scale']])
     for (const b of document.getElementById(id).children)
-      b.classList.toggle('on', b.dataset.v === state[key] && !(key === 'range' && state.from));
+      b.classList.toggle('on', key === 'range'
+        ? !state.from && (coversAll(state.range) ? b.dataset.v === 'Max' : b.dataset.v === state.range)
+        : b.dataset.v === state[key]);
+  for (const b of document.getElementById('range').children)
+    b.disabled = b.dataset.v !== 'Max' && coversAll(b.dataset.v);
   for (const b of chips.children) b.classList.toggle('on', !!state.visible[b.dataset.k]);
   nRange.value = Math.min(250, state.n); nNum.value = state.n;
   const sm = state.smooth !== 'none';
@@ -352,13 +365,12 @@ function syncControls(){
 function updatePrompt(){
   const vis = KEYS.filter(k => state.visible[k]).map(k => META[k].label);
   const parts = [];
-  parts.push(`Chart the most-shorted basket (most_shorted_basket_daily.value in data/stocks/stocks.duckdb)` +
-    (vis.filter(v => v !== 'Most-shorted').length ? ` overlaid with ${vis.filter(v => v !== 'Most-shorted').join(', ')} (daily_bars_adjusted.close_adjusted)` : '') +
-    `, every line rebased to 100 at the first session shown`);
-  if (!state.visible.BASKET) parts.push('hide the basket line itself');
+  const others = vis.filter(v => v !== META[INDEX].label);
+  parts.push(`Chart ${CONFIG.subject}` + (others.length ? ` overlaid with ${others.join(', ')}` : '') +
+    `, every line rebased to 100 at the first session shown (sources: ${CONFIG.sources})`);
+  if (!state.visible[INDEX]) parts.push(`hide the ${META[INDEX].label} line itself`);
   if (state.from) parts.push(`start the window on ${D[startIndex()]}`);
-  else if (state.range !== DEFAULTS.range) parts.push(state.range === 'Max' ? 'use the full history from 2018-01-10' : `show the trailing ${state.range}`);
-  else parts.push('show the trailing 3 years');
+  else parts.push(coversAll(state.range) ? `use the full history from ${D[0]}` : `show the trailing ${state.range}`);
   if (state.smooth !== 'none'){
     const nm = state.smooth === 'ema' ? 'exponential' : 'simple';
     const feel = state.n <= 10 ? 'light, swing-level' : state.n <= 30 ? 'moderate' : state.n <= 80 ? 'heavy, trend-level' : 'very heavy, cycle-level';
@@ -366,7 +378,7 @@ function updatePrompt(){
       (state.showRaw ? ', with the raw lines drawn faintly behind' : ', hiding the raw lines'));
   }
   if (state.scale === 'log') parts.push('use a log y-axis');
-  if (state.ratio) parts.push('add a lower pane plotting basket ÷ QQQ as relative strength (rising means the most-shorted names are beating QQQ' +
+  if (state.ratio) parts.push(`add a lower pane plotting ${RATIO_NAME} as relative strength (rising means the most-shorted names are beating QQQ` +
     (state.smooth !== 'none' ? ', smoothed the same way' : '') + ')');
   document.getElementById('prompt').textContent = parts[0] + '; ' + parts.slice(1).join('; ') + '.';
 }

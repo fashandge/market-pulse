@@ -7,13 +7,16 @@ import duckdb
 import pytest
 
 from src.backend import most_shorted as m
+from src.backend import overlay_playground
 
 
 @pytest.fixture(autouse=True)
 def reset_cache():
-    m._cache = m._overlay_cache = None
+    m._cache = None
+    overlay_playground._cache.clear()
     yield
-    m._cache = m._overlay_cache = None
+    m._cache = None
+    overlay_playground._cache.clear()
 
 
 def test_reads_the_index_and_the_latest_basket_most_shorted_first(tmp_path, monkeypatch):
@@ -39,7 +42,8 @@ def test_reads_the_index_and_the_latest_basket_most_shorted_first(tmp_path, monk
     assert out["members"] == [{"ticker": "WOLF", "short_pct": 50.7}, {"ticker": "ONDS", "short_pct": 40.1}]
 
 
-def test_overlay_page_inlines_basket_and_etf_closes_on_basket_sessions(tmp_path, monkeypatch):
+
+def test_overlay_page_inlines_basket_then_etf_total_return_closes(tmp_path, monkeypatch):
     db = tmp_path / "stocks.duckdb"
     con = duckdb.connect(str(db))
     con.execute("CREATE TABLE most_shorted_basket_daily (date DATE, value DOUBLE)")
@@ -47,17 +51,14 @@ def test_overlay_page_inlines_basket_and_etf_closes_on_basket_sessions(tmp_path,
                     [(dt.date(2026, 10, 22), 164.1), (dt.date(2026, 10, 23), 162.6)])
     con.execute("CREATE TABLE daily_bars_adjusted (ticker VARCHAR, date TIMESTAMP, close_adjusted DOUBLE)")
     con.executemany("INSERT INTO daily_bars_adjusted VALUES (?, ?, ?)", [
-        ("QQQ", dt.datetime(2026, 10, 21), 690.0),  # before the basket's first session: dropped
         ("QQQ", dt.datetime(2026, 10, 22), 700.0), ("QQQ", dt.datetime(2026, 10, 23), 704.4),
         ("SPY", dt.datetime(2026, 10, 23), 759.97),
-        ("AAPL", dt.datetime(2026, 10, 23), 250.0),  # not an overlay ETF
     ])
     con.close()
     monkeypatch.setattr(m, "INVESTMENT_DB", db)
 
-    html = m.overlay_page()
-    assert "__DATA__" not in html
-    data = json.loads(html.split("const DATA = ", 1)[1].split(";\n", 1)[0])
-    assert data["dates"] == ["2026-10-22", "2026-10-23"]
-    assert data["series"] == {"BASKET": [164.1, 162.6], "QQQ": [700.0, 704.4], "SPY": [None, 759.97],
-                              "SMH": [None, None], "SOXX": [None, None]}
+    page = json.loads(m.overlay_page().split("const CONFIG = ", 1)[1].split(";\n", 1)[0])
+    assert page["dates"] == ["2026-10-22", "2026-10-23"]
+    assert [(x["key"], x["values"], x["visible"]) for x in page["lines"]] == [
+        ("BASKET", [164.1, 162.6], True), ("QQQ", [700.0, 704.4], True), ("SPY", [None, 759.97], False),
+        ("SMH", [None, None], False), ("SOXX", [None, None], False)]

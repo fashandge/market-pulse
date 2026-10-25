@@ -11,26 +11,21 @@ turning points, not its level.
 
 This module only reads ``most_shorted_basket_daily`` and the latest basket in
 ``most_shorted_basket_members`` from the investment duckdb (read-only), cached
-on the file's mtime. It also serves the overlay playground
-(``most_shorted_overlay.html``): the basket against QQQ, SPY, SMH and SOXX
-adjusted closes, with smoothing and range controls, filled with the same
-day's data.
+on the file's mtime. It also builds the basket's smoothing playground page
+(``overlay_playground``).
 """
 
-import json
 import threading
 from pathlib import Path
 
 import duckdb
 
-INVESTMENT_DB = Path.home() / "projects/investment/data/stocks/stocks.duckdb"
+from src.backend import overlay_playground
 
-OVERLAY_TEMPLATE = Path(__file__).with_name("most_shorted_overlay.html")
-OVERLAY_ETFS = ("QQQ", "SPY", "SMH", "SOXX")
+INVESTMENT_DB = Path.home() / "projects/investment/data/stocks/stocks.duckdb"
 
 _lock = threading.Lock()
 _cache: tuple[float, dict] | None = None
-_overlay_cache: tuple[tuple[float, float], str] | None = None
 
 
 def read_basket(con: duckdb.DuckDBPyConnection) -> dict:
@@ -65,38 +60,33 @@ def get_most_shorted() -> dict:
         return _cache[1]
 
 
+
 def read_overlay(con: duckdb.DuckDBPyConnection) -> dict:
-    """``{"dates", "series"}`` on the basket's sessions: ``series`` maps
-    ``BASKET`` and each of ``OVERLAY_ETFS`` to values aligned with ``dates``
-    (adjusted closes for the ETFs, None where an ETF has no bar)."""
-    pivots = ", ".join(f"max(close_adjusted) FILTER (WHERE ticker = '{t}')" for t in OVERLAY_ETFS)
-    rows = con.execute(
-        f"""SELECT b.date, b.value, {pivots}
-            FROM most_shorted_basket_daily b
-            LEFT JOIN daily_bars_adjusted p ON p.date::DATE = b.date AND p.ticker IN {OVERLAY_ETFS}
-            GROUP BY b.date, b.value ORDER BY b.date"""
-    ).fetchall()
-    keys = ("BASKET", *OVERLAY_ETFS)
+    """The overlay playground page config: the basket and the ETFs' total-return
+    (``close_adjusted``) closes on the basket's sessions."""
+    rows = con.execute("SELECT strftime(date, '%Y-%m-%d'), value FROM most_shorted_basket_daily ORDER BY date").fetchall()
+    dates = [d for d, _ in rows]
+    basket = [None if v is None else round(float(v), 4) for _, v in rows]
     return {
-        "dates": [r[0].strftime("%Y-%m-%d") for r in rows],
-        "series": {k: [None if r[i] is None else round(float(r[i]), 4) for r in rows]
-                   for i, k in enumerate(keys, start=1)},
+        "title": "Most-Shorted Basket Overlay",
+        "heading": "Most-shorted basket overlay",
+        "intro": "Equal-weight top-50 short-interest basket (FINRA, monthly rebalance) vs ETFs, all total return.",
+        "note": "Basket is equal-weight, rebalanced monthly from FINRA short interest; it tracks the turning points of Goldman's GSCBMSAL, not its level.",
+        "subject": "the most-shorted basket",
+        "sources": "most_shorted_basket_daily.value and daily_bars_adjusted.close_adjusted in the investment duckdb",
+        "default_range": "3Y",
+        "dates": dates,
+        "lines": [overlay_playground.line("BASKET", "Most-shorted", basket, overlay_playground.INDEX_COLOR, True, 2.6),
+                  *overlay_playground.etf_lines(overlay_playground.closes_on(con, dates, "close_adjusted"))],
     }
 
 
 def overlay_page() -> str:
-    """The overlay playground HTML with the latest basket and ETF data inlined.
-    Cached on both the DB's and the template's mtimes, so an edited page shows
-    without a server restart."""
-    global _overlay_cache
-    with _lock:
-        mtime = (INVESTMENT_DB.stat().st_mtime, OVERLAY_TEMPLATE.stat().st_mtime)
-        if _overlay_cache is None or _overlay_cache[0] != mtime:
-            con = duckdb.connect(str(INVESTMENT_DB), read_only=True)
-            try:
-                data = read_overlay(con)
-            finally:
-                con.close()
-            html = OVERLAY_TEMPLATE.read_text().replace("__DATA__", json.dumps(data, separators=(",", ":")))
-            _overlay_cache = (mtime, html)
-        return _overlay_cache[1]
+    """The overlay playground HTML with the latest basket and ETF data inlined."""
+    def build():
+        con = duckdb.connect(str(INVESTMENT_DB), read_only=True)
+        try:
+            return overlay_playground.render(read_overlay(con))
+        finally:
+            con.close()
+    return overlay_playground.cached("most_shorted", (INVESTMENT_DB.stat().st_mtime,), build)
