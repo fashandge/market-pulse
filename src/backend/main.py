@@ -9,7 +9,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -82,6 +82,14 @@ def get_most_shorted_basket():
     current members, read from the investment duckdb (built nightly there
     from FINRA short interest and SEC shares outstanding)."""
     return most_shorted.get_most_shorted()
+
+
+@app.get("/api/market/credit/most-shorted/overlay", response_class=HTMLResponse)
+def get_most_shorted_overlay():
+    """Overlay playground for the Credit tab's most-shorted chart: the basket
+    against QQQ, SPY, SMH and SOXX with SMA/EMA smoothing and range controls,
+    opened in its own browser tab with the latest data inlined."""
+    return HTMLResponse(most_shorted.overlay_page(), headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/api/market/credit/cbb-charts")

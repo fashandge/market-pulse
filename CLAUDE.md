@@ -28,7 +28,7 @@ src/
 │   ├── overview_cache.py     # Background-refreshed overview snapshot; /api/market/overview serves it with no network I/O
 │   ├── market_overview.py    # Market overview assembler (SECTIONS)
 │   ├── portfolio.py          # Holdings from stock_picker's data/portfolio.csv (mirror of the TradingView "portfolio" watchlist)
-│   ├── most_shorted.py       # Credit tab: free stand-in for Goldman's most-shorted basket, read from the investment duckdb's most_shorted_basket_* tables
+│   ├── most_shorted.py       # Credit tab: free stand-in for Goldman's most-shorted basket, read from the investment duckdb's most_shorted_basket_* tables; also serves the overlay playground (most_shorted_overlay.html, SMA/EMA smoothing vs QQQ/SPY/SMH/SOXX)
 │   ├── estimates.py          # Analyst estimates for the Estimates tab: reads stock_picker's data/estimates/*.json; fetches an uncached ticker on demand via stock_picker's fetch_estimates (rate-limited)
 │   ├── breadth.py            # S&P 500 / Nasdaq-100 breadth + SPY/QQQ closes for the Breadth tab (reads investment duckdb)
 │   ├── chart_digitizer.py    # Reads daily values off Excel-style chart PNGs (tesseract OCR for axis labels and title); used for the Goldman Short Index charts

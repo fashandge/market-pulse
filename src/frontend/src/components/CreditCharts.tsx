@@ -42,6 +42,9 @@ const C = {
   ok: '#46701a',
 }
 const LINE = ['#268bd2', '#d33682', '#b58900', '#2aa198', '#6c71c4', '#cb4b16'] // validated CVD-safe order on base3
+// Most-shorted chart: the basket alone is red, so no ETF uses a red-adjacent hue (magenta, orange).
+// Same colors as the overlay playground (src/backend/most_shorted_overlay.html).
+const MOST_SHORTED_COLORS: Record<string, string> = { Basket: '#dc322f', QQQ: '#268bd2', SPY: '#859900', SMH: '#2aa198', SOXX: '#6c71c4' }
 const MONO = "'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace"
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -180,7 +183,7 @@ function Chip({ status }: { status: Status }) {
 }
 
 // ---- panels ----------------------------------------------------------------------
-interface SeriesDef { label: string; pts: Pt[] }
+interface SeriesDef { label: string; pts: Pt[]; color?: string }  // color overrides the LINE position
 interface PanelDef {
   id: string
   title: string
@@ -193,6 +196,7 @@ interface PanelDef {
   lowRef?: boolean
   hideable?: boolean  // each series gets a show/hide checkbox in the header
   defaultHidden?: string[]  // labels of hideable series that start unchecked
+  link?: { href: string; label: string }  // opens this page in a new tab in place of the Expand button
 }
 
 const ML = 48, MR = 14, MT = 8, PH = 150
@@ -205,7 +209,7 @@ function Panel({ def, from, width, span, height = PH, onExpand }: {
   const geo = useMemo(() => {
     const W = width, pw = W - ML - MR
     // Color follows the series, not its position among the visible ones.
-    const visible = def.series.map((s, i) => ({ ...s, color: LINE[i] })).filter((s) => !hidden.has(s.label))
+    const visible = def.series.map((s, i) => ({ ...s, color: s.color ?? LINE[i] })).filter((s) => !hidden.has(s.label))
     let windowed = visible.map((s) => ({ ...s, p: s.pts.filter((x) => x.t >= from) })).filter((s) => s.p.length > 1)
     if (def.rebase && windowed.length) {
       // Rebase every series on the same day: the latest first day among them.
@@ -255,7 +259,11 @@ function Panel({ def, from, width, span, height = PH, onExpand }: {
     <section style={{ background: C.panel, border: `1px solid ${C.grid}`, borderRadius: 8, padding: '8px 10px 4px', minWidth: 0, gridColumn: span ? '1 / -1' : undefined }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', justifyContent: 'space-between' }}>
         <div style={{ fontWeight: 700, fontSize: 14.5 }}>{def.title}</div>
-        {onExpand && (
+        {def.link ? (
+          <a href={def.link.href} target="_blank" rel="noopener" title="Open in a new tab"
+            style={{ flex: 'none', fontSize: 12.5, padding: '1px 8px', borderRadius: 6, textDecoration: 'none',
+              border: `1px solid ${C.grid}`, color: C.base01 }}>{def.link.label} ↗</a>
+        ) : onExpand && (
           <button onClick={onExpand} title="Open a larger view" aria-label={`Expand ${def.title}`}
             style={{ flex: 'none', fontFamily: 'inherit', fontSize: 12.5, padding: '1px 8px', borderRadius: 6, cursor: 'pointer',
               border: `1px solid ${C.grid}`, background: 'transparent', color: C.base01 }}>⤢ Expand</button>
@@ -270,7 +278,7 @@ function Panel({ def, from, width, span, height = PH, onExpand }: {
             <label key={d.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
               <input type="checkbox" checked={on} disabled={on && series.length === 1}
                 onChange={() => { const n = new Set(hidden); if (on) n.add(d.label); else n.delete(d.label); setHidden(n) }} />
-              <span style={{ display: 'inline-block', width: 16, borderTop: `2px solid ${LINE[j]}`, borderRadius: 2 }} />
+              <span style={{ display: 'inline-block', width: 16, borderTop: `2px solid ${d.color ?? LINE[j]}`, borderRadius: 2 }} />
               <small style={{ color: C.base00 }}>{d.label}</small>
               {on && <b style={{ fontWeight: 600 }}>{i >= 0 && read[i] ? def.fmt(read[i]!.v) : '—'}</b>}
             </label>
@@ -687,8 +695,9 @@ export function CreditCharts() {
         series: [
           { label: 'Basket', pts: mostShorted.dates.map((d, i) => ({ t: T(d), d, v: mostShorted.values[i] })) },
           sp('QQQ', 'QQQ'), sp('SPY', 'SPY'), sp('SMH', 'SMH'), sp('SOXX', 'SOXX'),
-        ],
+        ].map((x) => ({ ...x, color: MOST_SHORTED_COLORS[x.label] })),
         fmt: idx, rebase: true, baseline: 100, hideable: true, defaultHidden: ['SPY', 'SMH', 'SOXX'],
+        link: { href: '/api/market/credit/most-shorted/overlay', label: 'Smoothing playground' },
       })
     }
     const rates: PanelDef[] = [
