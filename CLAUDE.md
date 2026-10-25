@@ -11,7 +11,7 @@ Market Pulse - A web dashboard for monitoring market and individual stock/crypto
 - **Frontend**: React + Vite + TypeScript + Tailwind CSS v4 (Solarized Light theme, `--color-sol-*` variables in `index.css`)
 - **Backend**: FastAPI (Python, `ml` conda env per global CLAUDE.md)
 - **Charts**: Plotly (react-plotly.js) for Point & Figure; TradingView Lightweight Charts v5 for weekly + monthly + daily TA charts
-- **Data Sources**: TradingView scanner JSON API for live quotes (`quotes.py`), with the six vol indices the scanner won't serve from CBOE's and Deribit's own JSON APIs (`vol_indices.py`) and FRED economic series (DFII10, T10YIE; the Credit tab's spreads and stress indexes) straight from fredgraph.csv, falling back to Treasury's own yield-curve CSVs when FRED is down (`treasury_yields.py`); news summaries (NDX, CFZH forum, X market news, signal digest), TrendSpider posts, Zhihu AI briefs (all from the `news` project); OHLCV, precomputed indicators and market breadth read-only from the `investment` project duckdb (`~/projects/investment/data/stocks/stocks.duckdb`); for the Credit tab, FINRA's keyless short-interest API and SEC XBRL frames (`most_shorted.py`), TradingView's chart-data websocket for euro yields and MOVE, and the Credit Bubble Bulletin's weekly Bloomberg chart images, read into daily values with the `tesseract` OCR CLI (`cbb_charts.py`, `chart_digitizer.py`)
+- **Data Sources**: TradingView scanner JSON API for live quotes (`quotes.py`), with the six vol indices the scanner won't serve from CBOE's and Deribit's own JSON APIs (`vol_indices.py`) and FRED economic series (DFII10, T10YIE; the Credit tab's spreads and stress indexes) straight from fredgraph.csv, falling back to Treasury's own yield-curve CSVs when FRED is down (`treasury_yields.py`); news summaries (NDX, CFZH forum, X market news, signal digest), TrendSpider posts, Zhihu AI briefs (all from the `news` project); OHLCV, precomputed indicators and market breadth read-only from the `investment` project duckdb (`~/projects/investment/data/stocks/stocks.duckdb`); for the Credit tab, the investment duckdb's `credit_series_daily` and `most_shorted_basket_*` tables (fetched by that project's nightly pipeline from FRED, TradingView, FINRA and the SEC), and the Credit Bubble Bulletin's weekly Bloomberg chart images, read into daily values with the `tesseract` OCR CLI (`cbb_charts.py`, `chart_digitizer.py`)
 
 ## Project Structure
 
@@ -28,12 +28,12 @@ src/
 │   ├── overview_cache.py     # Background-refreshed overview snapshot; /api/market/overview serves it with no network I/O
 │   ├── market_overview.py    # Market overview assembler (SECTIONS)
 │   ├── portfolio.py          # Holdings from stock_picker's data/portfolio.csv (mirror of the TradingView "portfolio" watchlist)
-│   ├── most_shorted.py       # Credit tab: free stand-in for Goldman's most-shorted basket (FINRA short interest + SEC shares, cached in data/credit/most_shorted)
+│   ├── most_shorted.py       # Credit tab: free stand-in for Goldman's most-shorted basket, read from the investment duckdb's most_shorted_basket_* tables
 │   ├── estimates.py          # Analyst estimates for the Estimates tab: reads stock_picker's data/estimates/*.json; fetches an uncached ticker on demand via stock_picker's fetch_estimates (rate-limited)
 │   ├── breadth.py            # S&P 500 / Nasdaq-100 breadth + SPY/QQQ closes for the Breadth tab (reads investment duckdb)
 │   ├── chart_digitizer.py    # Reads daily values off Excel-style chart PNGs (tesseract OCR for axis labels and title); used for the Goldman Short Index charts
 │   ├── cbb_charts.py         # Credit tab: Goldman Short Index and Oracle/Meta 10-yr yield chart images scraped weekly from the Credit Bubble Bulletin
-│   ├── credit.py             # Credit tab: FRED spreads/stress indexes and TradingView euro yields/MOVE merged into data/credit/*.csv + credit/AI-borrower closes (investment duckdb)
+│   ├── credit.py             # Credit tab: credit spreads, stress indexes, euro yields/MOVE (investment duckdb credit_series_daily) + credit/AI-borrower closes
 │   ├── proposal_log.py       # General tab: apply a signal-digest run's selected proposed_log.json entries via a background headless `claude -p` (agents' `run_background`) running stock_picker's /portfolio-brief
 │   ├── tickers/charts.py     # Weekly/monthly/daily OHLCV + indicators (reads investment duckdb)
 │   ├── tickers/pnf.py        # Point & Figure columns/boxes via investment.src.charts.pnf (duckdb bars, Yahoo fallback)

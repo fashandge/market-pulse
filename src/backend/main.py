@@ -69,18 +69,18 @@ def get_market_breadth():
 
 @app.get("/api/market/credit")
 def get_market_credit():
-    """Credit-stress history for the Overview Credit tab: ICE BofA spreads,
-    Fed stress indexes and repo funding pressure from FRED (merged into a local
-    history file, since FRED keeps only three years of the ICE series), plus
-    credit-ETF, lender and AI-borrower closes from the investment duckdb."""
+    """Credit-stress history for the Overview Credit tab: credit spreads, Fed
+    stress indexes, repo funding pressure, euro sovereign spreads and MOVE
+    (investment duckdb credit_series_daily), plus credit-ETF, lender and
+    AI-borrower closes."""
     return credit.get_credit()
 
 
 @app.get("/api/market/credit/most-shorted")
 def get_most_shorted_basket():
-    """Free stand-in for Goldman's most-shorted basket: the daily equal-weight
-    index of the 50 most-shorted US stocks (FINRA short interest / SEC shares
-    outstanding, monthly rebalance) and the current members."""
+    """Free stand-in for Goldman's most-shorted basket: the daily index and
+    current members, read from the investment duckdb (built nightly there
+    from FINRA short interest and SEC shares outstanding)."""
     return most_shorted.get_most_shorted()
 
 

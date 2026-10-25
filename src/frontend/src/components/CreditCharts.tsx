@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { StatusMessage } from './StatusMessage'
 
 // Credit stress, read top-down: the ratings ladder of corporate-bond spreads,
@@ -17,15 +17,13 @@ interface Block<K extends string> {
 type FredKey = 'ig' | 'bbb' | 'hy' | 'ccc' | 'stlfsi' | 'nfci' | 'funding'
 type PriceKey =
   | 'HYG' | 'IEI' | 'LQD' | 'IEF' | 'KRE' | 'BIZD' | 'OWL' | 'ARCC'
-  | 'CRWV' | 'NBIS' | 'ORCL' | 'META' | 'SOXX' | 'IGV' | 'SPY' | 'QQQ'
+  | 'CRWV' | 'NBIS' | 'ORCL' | 'META' | 'SOXX' | 'SMH' | 'IGV' | 'SPY' | 'QQQ'
   | 'BKLN' | 'vix' | 'us10y' | 'us30y' | 'HYG/IEI' | 'LQD/IEF'
 type TvKey = 'fr' | 'it' | 'es' | 'move'
 interface CreditPayload {
   fred: Block<FredKey> & { last: Record<FredKey, string | null> }
   prices: Block<PriceKey>
   tv: Block<TvKey> & { last: Record<TvKey, string | null> }
-  fred_live: boolean | null
-  tv_live: boolean | null
 }
 
 // Solarized, matching BreadthCharts. The four line colors are the categorical
@@ -43,7 +41,7 @@ const C = {
   warn: '#b5501a',
   ok: '#46701a',
 }
-const LINE = ['#268bd2', '#d33682', '#b58900', '#2aa198']
+const LINE = ['#268bd2', '#d33682', '#b58900', '#2aa198', '#6c71c4', '#cb4b16'] // validated CVD-safe order on base3
 const MONO = "'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace"
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -194,13 +192,16 @@ interface PanelDef {
   refs?: { y: number; label: string }[]
   lowRef?: boolean
   hideable?: boolean  // each series gets a show/hide checkbox in the header
+  defaultHidden?: string[]  // labels of hideable series that start unchecked
 }
 
 const ML = 48, MR = 14, MT = 8, PH = 150
 
-function Panel({ def, from, width, span }: { def: PanelDef; from: number; width: number; span: boolean }) {
+function Panel({ def, from, width, span, height = PH, onExpand }: {
+  def: PanelDef; from: number; width: number; span: boolean; height?: number; onExpand?: () => void
+}) {
   const [hover, setHover] = useState<number | null>(null)
-  const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const [hidden, setHidden] = useState<Set<string>>(() => new Set(def.defaultHidden ?? []))
   const geo = useMemo(() => {
     const W = width, pw = W - ML - MR
     // Color follows the series, not its position among the visible ones.
@@ -229,7 +230,7 @@ function Panel({ def, from, width, span }: { def: PanelDef; from: number; width:
     const pad = (hi - lo) * 0.06 || 1
     lo -= pad; hi += pad
     const X = (t: number) => ML + (t1 > t0 ? ((t - t0) / (t1 - t0)) * pw : 0)
-    const Y = (v: number) => MT + ((hi - v) / (hi - lo)) * PH
+    const Y = (v: number) => MT + ((hi - v) / (hi - lo)) * height
     const paths = series.map((s) => s.p.map((x, k) => (k ? 'L' : 'M') + X(x.t).toFixed(1) + ' ' + Y(x.v).toFixed(1)).join(''))
     const span = (t1 - t0) / DAY, monStep = span > 1500 ? 12 : span > 500 ? 3 : span > 200 ? 2 : 1
     const xt: [number, string][] = []
@@ -241,18 +242,25 @@ function Panel({ def, from, width, span }: { def: PanelDef; from: number; width:
       if (monStep === 12 ? m === 0 : m % monStep === 0) xt.push([t, m === 0 ? String(y) : MON[m]])
     }
     return { W, pw, series, t0, t1, X, Y, paths, yt: niceTicks(lo, hi, 4), xt, refs }
-  }, [def, from, width, hidden])
+  }, [def, from, width, hidden, height])
 
   if (!geo) return null
   const { W, pw, series, t0, t1, X, Y, paths, yt, xt, refs } = geo
-  const H = PH + MT + 22
+  const H = height + MT + 22
   const tAt = hover ?? t1
   const read = series.map((s) => { const k = bisect(s.p, tAt); return k < 0 ? null : s.p[k] })
   const readDate = read.reduce<string | null>((m, x) => (x && (!m || x.d > m) ? x.d : m), null)
 
   return (
     <section style={{ background: C.panel, border: `1px solid ${C.grid}`, borderRadius: 8, padding: '8px 10px 4px', minWidth: 0, gridColumn: span ? '1 / -1' : undefined }}>
-      <div style={{ fontWeight: 700, fontSize: 14.5 }}>{def.title}</div>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', justifyContent: 'space-between' }}>
+        <div style={{ fontWeight: 700, fontSize: 14.5 }}>{def.title}</div>
+        {onExpand && (
+          <button onClick={onExpand} title="Open a larger view" aria-label={`Expand ${def.title}`}
+            style={{ flex: 'none', fontFamily: 'inherit', fontSize: 12.5, padding: '1px 8px', borderRadius: 6, cursor: 'pointer',
+              border: `1px solid ${C.grid}`, background: 'transparent', color: C.base01 }}>⤢ Expand</button>
+        )}
+      </div>
       <div style={{ color: C.base00, fontSize: 12.5, marginBottom: 4 }}>{def.note}</div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 14px', fontFamily: MONO, fontSize: 13, fontVariantNumeric: 'tabular-nums', alignItems: 'center' }}>
         {def.hideable ? def.series.map((d, j) => {
@@ -288,7 +296,7 @@ function Panel({ def, from, width, span }: { def: PanelDef; from: number; width:
         onPointerLeave={() => setHover(null)}
         onBlur={() => setHover(null)}
       >
-        {xt.map(([t]) => <line key={t} x1={X(t)} x2={X(t)} y1={MT} y2={MT + PH} stroke={C.grid} strokeWidth={1} />)}
+        {xt.map(([t]) => <line key={t} x1={X(t)} x2={X(t)} y1={MT} y2={MT + height} stroke={C.grid} strokeWidth={1} />)}
         {yt.map((v) => (
           <g key={v}>
             <line x1={ML} x2={ML + pw} y1={Y(v)} y2={Y(v)} stroke={C.grid} strokeWidth={1} />
@@ -304,13 +312,13 @@ function Panel({ def, from, width, span }: { def: PanelDef; from: number; width:
           </g>
         ))}
         {xt.map(([t, lab]) => (
-          <text key={'x' + t} x={X(t)} y={MT + PH + 16} textAnchor="middle" fill={C.base00} style={{ fontFamily: MONO, fontSize: 11 }}>{lab}</text>
+          <text key={'x' + t} x={X(t)} y={MT + height + 16} textAnchor="middle" fill={C.base00} style={{ fontFamily: MONO, fontSize: 11 }}>{lab}</text>
         ))}
         {paths.map((d, i) => <path key={i} d={d} fill="none" stroke={series[i].color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />)}
         {series.map((s) => { const e = lastPt(s.p); return <circle key={s.label} cx={X(e.t)} cy={Y(e.v)} r={3.5} fill={s.color} stroke={C.panel} strokeWidth={2} /> })}
         {hover != null && (
           <>
-            <line x1={X(Math.min(tAt, t1))} x2={X(Math.min(tAt, t1))} y1={MT} y2={MT + PH} stroke={C.base01} strokeWidth={1} />
+            <line x1={X(Math.min(tAt, t1))} x2={X(Math.min(tAt, t1))} y1={MT} y2={MT + height} stroke={C.base01} strokeWidth={1} />
             {read.map((x, i) => x && <circle key={i} cx={X(x.t)} cy={Y(x.v)} r={4} fill={series[i].color} stroke={C.panel} strokeWidth={2} />)}
           </>
         )}
@@ -319,9 +327,11 @@ function Panel({ def, from, width, span }: { def: PanelDef; from: number; width:
   )
 }
 
-function Grid({ defs, from }: { defs: PanelDef[]; from: number }) {
+function Grid({ defs, from, latest, range }: { defs: PanelDef[]; from: number; latest: number; range: RangeKey }) {
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
+  const [expanded, setExpanded] = useState<string | null>(null)
+  const expandedDef = defs.find((d) => d.id === expanded)
   useEffect(() => {
     const el = ref.current
     if (!el) return
@@ -337,8 +347,53 @@ function Grid({ defs, from }: { defs: PanelDef[]; from: number }) {
   return (
     <div ref={ref} style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: 10 }}>
       {width > 0 && defs.map((d, i) => (
-        <Panel key={d.id} def={d} from={from} span={spans(i)} width={spans(i) ? Math.max(0, width - 22) : panelW} />
+        <Panel key={d.id} def={d} from={from} span={spans(i)} width={spans(i) ? Math.max(0, width - 22) : panelW}
+          onExpand={() => setExpanded(d.id)} />
       ))}
+      {expandedDef && <ExpandedPanel def={expandedDef} latest={latest} initialRange={range} onClose={() => setExpanded(null)} />}
+    </div>
+  )
+}
+
+const rangeStart = (range: RangeKey, latest: number) =>
+  isFinite(RANGE_MONTHS[range]) ? latest - RANGE_MONTHS[range] * 30.44 * DAY : -Infinity
+
+// A large view of one panel in a pop-up, with its own range buttons, for
+// studying how the series move together. Esc or a click outside closes it.
+function ExpandedPanel({ def, latest, initialRange, onClose }: {
+  def: PanelDef; latest: number; initialRange: RangeKey; onClose: () => void
+}) {
+  const [range, setRange] = useState<RangeKey>(initialRange)
+  const boxRef = useRef<HTMLDivElement>(null)
+  const [size, setSize] = useState({ w: 0, h: 0 })
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    const el = boxRef.current
+    const measure = () => setSize({ w: el ? el.clientWidth : 0, h: window.innerHeight })
+    const ro = el ? new ResizeObserver(measure) : null
+    if (el && ro) ro.observe(el)
+    window.addEventListener('resize', measure)
+    measure()
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('resize', measure); ro?.disconnect() }
+  }, [onClose])
+  return (
+    <div role="dialog" aria-modal="true" aria-label={def.title} onClick={onClose}
+      style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(7, 54, 66, 0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div ref={boxRef} onClick={(e) => e.stopPropagation()}
+        style={{ width: 'min(1500px, 96vw)', maxHeight: '94vh', overflow: 'auto', background: C.base3, borderRadius: 10, padding: '10px 12px 12px', boxShadow: '0 10px 40px rgba(0,0,0,0.25)' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', marginBottom: 8 }}>
+          <span style={{ fontSize: 11.5, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.base1, marginRight: 4 }}>Range</span>
+          {RANGES.map((r) => (
+            <button key={r} style={btn(range === r)} aria-pressed={range === r} onClick={() => setRange(r)}>{r}</button>
+          ))}
+          <button onClick={onClose} aria-label="Close" style={{ ...btn(false), marginLeft: 'auto' }}>✕ Close</button>
+        </div>
+        {size.w > 0 && (
+          <Panel def={def} from={rangeStart(range, latest)} span={false}
+            width={Math.max(0, size.w - 24 - 22)} height={Math.max(260, Math.min(720, size.h * 0.62))} />
+        )}
+      </div>
     </div>
   )
 }
@@ -377,7 +432,6 @@ interface MostShortedPayload {
   settlement: string | null
   effective?: string
   members: { ticker: string; short_pct: number }[]
-  live: boolean | null
 }
 interface CbbPayload {
   groups: Partial<Record<'goldman_short' | 'oracle' | 'meta', CbbChart[]>>
@@ -416,8 +470,24 @@ function OverlaidImage({ src, alt, dig, show, benchmarks, showBench }: {
   src: string; alt: string; dig: Digitized; show: boolean; benchmarks?: Benchmarks; showBench: Record<BenchKey, boolean>
 }) {
   const [hover, setHover] = useState<number | null>(null)
+  const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null)
+  const tipRef = useRef<HTMLDivElement>(null)
   const pts = dig.points ?? []
   const w = dig.width ?? 1, h = dig.height ?? 1
+  // The tooltip is positioned against the window (position: fixed), so the image
+  // box's clipping never crops it: beside the cursor, flipped and clamped to
+  // stay fully inside the window.
+  useLayoutEffect(() => {
+    const el = tipRef.current
+    if (!el || !cursor) return
+    const gap = 14, pad = 8, tw = el.offsetWidth, th = el.offsetHeight
+    let left = cursor.x + gap
+    if (left + tw > window.innerWidth - pad) left = cursor.x - gap - tw
+    let top = cursor.y + gap
+    if (top + th > window.innerHeight - pad) top = cursor.y - gap - th
+    el.style.left = `${Math.max(pad, Math.min(left, window.innerWidth - pad - tw))}px`
+    el.style.top = `${Math.max(pad, Math.min(top, window.innerHeight - pad - th))}px`
+  }, [cursor, hover])
   const bench = BENCH_KEYS.map((k) => ({ k, line: showBench[k] ? benchLine(dig, benchmarks?.[k]) : null }))
   const pctOf = (i: number) => (dig.values ? (dig.values[i] / dig.values[0] - 1) * 100 : 0)
   const fmtPct = (v: number) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1) + '%'
@@ -433,8 +503,9 @@ function OverlaidImage({ src, alt, dig, show, benchmarks, showBench }: {
             let best = 0
             pts.forEach((p, i) => { if (Math.abs(p[0] - x) < Math.abs(pts[best][0] - x)) best = i })
             setHover(best)
+            setCursor({ x: e.clientX, y: e.clientY })
           }}
-          onPointerLeave={() => setHover(null)}>
+          onPointerLeave={() => { setHover(null); setCursor(null) }}>
           {bench.map(({ k, line }) => line && (
             <polyline key={k} points={line.pts.filter((p): p is [number, number] => p != null).map((p) => p.join(',')).join(' ')}
               fill="none" stroke={BENCH_COLOR[k]} strokeWidth={2} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
@@ -450,10 +521,9 @@ function OverlaidImage({ src, alt, dig, show, benchmarks, showBench }: {
           )}
         </svg>
       )}
-      {hover != null && dig.dates && dig.values && (
-        <div style={{
-          position: 'absolute', top: 6, left: (pts[hover][0] / w) > 0.6 ? undefined : `calc(${(pts[hover][0] / w) * 100}% + 10px)`,
-          right: (pts[hover][0] / w) > 0.6 ? `calc(${(1 - pts[hover][0] / w) * 100}% + 10px)` : undefined,
+      {hover != null && cursor && dig.dates && dig.values && (
+        <div ref={tipRef} style={{
+          position: 'fixed', left: cursor.x + 14, top: cursor.y + 14, zIndex: 50,
           // Semi-transparent so the lines under it stay visible; the text shadow keeps it legible.
           background: 'rgba(7, 54, 66, 0.55)', color: C.base3, textShadow: '0 0 3px rgba(7, 54, 66, 0.9)',
           fontFamily: MONO, fontSize: 12, padding: '3px 7px', borderRadius: 4, pointerEvents: 'none', whiteSpace: 'nowrap',
@@ -612,13 +682,13 @@ export function CreditCharts() {
     if (mostShorted && mostShorted.dates.length > 1) {
       const top = mostShorted.members.slice(0, 8).map((x) => `${x.ticker} ${x.short_pct}%`).join(', ')
       spreading.push({
-        id: 'mostShorted', title: 'Most-shorted basket (free stand-in for the Goldman Short Index) against QQQ and SPY, rebased to 100',
-        note: `The 50 US stocks with the highest short interest as a share of shares outstanding (market value ≥ $1B, price ≥ $5), equal-weighted and rebuilt monthly from FINRA short interest and SEC share counts. Tracks the Goldman index's turning points, not its level. QQQ and SPY are total return like the basket, all rebased on the same day. Current basket from FINRA's ${mostShorted.settlement ? fmtDate(mostShorted.settlement) : '—'} data, most shorted first: ${top}.${mostShorted.live === false ? ' The latest FINRA or SEC check failed, so this uses stored data.' : ''}`,
+        id: 'mostShorted', title: 'Most-shorted basket (free stand-in for the Goldman Short Index) against QQQ, SPY and semiconductors, rebased to 100',
+        note: `The 50 US stocks with the highest short interest as a share of shares outstanding (market value ≥ $1B, price ≥ $5), equal-weighted and rebuilt monthly from FINRA short interest and SEC share counts. Tracks the Goldman index's turning points, not its level. QQQ, SPY and the semiconductor ETFs SMH and SOXX are total return like the basket, all rebased on the same day. Current basket from FINRA's ${mostShorted.settlement ? fmtDate(mostShorted.settlement) : '—'} data, most shorted first: ${top}.`,
         series: [
           { label: 'Basket', pts: mostShorted.dates.map((d, i) => ({ t: T(d), d, v: mostShorted.values[i] })) },
-          sp('QQQ', 'QQQ'), sp('SPY', 'SPY'),
+          sp('QQQ', 'QQQ'), sp('SPY', 'SPY'), sp('SMH', 'SMH'), sp('SOXX', 'SOXX'),
         ],
-        fmt: idx, rebase: true, baseline: 100, hideable: true,
+        fmt: idx, rebase: true, baseline: 100, hideable: true, defaultHidden: ['SPY', 'SMH', 'SOXX'],
       })
     }
     const rates: PanelDef[] = [
@@ -658,16 +728,6 @@ export function CreditCharts() {
         points (100 bp = 1 percentage point). Hover a panel to read it on any day.
       </p>
 
-      {data.fred_live === false && (
-        <StatusMessage kind="error">
-          FRED did not respond, so spreads and stress indexes come from the stored history (latest {data.fred.last.hy ? fmtDate(data.fred.last.hy) : 'unknown'}).
-        </StatusMessage>
-      )}
-      {data.tv_live === false && (
-        <StatusMessage kind="error">
-          TradingView did not respond, so euro spreads and MOVE come from the stored history (latest {data.tv.last.move ? fmtDate(data.tv.last.move) : 'unknown'}).
-        </StatusMessage>
-      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 10 }}>
         {tiles.map((t) => (
@@ -692,10 +752,10 @@ export function CreditCharts() {
       </div>
 
       <Section title="1. The ratings ladder" intro="Option-adjusted spreads of ICE BofA corporate-bond indexes. Same shape on every rung means a market-wide repricing; widening steepest at the bottom means the weakest borrowers are being shut out first. The dashed line is each spread's low in the selected range.">
-        <Grid defs={groups.ladder} from={from} />
+        <Grid defs={groups.ladder} from={from} latest={T(latest)} range={range} />
       </Section>
       <Section title="2. Where it is landing" intro="The borrowers funding the AI build-out with debt, and their suppliers. Semis fall when their customers' cost of capital rises; software does not depend on it.">
-        <Grid defs={groups.landing} from={from} />
+        <Grid defs={groups.landing} from={from} latest={T(latest)} range={range} />
         {cbb && (
           <CbbPanel data={cbb} title="AI borrowers' own bond yields: Oracle and Meta 10-year"
             note={`What these companies pay to borrow for ten years. Subtract the 10-year Treasury yield (${us10y} at the latest close, section 4) to get each company's credit spread. A spread near 3 points, where Oracle was in October 2026, is junk-like for an investment-grade borrower.`}
@@ -706,7 +766,7 @@ export function CreditCharts() {
         )}
       </Section>
       <Section title="3. Is it spreading?" intro="Traded credit you can also watch intraday (HYG, LQD, BIZD, KRE in the Credit theme), the loan market and the lenders that get squeezed if the stress leaves AI, equity fear, and the most-shorted stocks.">
-        <Grid defs={groups.spreading} from={from} />
+        <Grid defs={groups.spreading} from={from} latest={T(latest)} range={range} />
         {cbb && (
           <CbbPanel data={cbb} title="Goldman Short Index (most-shorted US stocks)"
             note="Goldman's basket of the 50 most-shorted US stocks. A sharp rally in a weak market is a short squeeze, not relief; a steady fall means short sellers are winning as credit tightens. Read it against the CCC spread: both moving together is a real signal, a squeeze while CCC keeps widening is not."
@@ -714,10 +774,10 @@ export function CreditCharts() {
         )}
       </Section>
       <Section title="4. Rates and sovereign stress" intro="The interest-rate shock that started the selloff: Treasury yields, Treasury volatility, and European government spreads. Rate volatility calming while credit keeps widening means the stress has moved from rates into credit.">
-        <Grid defs={groups.rates} from={from} />
+        <Grid defs={groups.rates} from={from} latest={T(latest)} range={range} />
       </Section>
       <Section title="5. Is it systemic yet?" intro="Composite stress indexes and the repo funding market. The stress indexes spiked in the April 2025 tariff shock and repo funding was tight in late 2025 (use the 2Y range). A credit-cost problem becomes a crisis when these light up.">
-        <Grid defs={groups.systemic} from={from} />
+        <Grid defs={groups.systemic} from={from} latest={T(latest)} range={range} />
       </Section>
 
       <p style={{ fontSize: 12.5, color: C.base1, marginTop: 16, maxWidth: '95ch' }}>
