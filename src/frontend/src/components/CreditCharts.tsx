@@ -17,7 +17,7 @@ interface Block<K extends string> {
 type FredKey = 'ig' | 'bbb' | 'hy' | 'ccc' | 'stlfsi' | 'nfci' | 'funding'
 type PriceKey =
   | 'HYG' | 'IEI' | 'LQD' | 'IEF' | 'KRE' | 'BIZD' | 'OWL' | 'ARCC'
-  | 'CRWV' | 'NBIS' | 'ORCL' | 'META' | 'SOXX' | 'IGV' | 'SPY'
+  | 'CRWV' | 'NBIS' | 'ORCL' | 'META' | 'SOXX' | 'IGV' | 'SPY' | 'QQQ'
   | 'BKLN' | 'vix' | 'us10y' | 'us30y' | 'HYG/IEI' | 'LQD/IEF'
 type TvKey = 'fr' | 'it' | 'es' | 'move'
 interface CreditPayload {
@@ -193,19 +193,29 @@ interface PanelDef {
   baseline?: number
   refs?: { y: number; label: string }[]
   lowRef?: boolean
+  hideable?: boolean  // each series gets a show/hide checkbox in the header
 }
 
 const ML = 48, MR = 14, MT = 8, PH = 150
 
 function Panel({ def, from, width, span }: { def: PanelDef; from: number; width: number; span: boolean }) {
   const [hover, setHover] = useState<number | null>(null)
+  const [hidden, setHidden] = useState<Set<string>>(new Set())
   const geo = useMemo(() => {
     const W = width, pw = W - ML - MR
-    const series = def.series.map((s, i) => {
-      let p = s.pts.filter((x) => x.t >= from)
-      if (def.rebase && p.length) { const b = p[0].v; p = p.map((x) => ({ ...x, v: (x.v / b) * 100 })) }
-      return { ...s, p, color: LINE[i] }
-    }).filter((s) => s.p.length > 1)
+    // Color follows the series, not its position among the visible ones.
+    const visible = def.series.map((s, i) => ({ ...s, color: LINE[i] })).filter((s) => !hidden.has(s.label))
+    let windowed = visible.map((s) => ({ ...s, p: s.pts.filter((x) => x.t >= from) })).filter((s) => s.p.length > 1)
+    if (def.rebase && windowed.length) {
+      // Rebase every series on the same day: the latest first day among them.
+      const start = Math.max(...windowed.map((s) => s.p[0].t))
+      windowed = windowed.map((s) => ({ ...s, p: s.p.filter((x) => x.t >= start) })).filter((s) => s.p.length > 1)
+    }
+    const series = windowed.map((s) => {
+      if (!def.rebase) return s
+      const b = s.p[0].v
+      return { ...s, p: s.p.map((x) => ({ ...x, v: (x.v / b) * 100 })) }
+    })
     if (!series.length || pw <= 0) return null
     const t0 = Math.min(...series.map((s) => s.p[0].t)), t1 = Math.max(...series.map((s) => lastPt(s.p).t))
     const refs = [...(def.refs ?? [])]
@@ -231,7 +241,7 @@ function Panel({ def, from, width, span }: { def: PanelDef; from: number; width:
       if (monStep === 12 ? m === 0 : m % monStep === 0) xt.push([t, m === 0 ? String(y) : MON[m]])
     }
     return { W, pw, series, t0, t1, X, Y, paths, yt: niceTicks(lo, hi, 4), xt, refs }
-  }, [def, from, width])
+  }, [def, from, width, hidden])
 
   if (!geo) return null
   const { W, pw, series, t0, t1, X, Y, paths, yt, xt, refs } = geo
@@ -245,7 +255,19 @@ function Panel({ def, from, width, span }: { def: PanelDef; from: number; width:
       <div style={{ fontWeight: 700, fontSize: 14.5 }}>{def.title}</div>
       <div style={{ color: C.base00, fontSize: 12.5, marginBottom: 4 }}>{def.note}</div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 14px', fontFamily: MONO, fontSize: 13, fontVariantNumeric: 'tabular-nums', alignItems: 'center' }}>
-        {series.map((s, i) => (
+        {def.hideable ? def.series.map((d, j) => {
+          const i = series.findIndex((s) => s.label === d.label)
+          const on = !hidden.has(d.label)
+          return (
+            <label key={d.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+              <input type="checkbox" checked={on} disabled={on && series.length === 1}
+                onChange={() => { const n = new Set(hidden); if (on) n.add(d.label); else n.delete(d.label); setHidden(n) }} />
+              <span style={{ display: 'inline-block', width: 16, borderTop: `2px solid ${LINE[j]}`, borderRadius: 2 }} />
+              <small style={{ color: C.base00 }}>{d.label}</small>
+              {on && <b style={{ fontWeight: 600 }}>{i >= 0 && read[i] ? def.fmt(read[i]!.v) : '—'}</b>}
+            </label>
+          )
+        }) : series.map((s, i) => (
           <span key={s.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <span style={{ display: 'inline-block', width: 16, borderTop: `2px solid ${s.color}`, borderRadius: 2 }} />
             {series.length > 1 && <small style={{ color: C.base00 }}>{s.label}</small>}
@@ -331,6 +353,185 @@ function Section({ title, intro, children }: { title: string; intro: string; chi
   )
 }
 
+// Bloomberg-only series (the Goldman Short Index, Oracle and Meta 10-year bond
+// yields) as the Credit Bubble Bulletin's weekly chart images, scraped and
+// stored by the backend (cbb_charts.py), credited and linked back.
+interface Digitized {
+  dates?: string[]
+  values?: number[]
+  points?: [number, number][]
+  width?: number
+  height?: number
+  px_per_day?: number
+  units_per_px?: number
+  label_fit_error?: number
+  scale?: { a: number; b: number }
+  error?: string
+}
+type BenchKey = 'QQQ' | 'SPY'
+type Benchmarks = Partial<Record<BenchKey, { dates: string[]; closes: number[] }>>
+interface CbbChart { name: string; label: string; updated: string | null; digitized?: Digitized }
+interface MostShortedPayload {
+  dates: string[]
+  values: number[]
+  settlement: string | null
+  effective?: string
+  members: { ticker: string; short_pct: number }[]
+  live: boolean | null
+}
+interface CbbPayload {
+  groups: Partial<Record<'goldman_short' | 'oracle' | 'meta', CbbChart[]>>
+  series: Partial<Record<'goldman_short', { dates: string[]; values: number[]; px_per_day: number[] }>>
+  benchmarks?: Benchmarks
+  source_url: string
+  live: boolean | null
+}
+
+const OVERLAY = '#dc322f'
+const BENCH_COLOR: Record<BenchKey, string> = { QQQ: '#6c71c4', SPY: '#859900' }
+const BENCH_TIP_COLOR: Record<BenchKey, string> = { QQQ: '#a9acec', SPY: '#b5c94a' } // readable on the dark tooltip
+const BENCH_KEYS: BenchKey[] = ['QQQ', 'SPY']
+
+// A benchmark's closes on the chart's days, rebased to the digitized index's
+// first value, in the image's pixel coordinates (row = (value - a) / b).
+function benchLine(dig: Digitized, b: { dates: string[]; closes: number[] } | undefined) {
+  if (!b || !dig.dates || !dig.values || !dig.points || !dig.scale) return null
+  const byDate = new Map(b.dates.map((d, i) => [d, b.closes[i]]))
+  const closes = dig.dates.map((d) => {
+    if (byDate.has(d)) return byDate.get(d) as number
+    let k = b.dates.length - 1  // a day the benchmark did not trade: its last earlier close
+    while (k >= 0 && b.dates[k] > d) k--
+    return k >= 0 ? b.closes[k] : null
+  })
+  const c0 = closes[0]
+  if (c0 == null) return null
+  const g0 = dig.values[0]
+  const pts = closes.map((c, i) => (c == null ? null : [dig.points![i][0], (g0 * (c / c0) - dig.scale!.a) / dig.scale!.b] as [number, number]))
+  return { pts, pct: closes.map((c) => (c == null ? null : (c / c0 - 1) * 100)) }
+}
+
+// The original chart image with the digitized daily values drawn on top in the
+// image's own pixel coordinates, so any misreading shows as red off the blue line.
+function OverlaidImage({ src, alt, dig, show, benchmarks, showBench }: {
+  src: string; alt: string; dig: Digitized; show: boolean; benchmarks?: Benchmarks; showBench: Record<BenchKey, boolean>
+}) {
+  const [hover, setHover] = useState<number | null>(null)
+  const pts = dig.points ?? []
+  const w = dig.width ?? 1, h = dig.height ?? 1
+  const bench = BENCH_KEYS.map((k) => ({ k, line: showBench[k] ? benchLine(dig, benchmarks?.[k]) : null }))
+  const pctOf = (i: number) => (dig.values ? (dig.values[i] / dig.values[0] - 1) * 100 : 0)
+  const fmtPct = (v: number) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1) + '%'
+  return (
+    <div style={{ position: 'relative', width: '100%', aspectRatio: `${w} / ${h}`, border: `1px solid ${C.grid}`, borderRadius: 4, background: '#fff', overflow: 'hidden' }}>
+      <img src={src} alt={alt} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
+      {(show || bench.some((x) => x.line)) && pts.length > 0 && (
+        <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', cursor: 'crosshair' }}
+          onPointerMove={(e) => {
+            const r = e.currentTarget.getBoundingClientRect()
+            const x = ((e.clientX - r.left) / r.width) * w
+            let best = 0
+            pts.forEach((p, i) => { if (Math.abs(p[0] - x) < Math.abs(pts[best][0] - x)) best = i })
+            setHover(best)
+          }}
+          onPointerLeave={() => setHover(null)}>
+          {bench.map(({ k, line }) => line && (
+            <polyline key={k} points={line.pts.filter((p): p is [number, number] => p != null).map((p) => p.join(',')).join(' ')}
+              fill="none" stroke={BENCH_COLOR[k]} strokeWidth={2} vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+          ))}
+          {show && <polyline points={pts.map((p) => p.join(',')).join(' ')} fill="none" stroke={OVERLAY} strokeWidth={1.5}
+            vectorEffect="non-scaling-stroke" strokeLinejoin="round" />}
+          {show && pts.map((p, i) => (
+            <circle key={i} cx={p[0]} cy={p[1]} r={pts.length > 60 ? 3 : 6} fill="none" stroke={OVERLAY}
+              strokeWidth={i === hover ? 3 : 1.5} vectorEffect="non-scaling-stroke" />
+          ))}
+          {hover != null && (
+            <line x1={pts[hover][0]} x2={pts[hover][0]} y1={0} y2={h} stroke={OVERLAY} strokeWidth={1} strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
+          )}
+        </svg>
+      )}
+      {hover != null && dig.dates && dig.values && (
+        <div style={{
+          position: 'absolute', top: 6, left: (pts[hover][0] / w) > 0.6 ? undefined : `calc(${(pts[hover][0] / w) * 100}% + 10px)`,
+          right: (pts[hover][0] / w) > 0.6 ? `calc(${(1 - pts[hover][0] / w) * 100}% + 10px)` : undefined,
+          // Semi-transparent so the lines under it stay visible; the text shadow keeps it legible.
+          background: 'rgba(7, 54, 66, 0.55)', color: C.base3, textShadow: '0 0 3px rgba(7, 54, 66, 0.9)',
+          fontFamily: MONO, fontSize: 12, padding: '3px 7px', borderRadius: 4, pointerEvents: 'none', whiteSpace: 'nowrap',
+        }}>
+          <div>{fmtDate(dig.dates[hover], true)}: <b>{dig.values[hover].toFixed(1)}</b> ({fmtPct(pctOf(hover))} since chart start)</div>
+          {bench.map(({ k, line }) => line && line.pct[hover] != null && (
+            <div key={k}><span style={{ color: BENCH_TIP_COLOR[k] }}>{k}</span> {fmtPct(line.pct[hover] as number)}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CbbPanel({ title, note, charts, data }: { title: string; note: string; charts: CbbChart[]; data: CbbPayload }) {
+  const [overlay, setOverlay] = useState(true)
+  const [showBench, setShowBench] = useState<Record<BenchKey, boolean>>({ QQQ: true, SPY: true })
+  if (!charts.length) return null
+  const canOverlay = charts.some((c) => c.digitized?.points?.length)
+  return (
+    <section style={{ background: C.panel, border: `1px solid ${C.grid}`, borderRadius: 8, padding: '8px 10px 10px', marginTop: 10 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', alignItems: 'baseline', justifyContent: 'space-between' }}>
+        <div style={{ fontWeight: 700, fontSize: 14.5 }}>{title}</div>
+        {canOverlay && (
+          <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 13, color: C.base01, cursor: 'pointer' }}>
+            <input type="checkbox" checked={overlay} onChange={(e) => setOverlay(e.target.checked)} />
+            <span style={{ display: 'inline-block', width: 14, borderTop: `2px solid ${OVERLAY}` }} />
+            Overlay the digitized values (hover to read a day)
+          </label>
+        )}
+        {canOverlay && data.benchmarks && (
+          <div style={{ display: 'inline-flex', gap: 14, alignItems: 'center', fontSize: 13, color: C.base01 }}>
+            {BENCH_KEYS.filter((k) => data.benchmarks?.[k]).map((k) => (
+              <label key={k} style={{ display: 'inline-flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}>
+                <input type="checkbox" checked={showBench[k]} onChange={(e) => setShowBench({ ...showBench, [k]: e.target.checked })} />
+                <span style={{ display: 'inline-block', width: 14, borderTop: `2px solid ${BENCH_COLOR[k]}` }} />
+                {k}
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+      <div style={{ color: C.base00, fontSize: 12.5, margin: '2px 0 8px', maxWidth: '110ch' }}>
+        {note}
+        {data.live === false && ' The site did not respond, so these are the stored charts.'}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 10 }}>
+        {charts.map((c) => {
+          const src = `/api/market/credit/cbb-charts/${encodeURIComponent(c.name)}?v=${c.updated ?? ''}`
+          const dig = c.digitized
+          return (
+            <figure key={c.name} style={{ margin: 0 }}>
+              {dig?.points?.length ? (
+                <OverlaidImage src={src} alt={`${title}: ${c.label}`} dig={dig} show={overlay} benchmarks={data.benchmarks} showBench={showBench} />
+              ) : (
+                <a href={src} target="_blank" rel="noopener noreferrer">
+                  <img src={src} alt={`${title}: ${c.label}`}
+                    style={{ width: '100%', aspectRatio: '16 / 10', objectFit: 'contain', display: 'block', borderRadius: 4, border: `1px solid ${C.grid}`, background: '#fff' }} />
+                </a>
+              )}
+              <figcaption style={{ fontSize: 12, color: C.base00, marginTop: 4 }}>
+                {c.label}{c.updated ? ` · chart updated ${fmtDate(c.updated)}` : ''}
+                {dig?.points?.length ? ` · read ${dig.points.length} days at ${dig.px_per_day} px/day, ${dig.units_per_px?.toFixed(2)} points per pixel, axis-label fit within ${dig.label_fit_error?.toFixed(2)}` : ''}
+                {dig?.error ? ` · could not digitize: ${dig.error}` : ''}
+              </figcaption>
+            </figure>
+          )
+        })}
+      </div>
+      <div style={{ fontSize: 12, color: C.base1, marginTop: 6 }}>
+        Bloomberg data, charts from Doug Noland's{' '}
+        <a href={data.source_url} target="_blank" rel="noopener noreferrer" style={{ color: C.base01 }}>Credit Bubble Bulletin</a>,
+        updated weekly.
+      </div>
+    </section>
+  )
+}
+
 const btn = (active: boolean): React.CSSProperties => ({
   fontFamily: 'inherit', fontSize: 13.5, padding: '3px 10px', borderRadius: 6, cursor: 'pointer',
   border: `1px solid ${active ? C.base01 : C.grid}`,
@@ -351,6 +552,22 @@ export function CreditCharts() {
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
       .then(setData)
       .catch((e) => setError(e.message))
+  }, [])
+  const [cbb, setCbb] = useState<CbbPayload | null>(null)
+  const [mostShorted, setMostShorted] = useState<MostShortedPayload | null>(null)
+  useEffect(() => {
+    // Optional extra, like the scraped charts: the tab renders without it.
+    fetch('/api/market/credit/most-shorted')
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setMostShorted)
+      .catch(() => setMostShorted(null))
+  }, [])
+  useEffect(() => {
+    // Optional extra: the tab renders without these charts if the scrape fails.
+    fetch('/api/market/credit/cbb-charts')
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setCbb)
+      .catch(() => setCbb(null))
   }, [])
 
   const groups = useMemo(() => {
@@ -382,6 +599,28 @@ export function CreditCharts() {
       { id: 'vix', title: 'VIX', note: 'Spreads widening while VIX stays under 20 means bonds see the risk and stocks do not yet.',
         series: [sp('VIX', 'vix')], fmt: (v) => v.toFixed(1), refs: [{ y: 20, label: '20' }] },
     ]
+    const gs = cbb?.series.goldman_short
+    if (gs && gs.dates.length > 1) {
+      const sharpFrom = gs.dates[gs.px_per_day.findIndex((p) => p >= 20)]
+      spreading.push({
+        id: 'goldmanDigitized', title: 'Goldman Short Index, digitized from the weekly charts',
+        note: `Daily values read off the Credit Bubble Bulletin's Bloomberg charts (check them against the overlay below). ${sharpFrom ? `From ${fmtDate(sharpFrom)} the 34-day chart is used, accurate to a few tenths of a point; earlier days` : 'Days'} come from the year-to-date chart, accurate to about 2 points, with one-day spikes the least accurate. Each week's charts extend the stored history.`,
+        series: [{ label: 'Goldman', pts: gs.dates.map((d, i) => ({ t: T(d), d, v: gs.values[i] })) }],
+        fmt: (v) => v.toFixed(1),
+      })
+    }
+    if (mostShorted && mostShorted.dates.length > 1) {
+      const top = mostShorted.members.slice(0, 8).map((x) => `${x.ticker} ${x.short_pct}%`).join(', ')
+      spreading.push({
+        id: 'mostShorted', title: 'Most-shorted basket (free stand-in for the Goldman Short Index) against QQQ and SPY, rebased to 100',
+        note: `The 50 US stocks with the highest short interest as a share of shares outstanding (market value ≥ $1B, price ≥ $5), equal-weighted and rebuilt monthly from FINRA short interest and SEC share counts. Tracks the Goldman index's turning points, not its level. QQQ and SPY are total return like the basket, all rebased on the same day. Current basket from FINRA's ${mostShorted.settlement ? fmtDate(mostShorted.settlement) : '—'} data, most shorted first: ${top}.${mostShorted.live === false ? ' The latest FINRA or SEC check failed, so this uses stored data.' : ''}`,
+        series: [
+          { label: 'Basket', pts: mostShorted.dates.map((d, i) => ({ t: T(d), d, v: mostShorted.values[i] })) },
+          sp('QQQ', 'QQQ'), sp('SPY', 'SPY'),
+        ],
+        fmt: idx, rebase: true, baseline: 100, hideable: true,
+      })
+    }
     const rates: PanelDef[] = [
       { id: 'yields', title: 'Treasury yields', note: 'The rate shock. Higher base rates and wider spreads compound for borrowers with negative free cash flow.',
         series: [sp('10-year', 'us10y'), sp('30-year', 'us30y')], fmt: (v) => v.toFixed(2) + '%' },
@@ -397,7 +636,7 @@ export function CreditCharts() {
         series: [{ label: 'SOFR − IORB', pts: f('funding') }], fmt: bp, baseline: 0 },
     ]
     return { ladder, landing, spreading, rates, systemic }
-  }, [data])
+  }, [data, mostShorted, cbb])
 
   const tiles = useMemo(() => (data ? buildTiles(data) : []), [data])
 
@@ -408,6 +647,8 @@ export function CreditCharts() {
   const months = RANGE_MONTHS[range]
   const from = isFinite(months) ? T(latest) - months * 30.44 * DAY : -Infinity
   const selectRange = (r: RangeKey) => { setRange(r); writeStore('creditRange', r) }
+  const tsy10 = points(data.prices, 'us10y')
+  const us10y = tsy10.length ? lastPt(tsy10).v.toFixed(2) + '%' : '—'
 
   return (
     <div style={{ color: C.base02 }}>
@@ -455,9 +696,22 @@ export function CreditCharts() {
       </Section>
       <Section title="2. Where it is landing" intro="The borrowers funding the AI build-out with debt, and their suppliers. Semis fall when their customers' cost of capital rises; software does not depend on it.">
         <Grid defs={groups.landing} from={from} />
+        {cbb && (
+          <CbbPanel data={cbb} title="AI borrowers' own bond yields: Oracle and Meta 10-year"
+            note={`What these companies pay to borrow for ten years. Subtract the 10-year Treasury yield (${us10y} at the latest close, section 4) to get each company's credit spread. A spread near 3 points, where Oracle was in October 2026, is junk-like for an investment-grade borrower.`}
+            charts={[
+              ...(cbb.groups.oracle ?? []).map((c) => ({ ...c, label: `Oracle 10-year yield, ${c.label.toLowerCase()}` })),
+              ...(cbb.groups.meta ?? []).map((c) => ({ ...c, label: `Meta 10-year yield, ${c.label.toLowerCase()}` })),
+            ]} />
+        )}
       </Section>
-      <Section title="3. Is it spreading?" intro="Traded credit you can also watch intraday (HYG, LQD, BIZD, KRE in the Credit theme), the loan market and the lenders that get squeezed if the stress leaves AI, and equity fear.">
+      <Section title="3. Is it spreading?" intro="Traded credit you can also watch intraday (HYG, LQD, BIZD, KRE in the Credit theme), the loan market and the lenders that get squeezed if the stress leaves AI, equity fear, and the most-shorted stocks.">
         <Grid defs={groups.spreading} from={from} />
+        {cbb && (
+          <CbbPanel data={cbb} title="Goldman Short Index (most-shorted US stocks)"
+            note="Goldman's basket of the 50 most-shorted US stocks. A sharp rally in a weak market is a short squeeze, not relief; a steady fall means short sellers are winning as credit tightens. Read it against the CCC spread: both moving together is a real signal, a squeeze while CCC keeps widening is not."
+            charts={cbb.groups.goldman_short ?? []} />
+        )}
       </Section>
       <Section title="4. Rates and sovereign stress" intro="The interest-rate shock that started the selloff: Treasury yields, Treasury volatility, and European government spreads. Rate volatility calming while credit keeps widening means the stress has moved from rates into credit.">
         <Grid defs={groups.rates} from={from} />

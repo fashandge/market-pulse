@@ -62,7 +62,7 @@ SPREAD_KEYS = ("ig", "bbb", "hy", "ccc")  # FRED publishes percent; payload is b
 
 PRICE_TICKERS = (
     "HYG", "IEI", "LQD", "IEF", "KRE", "BIZD", "OWL", "ARCC",
-    "CRWV", "NBIS", "ORCL", "META", "SOXX", "IGV", "SPY",
+    "CRWV", "NBIS", "ORCL", "META", "SOXX", "IGV", "SPY", "QQQ",
 )
 PRICE_LEVEL_TICKERS = ("BKLN",)  # price, not total return
 MACRO_KEYS = ("vix", "us10y", "us30y")

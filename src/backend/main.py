@@ -9,13 +9,14 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from news.src.catalyst_calendar import calendar_note
 from news.src.catalyst_calendar import state as catalyst_state
 from src.backend.tickers import charts, pnf
-from src.backend import breadth, credit, estimates, overview_cache, portfolio, proposal_log
+from src.backend import breadth, cbb_charts, credit, estimates, most_shorted, overview_cache, portfolio, proposal_log
 
 NEWS_BASE_PATH = Path.home() / "projects/news/data/market_news"
 CFZH_PATH = Path.home() / "projects/news/data/cfzh_forum_summaries"
@@ -73,6 +74,31 @@ def get_market_credit():
     history file, since FRED keeps only three years of the ICE series), plus
     credit-ETF, lender and AI-borrower closes from the investment duckdb."""
     return credit.get_credit()
+
+
+@app.get("/api/market/credit/most-shorted")
+def get_most_shorted_basket():
+    """Free stand-in for Goldman's most-shorted basket: the daily equal-weight
+    index of the 50 most-shorted US stocks (FINRA short interest / SEC shares
+    outstanding, monthly rebalance) and the current members."""
+    return most_shorted.get_most_shorted()
+
+
+@app.get("/api/market/credit/cbb-charts")
+def get_cbb_charts():
+    """Bloomberg-sourced chart images scraped from the Credit Bubble Bulletin for
+    the Credit tab, by group (goldman_short, oracle, meta): names, labels and
+    Last-Modified dates of the stored images."""
+    return cbb_charts.list_charts()
+
+
+@app.get("/api/market/credit/cbb-charts/{name}")
+def get_cbb_chart_image(name: str):
+    """One stored Credit Bubble Bulletin chart image."""
+    path = cbb_charts.image_path(name)
+    if path is None:
+        raise HTTPException(status_code=404, detail=f"No stored chart named {name!r}")
+    return FileResponse(path, media_type="image/png", headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/api/market/estimates")
