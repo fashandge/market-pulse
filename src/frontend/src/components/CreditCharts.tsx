@@ -24,6 +24,8 @@ interface CreditPayload {
   fred: Block<FredKey> & { last: Record<FredKey, string | null> }
   prices: Block<PriceKey>
   tv: Block<TvKey> & { last: Record<TvKey, string | null> }
+  // 5Y CDS spreads in bp by name key (ORCL, SPACEX, …); null when the DB predates the CDS stage.
+  cds: (Block<string> & { last: Record<string, string | null>; names: Record<string, string> }) | null
 }
 
 // Solarized, matching BreadthCharts. The four line colors are the categorical
@@ -671,6 +673,17 @@ export function CreditCharts() {
       { id: 'semis', title: 'Semis against software, rebased to 100', note: 'SOXX semiconductors, IGV software, SPY the S&P 500.',
         series: [sp('SOXX', 'SOXX'), sp('IGV', 'IGV'), sp('SPY', 'SPY')], fmt: idx, rebase: true, baseline: 100 },
     ]
+    const cds = data.cds
+    if (cds) {
+      const names = (keys: string[]) => keys.filter((k) => k in cds.series).map((k) => ({ label: cds.names[k] ?? k, pts: points(cds, k) }))
+      const what = 'A 5-year credit-default swap is insurance against the company defaulting; the spread is its yearly cost per 100 of debt insured, in basis points. Gaps are days the contract did not trade.'
+      landing.push(
+        { id: 'cdsBuilders', title: 'Credit-default-swap spreads, 5-year: Oracle, SpaceX and the chipmakers', note: `${what} Oracle and SpaceX fund the build-out with debt; Nvidia, Broadcom and AMD sell into it.`,
+          series: names(['ORCL', 'SPACEX', 'AVGO', 'NVDA', 'AMD']), fmt: bp, hideable: true },
+        { id: 'cdsHyperscalers', title: 'Credit-default-swap spreads, 5-year: the hyperscalers', note: `${what} Meta, Amazon, Alphabet and Microsoft, the cloud and AI platforms paying for most of the capex.`,
+          series: names(['META', 'AMZN', 'GOOGL', 'MSFT']), fmt: bp, hideable: true },
+      )
+    }
     const spreading: PanelDef[] = [
       { id: 'ratio', title: 'Traded credit against Treasuries, rebased to 100', note: 'HYG/IEI and LQD/IEF: corporate-bond ETFs over same-maturity Treasury ETFs. Falling means credit is losing to Treasuries.',
         series: [sp('HYG/IEI', 'HYG/IEI'), sp('LQD/IEF', 'LQD/IEF')], fmt: idx, rebase: true, baseline: 100 },
@@ -805,8 +818,13 @@ export function CreditCharts() {
         10-year yields and MOVE from TradingView's daily history (unofficial feed, also stored locally) through{' '}
         {data.tv.last.move ? fmtDate(data.tv.last.move) : '—'}. Prices, VIX and Treasury yields from the investment
         project duckdb through the {fmtDate(latest)} close, adjusted for splits and dividends (BKLN for splits
-        only). Not shown: single-name CDS (CoreWeave, Oracle, hyperscalers) and bond trades on
-        FINRA TRACE, which have no free history feed.
+        only). 5-year CDS spreads are inferred from DTCC's public swap trade reports by the investment project's
+        nightly pipeline (through {data.cds?.last.ORCL ? fmtDate(data.cds.last.ORCL) : '—'}). Since July 2026
+        about half the days carry a reported traded spread; the rest are converted from the trade's upfront
+        payment, whose direction is not reported, so a name trading near its 1% coupon (100 bp) is the least
+        certain. Not shown: CoreWeave's CDS, which trades often but on a 5% coupon with almost no reported
+        spreads, so its level cannot be pinned (about 90 or about 1,160 bp in late October 2026); and bond
+        trades on FINRA TRACE, which have no free history feed.
       </p>
     </div>
   )

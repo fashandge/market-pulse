@@ -20,6 +20,11 @@ from the investment duckdb, whose nightly pipeline fetches and stores it
 - ``tv``: France, Italy and Spain 10-year government yields minus the German
   Bund's in basis points (sovereign stress), and the MOVE index (Treasury
   implied volatility), from ``credit_series_daily``'s TradingView series.
+- ``cds``: 5-year credit-default-swap spreads in basis points for the AI
+  borrowers and chipmakers (Oracle, SpaceX, hyperscalers, Nvidia, Broadcom,
+  AMD), from ``cds_spreads_daily``, which the investment pipeline infers from
+  DTCC's public trade reports. A name is null on days it did not trade. None
+  when the table is absent (a DB pulled before the stage existed).
 
 The payload is cached on the duckdb file's mtime (the nightly pull replaces it).
 """
@@ -135,8 +140,25 @@ def _prices(con: duckdb.DuckDBPyConnection) -> dict:
     return {"dates": dates, "series": series}
 
 
+def _cds(con: duckdb.DuckDBPyConnection) -> dict | None:
+    """Columnar 5Y CDS spreads per name, plus ``names`` (key -> display name)."""
+    exists = con.execute(
+        "SELECT count(*) FROM information_schema.tables WHERE table_name = 'cds_spreads_daily'"
+    ).fetchone()[0]
+    if not exists:
+        return None
+    by_key: dict[str, dict[str, float]] = {}
+    names: dict[str, str] = {}
+    for key, name, d, v in con.execute(
+        "SELECT name_key, name, date, spread_bp FROM cds_spreads_daily WHERE spread_bp IS NOT NULL"
+    ).fetchall():
+        by_key.setdefault(key, {})[d.strftime("%Y-%m-%d")] = float(v)
+        names[key] = name
+    return {**_columnar(by_key, "", lambda k: 0), "names": names}
+
+
 def get_credit() -> dict:
-    """``{"fred", "prices", "tv"}`` for the Credit tab."""
+    """``{"fred", "prices", "tv", "cds"}`` for the Credit tab."""
     global _cache
     with _lock:
         mtime = INVESTMENT_DB.stat().st_mtime
@@ -144,7 +166,7 @@ def get_credit() -> dict:
             con = duckdb.connect(str(INVESTMENT_DB), read_only=True)
             try:
                 history = _credit_series(con)
-                payload = {"fred": fred_block(history), "prices": _prices(con), "tv": tv_block(history)}
+                payload = {"fred": fred_block(history), "prices": _prices(con), "tv": tv_block(history), "cds": _cds(con)}
             finally:
                 con.close()
             _cache = (mtime, payload)

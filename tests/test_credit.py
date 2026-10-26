@@ -82,4 +82,19 @@ def test_get_credit_reads_all_three_blocks_from_the_db(tmp_path, monkeypatch):
     assert p["series"]["vix"] == [None, 19.45]
     assert p["series"]["HYG/IEI"] == [round(77.0 / 114.0, 5), round(77.05 / 114.67, 5)]
     assert p["series"]["BKLN"] == [None, 19.9]  # split-adjusted price, not the total-return close
+    assert out["cds"] is None  # a DB pulled before the CDS stage existed
     assert credit.get_credit() is out  # cached on the DB file's mtime
+
+
+def test_cds_block_is_columnar_per_name_and_skips_outlier_days(tmp_path):
+    con = duckdb.connect(str(tmp_path / "stocks.duckdb"))
+    con.execute("CREATE TABLE cds_spreads_daily (name_key VARCHAR, name VARCHAR, date DATE, spread_bp DOUBLE)")
+    con.executemany("INSERT INTO cds_spreads_daily VALUES (?, ?, ?, ?)", [
+        ("ORCL", "Oracle", dt.date(2026, 10, 22), 301.4), ("ORCL", "Oracle", dt.date(2026, 10, 23), 315.36),
+        ("MSFT", "Microsoft", dt.date(2026, 10, 23), 56.0), ("MSFT", "Microsoft", dt.date(2026, 10, 21), None),
+    ])
+    block = credit._cds(con)
+    assert block["dates"] == ["2026-10-22", "2026-10-23"]  # MSFT's outlier day (NULL spread) dropped
+    assert block["series"] == {"ORCL": [301, 315], "MSFT": [None, 56]}
+    assert block["names"] == {"ORCL": "Oracle", "MSFT": "Microsoft"}
+    assert block["last"] == {"ORCL": "2026-10-23", "MSFT": "2026-10-23"}
