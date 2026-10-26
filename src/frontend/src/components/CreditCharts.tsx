@@ -683,6 +683,10 @@ export function CreditCharts() {
         { id: 'cdsHyperscalers', title: 'Credit-default-swap spreads, 5-year: the hyperscalers', note: `${what} Meta, Amazon, Alphabet and Microsoft, the cloud and AI platforms paying for most of the capex.`,
           series: names(['META', 'AMZN', 'GOOGL', 'MSFT']), fmt: bp, hideable: true },
       )
+      if ('CRWV' in cds.series) landing.push(
+        { id: 'cdsCoreweave', title: 'Credit-default-swap spread, 5-year: CoreWeave', note: `${what} CoreWeave rents out Nvidia GPUs and funds them almost entirely with debt; it is high yield (junk), so it has its own scale. Above about 1,000 bp the market is pricing distress. It trades on a 500 bp coupon and almost never with a reported spread, so its level is inferred with the help of its stock price (the spread moves against it); the least certain stretch is where it crossed 500 bp in November 2025.`,
+          series: names(['CRWV']), fmt: bp, refs: [{ y: 500, label: '500 coupon' }, { y: 1000, label: '1,000 distress' }] },
+      )
     }
     const spreading: PanelDef[] = [
       { id: 'ratio', title: 'Traded credit against Treasuries, rebased to 100', note: 'HYG/IEI and LQD/IEF: corporate-bond ETFs over same-maturity Treasury ETFs. Falling means credit is losing to Treasuries.',
@@ -822,9 +826,9 @@ export function CreditCharts() {
         nightly pipeline (through {data.cds?.last.ORCL ? fmtDate(data.cds.last.ORCL) : '—'}). Since July 2026
         about half the days carry a reported traded spread; the rest are converted from the trade's upfront
         payment, whose direction is not reported, so a name trading near its 1% coupon (100 bp) is the least
-        certain. Not shown: CoreWeave's CDS, which trades often but on a 5% coupon with almost no reported
-        spreads, so its level cannot be pinned (about 90 or about 1,160 bp in late October 2026); and bond
-        trades on FINRA TRACE, which have no free history feed.
+        certain. CoreWeave, on a 5% coupon with almost no reported spreads, is resolved with its stock price
+        and matches the ICE levels quoted by CNBC and Bloomberg within about 6% in October 2026. Not shown:
+        bond trades on FINRA TRACE, which have no free history feed.
       </p>
     </div>
   )
