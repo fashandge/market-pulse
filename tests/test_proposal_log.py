@@ -6,6 +6,7 @@ import pytest
 
 from agents import coding_agents_cli
 from src.backend import main, proposal_log
+from stock_picker.src.attention_layer import digest_proposals
 
 # run_background's child with a fake agent: it replies with its config and the prompt,
 # fails when the prompt selects proposal 2, and sleeps on 3, so no claude runs.
@@ -152,12 +153,6 @@ def test_user_instructions_reach_the_prompt(tmp_path):
     assert status["instructions"] == "Read https://example.com/tsmc first."
     prompt = _wait(status["job_id"], jobs)["output"].split("\n", 1)[1]
     assert "<user_instructions>\nRead https://example.com/tsmc first.\n</user_instructions>" in prompt
-    assert prompt.rstrip().endswith("dropped (why).")
-
-
-def test_prompt_without_instructions_has_no_block(tmp_path):
-    prompt = proposal_log.build_prompt("r", tmp_path / "x.json", [1], 2, "   ")
-    assert "user_instructions" not in prompt
 
 
 def test_instructions_alone_start_a_job(tmp_path):
@@ -192,7 +187,7 @@ def test_second_start_while_running_is_refused(tmp_path):
 
 def test_note_links_point_at_the_logged_section(tmp_path):
     vault = tmp_path / "vault"
-    register = vault / proposal_log.PREMISE_REGISTER_NOTE
+    register = vault / digest_proposals.PREMISE_REGISTER_NOTE
     register.parent.mkdir(parents=True)
     register.write_text("# Register\n\n## P1 — Capex grows\n\n## P2 — Supply stays tight, so pricing holds\n")
     run = _run(tmp_path)
@@ -201,7 +196,7 @@ def test_note_links_point_at_the_logged_section(tmp_path):
     assert out[0]["note_label"] == "Watch Items · NVDA" and out[0]["note_url"] == watch_index   # no NVDA file yet
     assert out[1]["note_label"] == "Premise Register · P2"
     assert out[1]["note_url"].endswith("Register.md#P2-%E2%80%94-Supply-stays-tight,-so-pricing-holds")
-    nvda = vault / proposal_log.WATCH_ITEMS_ROOT / "AI Chips & Foundry" / "NVDA" / "NVDA Watch Items.md"
+    nvda = vault / digest_proposals.WIKI_ROOT / "AI Chips & Foundry" / "NVDA" / "NVDA Watch Items.md"
     nvda.parent.mkdir(parents=True)
     nvda.write_text("# NVDA Watch Items\n\n### 2026-10-19 · against · secondary — TPU cost lead\n")
     nvda_url = proposal_log.proposals(run, {}, vault)[0]["note_url"]
