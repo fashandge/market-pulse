@@ -30,8 +30,13 @@ def test_load_catalyst_events_missing_file(tmp_path):
     assert main.load_catalyst_events(tmp_path / "none.md", date(2026, 10, 13)) == []
 
 
-def test_eastern_to_la_converts_et_times():
-    assert main.eastern_to_la(date(2026, 10, 14), "14:00 ET") == (date(2026, 10, 14), "11:00 PT")
-    assert main.eastern_to_la(date(2026, 10, 14), "01:30 ET") == (date(2026, 10, 13), "22:30 PT")  # crosses midnight
-    assert main.eastern_to_la(date(2026, 11, 1), "01:30 ET") == (date(2026, 10, 31), "22:30 PT")  # DST-end day
-    assert main.eastern_to_la(date(2026, 10, 14), "after close") == (date(2026, 10, 14), "after close")
+def test_to_la_time_converts_zoned_times():
+    assert main.to_la_time(date(2026, 10, 14), "14:00 ET") == (date(2026, 10, 14), "11:00 PT")
+    assert main.to_la_time(date(2026, 10, 14), "01:30 ET") == (date(2026, 10, 13), "22:30 PT")  # crosses midnight
+    assert main.to_la_time(date(2026, 11, 1), "01:30 ET") == (date(2026, 10, 31), "22:30 PT")  # DST-end day
+    assert main.to_la_time(date(2026, 10, 14), "8:30am et") == (date(2026, 10, 14), "05:30 PT")
+    assert main.to_la_time(date(2026, 10, 14), "09:00 JST") == (date(2026, 10, 13), "17:00 PT")
+    assert main.to_la_time(date(2026, 10, 14), "14:15 CET") == (date(2026, 10, 14), "05:15 PT")  # CEST in October
+    assert main.to_la_time(date(2026, 10, 14), "12:00 GMT") == (date(2026, 10, 14), "05:00 PT")
+    for unchanged in ["after close", "14:00 CST", "25:00 ET", "10:00"]:
+        assert main.to_la_time(date(2026, 10, 14), unchanged) == (date(2026, 10, 14), unchanged)

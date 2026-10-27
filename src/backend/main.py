@@ -429,21 +429,42 @@ def get_x_summary():
     return {"date": formatted_date, "content": content}
 
 
-EASTERN_TIME = re.compile(r"(\d{1,2}):(\d{2})\s*(?:ET|EST|EDT)", re.IGNORECASE)
+# Zone labels the news agent writes after a catalyst time. "CST" is left out on
+# purpose: it means US Central or China Standard Time, so it stays unconverted.
+CATALYST_TIME_ZONES = {
+    **dict.fromkeys(["ET", "EST", "EDT"], "America/New_York"),
+    **dict.fromkeys(["CT", "CDT"], "America/Chicago"),
+    **dict.fromkeys(["MT", "MST", "MDT"], "America/Denver"),
+    **dict.fromkeys(["PT", "PST", "PDT"], "America/Los_Angeles"),
+    **dict.fromkeys(["UTC", "GMT"], "UTC"),
+    **dict.fromkeys(["UK", "BST"], "Europe/London"),
+    **dict.fromkeys(["CET", "CEST"], "Europe/Berlin"),
+    "JST": "Asia/Tokyo",
+    "KST": "Asia/Seoul",
+    "HKT": "Asia/Hong_Kong",
+    "SGT": "Asia/Singapore",
+}
+CATALYST_TIME = re.compile(r"(\d{1,2}):(\d{2})\s*(am|pm)?\s*([A-Za-z]+)", re.IGNORECASE)
 
 
-def eastern_to_la(day: date, time_text: str) -> tuple[date, str]:
-    """Convert an ``HH:MM ET`` catalyst time to LA time, e.g. ``08:30 ET`` -> ``05:30 PT``.
+def to_la_time(day: date, time_text: str) -> tuple[date, str]:
+    """Convert an ``HH:MM <zone>`` catalyst time to LA time, e.g. ``08:30 ET`` -> ``05:30 PT``.
 
-    The zone math handles DST on either coast, and a late-night ET time can move
-    the event to the previous LA day. Other time text is returned unchanged.
+    The zone math handles DST in both zones, and the conversion can move the event
+    to another LA day (``09:00 JST`` is the previous evening in LA). Text with no
+    recognized zone label ("after close", "14:00 CST") is returned unchanged.
     """
-    match = EASTERN_TIME.fullmatch(time_text)
-    if not match:
+    match = CATALYST_TIME.fullmatch(time_text)
+    zone = match and CATALYST_TIME_ZONES.get(match[4].upper())
+    if not zone:
         return day, time_text
     hour, minute = int(match[1]), int(match[2])
-    eastern = datetime(day.year, day.month, day.day, hour, minute, tzinfo=ZoneInfo("America/New_York"))
-    local = eastern.astimezone(ZoneInfo("America/Los_Angeles"))
+    if match[3]:
+        hour = hour % 12 + (12 if match[3].lower() == "pm" else 0)
+    if hour > 23 or minute > 59:
+        return day, time_text
+    source = datetime(day.year, day.month, day.day, hour, minute, tzinfo=ZoneInfo(zone))
+    local = source.astimezone(ZoneInfo("America/Los_Angeles"))
     return local.date(), local.strftime("%H:%M PT")
 
 
@@ -451,7 +472,7 @@ def load_catalyst_events(path: Path, today: date) -> list[dict]:
     """Catalyst-calendar rows dated ``today`` or later, soonest first.
 
     ``when`` is ``YYYY-MM-DD`` optionally followed by a time; it is split into
-    ``date`` and ``time``, with ET times converted to LA time; ``critical`` marks the few events the news project's
+    ``date`` and ``time``, with zoned times converted to LA time; ``critical`` marks the few events the news project's
     agent judged able to move the whole market. Past rows are dropped here too, so the tab stays right
     between the news project's twice-daily refreshes.
     """
@@ -462,7 +483,7 @@ def load_catalyst_events(path: Path, today: date) -> list[dict]:
             day = date.fromisoformat(when[:10])
         except ValueError:
             continue
-        day, time_text = eastern_to_la(day, when[10:].strip())
+        day, time_text = to_la_time(day, when[10:].strip())
         if day < today:
             continue
         category = row.get("category", "")

@@ -6,7 +6,7 @@ type Category = 'macro' | 'special' | 'earnings'
 interface CatalystEvent {
   category: Category
   date: string // YYYY-MM-DD
-  time: string // optional, LA time (backend converts ET), e.g. "05:30 PT"
+  time: string // optional, LA time (backend converts zoned times), e.g. "05:30 PT"
   days_away: number
   critical: boolean // could move the whole market (SPY/QQQ) given the current backdrop
   catalyst: string
