@@ -689,7 +689,7 @@ export function CreditCharts() {
       )
     }
     const spreading: PanelDef[] = [
-      { id: 'ratio', title: 'Traded credit against Treasuries, rebased to 100', note: 'HYG/IEI and LQD/IEF: corporate-bond ETFs over same-maturity Treasury ETFs. Falling means credit is losing to Treasuries.',
+      { id: 'ratio', title: 'Traded credit against Treasuries, rebased to 100', note: 'Corporate-bond ETFs over Treasury ETFs of similar maturity. HYG/IEI: HYG holds high-yield (junk) corporate bonds; IEI holds 3–7-year Treasuries. LQD/IEF: LQD holds investment-grade corporate bonds, mostly rated A and BBB; IEF holds 7–10-year Treasuries. Dividing by Treasuries removes the effect of interest-rate moves, leaving the credit risk. Falling means credit is losing to Treasuries.',
         series: [sp('HYG/IEI', 'HYG/IEI'), sp('LQD/IEF', 'LQD/IEF')], fmt: idx, rebase: true, baseline: 100 },
       { id: 'loans', title: 'Leveraged loans: BKLN price', note: 'Senior-loan ETF price, not total return. A sliding price means buyers of leveraged loans, the market next to private credit, are pulling back. It fell to about $17 in March 2020.',
         series: [sp('BKLN', 'BKLN')], fmt: (v) => '$' + v.toFixed(2) },
@@ -698,10 +698,10 @@ export function CreditCharts() {
       { id: 'vix', title: 'VIX', note: 'Spreads widening while VIX stays under 20 means bonds see the risk and stocks do not yet.',
         series: [sp('VIX', 'vix')], fmt: (v) => v.toFixed(1), refs: [{ y: 20, label: '20' }] },
     ]
-    // A short index rebased against the ETFs (only QQQ shown at first), with a new-tab smoothing playground.
-    const shortIndexPanel = (id: string, title: string, note: string, index: SeriesDef, others: SeriesDef[], playground: string): PanelDef => ({
+    // A short index rebased against the other lines (of the ETFs, only QQQ shown at first), with a new-tab smoothing playground.
+    const shortIndexPanel = (id: string, title: string, note: string, index: SeriesDef, others: SeriesDef[], playground: string, hidden: string[] = []): PanelDef => ({
       id, title, note, series: [{ ...index, color: SHORT_INDEX_COLOR }, ...others], fmt: idx, rebase: true, baseline: 100,
-      hideable: true, defaultHidden: ['SPY', 'SMH', 'SOXX'], link: { href: playground, label: 'Smoothing playground' },
+      hideable: true, defaultHidden: ['SPY', 'SMH', 'SOXX', ...hidden], link: { href: playground, label: 'Smoothing playground' },
     })
     const ourBasket = mostShorted && mostShorted.dates.length > 1
       ? { label: 'Basket', pts: mostShorted.dates.map((d, i) => ({ t: T(d), d, v: mostShorted.values[i] })) } : null
@@ -717,7 +717,7 @@ export function CreditCharts() {
         `Daily values read off the Credit Bubble Bulletin's Bloomberg charts (check them against the overlay below). ${sharpFrom ? `From ${fmtDate(sharpFrom)} the 34-day chart is used, accurate to a few tenths of a point; earlier days` : 'Days'} come from the year-to-date chart, accurate to about 2 points, with one-day spikes the least accurate. Each week's charts extend the stored history, which starts with this year's chart. Our most-shorted basket (below) is total return; the ETFs are price, like Goldman's index.`,
         { label: 'Goldman', pts: gs.dates.map((d, i) => ({ t: T(d), d, v: gs.values[i] })) },
         [...(ourBasket ? [{ ...ourBasket, label: 'Our basket', color: OUR_BASKET_COLOR }] : []), ...bench],
-        '/api/market/credit/goldman-short/overlay'))
+        '/api/market/credit/goldman-short/overlay', ['Our basket']))
     }
     if (mostShorted && ourBasket) {
       const top = mostShorted.members.slice(0, 8).map((x) => `${x.ticker} ${x.short_pct}%`).join(', ')
@@ -800,7 +800,7 @@ export function CreditCharts() {
             ]} />
         )}
       </Section>
-      <Section title="3. Is it spreading?" intro="Traded credit you can also watch intraday (HYG, LQD, BIZD, KRE in the Credit theme), the loan market and the lenders that get squeezed if the stress leaves AI, equity fear, and the most-shorted stocks.">
+      <Section title="3. Is it spreading?" intro="Traded credit you can also watch intraday (in the Credit theme: HYG junk bonds, LQD investment-grade bonds, BIZD private-credit lenders, KRE regional banks), the loan market and the lenders that get squeezed if the stress leaves AI, equity fear, and the most-shorted stocks.">
         <Grid defs={groups.spreading} from={from} latest={T(latest)} range={range} />
         {cbb && (
           <CbbPanel data={cbb} title="Goldman Short Index (most-shorted US stocks)"

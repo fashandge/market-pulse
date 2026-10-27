@@ -162,5 +162,5 @@ def test_goldman_overlay_lines_up_our_basket_and_etf_prices_on_the_digitized_day
     page = g.read_goldman_overlay(con, history)
     assert page["dates"] == ["2026-10-22", "2026-10-23"]
     assert [(x["key"], x["values"], x["visible"]) for x in page["lines"][:3]] == [
-        ("GOLDMAN", [280.5, 273.0], True), ("BASKET", [164.1, 162.6], True), ("QQQ", [700.0, 704.4], True)]
+        ("GOLDMAN", [280.5, 273.0], True), ("BASKET", [164.1, 162.6], False), ("QQQ", [700.0, 704.4], True)]
     assert [x["key"] for x in page["lines"][3:]] == ["SPY", "SMH", "SOXX"]

@@ -326,7 +326,7 @@ def read_goldman_overlay(con: duckdb.DuckDBPyConnection, history: dict[str, dict
         "dates": dates,
         "lines": [overlay_playground.line("GOLDMAN", "Goldman", [history[d]["value"] for d in dates], overlay_playground.INDEX_COLOR, True, 2.6),
                   overlay_playground.line("BASKET", "Our basket", [None if ours.get(d) is None else round(float(ours[d]), 4) for d in dates],
-                                          overlay_playground.COLORS["Basket"], True),
+                                          overlay_playground.COLORS["Basket"], False),
                   *overlay_playground.etf_lines(overlay_playground.closes_on(con, dates, "close_split_adjusted"))],
     }
 
