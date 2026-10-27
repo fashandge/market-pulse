@@ -429,11 +429,29 @@ def get_x_summary():
     return {"date": formatted_date, "content": content}
 
 
+EASTERN_TIME = re.compile(r"(\d{1,2}):(\d{2})\s*(?:ET|EST|EDT)", re.IGNORECASE)
+
+
+def eastern_to_la(day: date, time_text: str) -> tuple[date, str]:
+    """Convert an ``HH:MM ET`` catalyst time to LA time, e.g. ``08:30 ET`` -> ``05:30 PT``.
+
+    The zone math handles DST on either coast, and a late-night ET time can move
+    the event to the previous LA day. Other time text is returned unchanged.
+    """
+    match = EASTERN_TIME.fullmatch(time_text)
+    if not match:
+        return day, time_text
+    hour, minute = int(match[1]), int(match[2])
+    eastern = datetime(day.year, day.month, day.day, hour, minute, tzinfo=ZoneInfo("America/New_York"))
+    local = eastern.astimezone(ZoneInfo("America/Los_Angeles"))
+    return local.date(), local.strftime("%H:%M PT")
+
+
 def load_catalyst_events(path: Path, today: date) -> list[dict]:
     """Catalyst-calendar rows dated ``today`` or later, soonest first.
 
     ``when`` is ``YYYY-MM-DD`` optionally followed by a time; it is split into
-    ``date`` and ``time``; ``critical`` marks the few events the news project's
+    ``date`` and ``time``, with ET times converted to LA time; ``critical`` marks the few events the news project's
     agent judged able to move the whole market. Past rows are dropped here too, so the tab stays right
     between the news project's twice-daily refreshes.
     """
@@ -444,13 +462,14 @@ def load_catalyst_events(path: Path, today: date) -> list[dict]:
             day = date.fromisoformat(when[:10])
         except ValueError:
             continue
+        day, time_text = eastern_to_la(day, when[10:].strip())
         if day < today:
             continue
         category = row.get("category", "")
         events.append({
             "category": category if category in CATALYST_CATEGORIES else catalyst_state.FALLBACK_CATEGORY,
             "date": day.isoformat(),
-            "time": when[10:].strip(),
+            "time": time_text,
             "days_away": (day - today).days,
             "critical": row.get("importance") == "critical",
             "catalyst": row.get("catalyst", ""),

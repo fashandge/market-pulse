@@ -21,10 +21,17 @@ def test_load_catalyst_events_filters_sorts_and_splits_when(tmp_path):
 
     assert [e["catalyst"] for e in events] == ["September CPI release", "ASML Q3 earnings", "Unknown category"]
     cpi = events[0]
-    assert (cpi["date"], cpi["time"], cpi["days_away"]) == ("2026-10-14", "08:30 ET", 1)
+    assert (cpi["date"], cpi["time"], cpi["days_away"]) == ("2026-10-14", "05:30 PT", 1)
     assert cpi["critical"] and not events[1]["critical"]  # rows without importance read as normal
     assert events[2]["category"] == "special"  # unknown categories fall into the catch-all
 
 
 def test_load_catalyst_events_missing_file(tmp_path):
     assert main.load_catalyst_events(tmp_path / "none.md", date(2026, 10, 13)) == []
+
+
+def test_eastern_to_la_converts_et_times():
+    assert main.eastern_to_la(date(2026, 10, 14), "14:00 ET") == (date(2026, 10, 14), "11:00 PT")
+    assert main.eastern_to_la(date(2026, 10, 14), "01:30 ET") == (date(2026, 10, 13), "22:30 PT")  # crosses midnight
+    assert main.eastern_to_la(date(2026, 11, 1), "01:30 ET") == (date(2026, 10, 31), "22:30 PT")  # DST-end day
+    assert main.eastern_to_la(date(2026, 10, 14), "after close") == (date(2026, 10, 14), "after close")
