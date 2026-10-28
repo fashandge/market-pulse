@@ -78,8 +78,9 @@ def _quote(symbol: str, series: dict[date, float]) -> dict | None:
     close = series[dates[-1]]
     prev = series[dates[-2]] if len(dates) >= 2 else None
     change_abs, change = quote_format.pct_change(close, prev)
-    # Same exchange as the FRED path, so the tile and its chart link don't change.
-    return build_quote(symbol, "FRED", close, change=change, change_abs=change_abs, delay="EOD")
+    # Same exchange as the FRED path, so the tile and its chart link don't change; every
+    # series here is a yield, so it reads as a rate.
+    return build_quote(symbol, "FRED", close, change=change, change_abs=change_abs, delay="EOD", percent=True)
 
 
 def fetch_quotes(symbols: list[str]) -> dict[str, dict]:

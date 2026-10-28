@@ -12,10 +12,6 @@ decimals, sign, or volume suffixes.
 
 from __future__ import annotations
 
-# Treasury-yield and real-yield symbols display their price with a trailing "%".
-YIELD_SYMBOLS = {"US02Y", "US10Y", "US20Y", "US30Y", "DFII10", "T10YIE"}
-
-
 def num_str(x: float) -> str:
     """Compact numeric string (up to 4 decimals, trailing zeros stripped)."""
     s = f"{x:.4f}".rstrip("0").rstrip(".")
@@ -26,11 +22,11 @@ def formal_symbol(ticker: str, exchange: str) -> str:
     return f"{exchange}:{ticker}"
 
 
-def fmt_price(close: float | None, is_yield: bool = False) -> str:
+def fmt_price(close: float | None, percent: bool = False) -> str:
     if close is None:
         return "—"
     s = num_str(close)
-    return f"{s}%" if is_yield else s
+    return f"{s}%" if percent else s
 
 
 def fmt_pct(change: float | None) -> str:
@@ -85,12 +81,14 @@ def build_quote(
     volume: float | None = None,
     avg_volume: float | None = None,
     delay: str = "",
+    percent: bool = False,
 ) -> dict:
     """One overview-shaped quote dict. ``change`` is a percentage; ``delay`` is
-    a ``delay_label`` result ("" when the quote is real-time)."""
+    a ``delay_label`` result ("" when the quote is real-time); ``percent`` shows
+    the price as a rate ("4.374%"), from the watchlist row's ``unit`` column."""
     return {
         "delay": delay,
-        "price": fmt_price(close, symbol in YIELD_SYMBOLS),
+        "price": fmt_price(close, percent),
         "change_pct": fmt_pct(change),
         "change_pct_float": round(change, 2) if change is not None else None,
         "change_abs": fmt_change_abs(change_abs),

@@ -40,12 +40,11 @@ import json
 import time
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
 
 from src.backend import quote_format, treasury_yields, tv_session, vol_indices
 from src.backend.quote_format import build_quote
+from stock_picker.src.watchlist import ticker_csv
 
-TICKER_CSV = Path.home() / "projects/stock_picker/data/ticker.csv"
 SCANNER_URL = "https://scanner.tradingview.com/global/scan"
 US_SCANNER_URL = "https://scanner.tradingview.com/america/scan"
 # Listing venues for ``fetch_us_prices``: a bare symbol can also match an OTC
@@ -68,9 +67,8 @@ SCANNER_UNAVAILABLE = set(vol_indices.SYMBOLS)
 def _load_symbol_exchanges() -> dict[str, str]:
     """Bare symbol -> exchange from the ticker CSV (first occurrence wins)."""
     out: dict[str, str] = {}
-    with open(TICKER_CSV) as f:
-        for row in csv.DictReader(f):
-            out.setdefault(row["ticker"], row["exchange"])
+    for row in ticker_csv.rows():
+        out.setdefault(row["ticker"], row["exchange"])
     return out
 
 
@@ -84,6 +82,7 @@ def _fetch_fredgraph(ids: tuple[str, ...]) -> dict[str, dict]:
     page, which parses as a "CSV" with none of the series columns — that counts
     as a failure too.
     """
+    percent = ticker_csv.percent_symbols()
     try:
         url = FRED_CSV_URL.format(ids=",".join(ids))
         with urllib.request.urlopen(url, timeout=10) as resp:
@@ -109,7 +108,7 @@ def _fetch_fredgraph(ids: tuple[str, ...]) -> dict[str, dict]:
         result[symbol] = build_quote(
             symbol, "FRED", values[-1], change=change, change_abs=change_abs,
             # FRED publishes end-of-day with a 1-2 business-day lag.
-            delay="EOD",
+            delay="EOD", percent=symbol in percent,
         )
     return result
 
@@ -155,6 +154,7 @@ def fetch_covered_quotes(extra: dict[str, str] | None = None) -> dict[str, dict]
     holdings not mirrored into it yet); the CSV still wins on conflicts.
     """
     exchanges = {**(extra or {}), **_load_symbol_exchanges()}
+    percent = ticker_csv.percent_symbols()
     # formal "EXCHANGE:SYMBOL" -> bare symbol, for mapping the response back.
     formal_to_symbol: dict[str, str] = {}
     fred_symbols: list[str] = []
@@ -183,7 +183,7 @@ def fetch_covered_quotes(extra: dict[str, str] | None = None) -> dict[str, dict]
         quote = build_quote(
             symbol, "", close, change=change, change_abs=change_abs,
             volume=volume, avg_volume=avg_volume,
-            delay=quote_format.delay_label(update_mode),
+            delay=quote_format.delay_label(update_mode), percent=symbol in percent,
         )
         # The scanner echoes the symbol it matched, which is authoritative for
         # the chart link (it can differ from the CSV spelling).

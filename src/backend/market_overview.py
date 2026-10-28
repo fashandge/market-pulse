@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import csv
-from pathlib import Path
-
-TICKER_CSV = Path.home() / "projects/stock_picker/data/ticker.csv"
+from stock_picker.src.watchlist import ticker_csv
 
 SECTIONS = [
     ("Overview", False, [
@@ -54,10 +51,9 @@ def _known_group_names() -> set[str]:
 
 def _load_all_groups() -> dict[str, list[str]]:
     groups: dict[str, list[tuple[float, str]]] = {}
-    with open(TICKER_CSV) as f:
-        for row in csv.DictReader(f):
-            order = float(row["display_order"]) if row.get("display_order") else float("inf")
-            groups.setdefault(row["theme"], []).append((order, row["ticker"]))
+    for row in ticker_csv.rows():
+        order = float(row["display_order"]) if row["display_order"] else float("inf")
+        groups.setdefault(row["theme"], []).append((order, row["ticker"]))
     return {name: [t for _, t in sorted(entries)] for name, entries in groups.items()}
 
 

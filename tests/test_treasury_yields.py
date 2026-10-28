@@ -87,3 +87,12 @@ def test_fred_csv_used_when_up(monkeypatch):
     assert q["DFII10"]["price"] == "2.81%"
     assert q["T10YIE"]["price"] == "2.35%"  # newest blank row skipped per series
     assert called == []
+
+
+def test_fred_rows_read_the_percent_unit_from_the_watchlist(monkeypatch):
+    # The % comes from ticker.csv's unit column, not a symbol list in this repo.
+    csv_text = "observation_date,DFII10,CPIAUCSL\n2026-10-19,2.80,330.1\n2026-10-20,2.77,330.4\n"
+    monkeypatch.setattr(quotes.urllib.request, "urlopen", lambda url, timeout: io.BytesIO(csv_text.encode()))
+    monkeypatch.setattr(quotes.ticker_csv, "percent_symbols", lambda: {"DFII10"})
+    q = quotes._fetch_fred_quotes(["DFII10", "CPIAUCSL"])
+    assert q["DFII10"]["price"] == "2.77%" and q["CPIAUCSL"]["price"] == "330.4"
