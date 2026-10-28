@@ -2,7 +2,8 @@
 
 The holdings list is *not* hardcoded here. TradingView's ``portfolio``
 watchlist is the source of truth; the ``tv_watchlist.py`` CLI mirrors every
-watchlist change into ``~/projects/stock_picker/data/portfolio.csv`` —
+watchlist change into stock_picker's ``data/portfolio.csv`` (read through its
+``portfolio_csv`` module) —
 holdings only (benchmarks/ETFs dropped by instrument type), in watchlist
 order — so this module is a plain per-request CSV reader: no Chrome launch,
 no cache, no TTL, no background refresh.
@@ -19,19 +20,17 @@ guess.
 
 from __future__ import annotations
 
-import csv
-from pathlib import Path
+from stock_picker.src.watchlist import portfolio_csv
 
-PORTFOLIO_CSV = Path.home() / "projects/stock_picker/data/portfolio.csv"
+PORTFOLIO_CSV = portfolio_csv.PATH   # a module name so tests can point it at a fixture
 
 
 def load_holdings(force: bool = False) -> list[tuple[str, str]]:
     """Portfolio holdings as ordered ``(ticker, exchange)`` pairs, straight
     from the CSV. ``force`` is kept for interface compatibility (no-op)."""
     try:
-        with open(PORTFOLIO_CSV) as f:
-            return [(row["ticker"], row["exchange"]) for row in csv.DictReader(f)]
-    except (OSError, KeyError):
+        return [(row["ticker"], row["exchange"]) for row in portfolio_csv.rows(PORTFOLIO_CSV) if row["ticker"]]
+    except OSError:
         return []
 
 

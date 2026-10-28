@@ -1,7 +1,7 @@
 """Analyst estimates for the Overview "Estimates" tab.
 
 stock_picker's ``scripts/fetch_estimates.py`` writes one JSON file per ticker
-to ``~/projects/stock_picker/data/estimates/<TICKER>.json``: consensus EPS and
+to its ``data/estimates/<TICKER>.json`` (``fetch_estimates.DEFAULT_DATA_DIR``): consensus EPS and
 revenue by fiscal year (Seeking Alpha, cross-checked against
 stockanalysis.com) plus price, mean target and the rating-change log (finviz).
 A weekly launchd job refreshes the portfolio holdings; any other ticker is
@@ -38,7 +38,7 @@ from stock_picker.scripts import fetch_estimates
 from src.backend import portfolio, quotes
 from src.backend.tickers import charts
 
-ESTIMATES_DIR = Path.home() / "projects/stock_picker/data/estimates"
+ESTIMATES_DIR = fetch_estimates.DEFAULT_DATA_DIR
 
 # What the tab cannot render a row without.
 _REQUIRED = ("ticker", "fetched_at", "years", "ratings")
