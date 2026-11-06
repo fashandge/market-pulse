@@ -401,11 +401,18 @@ function buildIndicatorPane(
       hist.setData(
         rows
           .filter((r) => num(r.macd_hist) != null)
-          .map((r) => ({
-            time: time(r),
-            value: r.macd_hist as number,
-            color: (r.macd_hist as number) >= 0 ? 'rgba(133,153,0,0.6)' : 'rgba(220,50,47,0.6)',
-          })),
+          .map((r, i, bars) => {
+            const value = r.macd_hist as number
+            const prev = i > 0 ? (bars[i - 1].macd_hist as number) : null
+            // Positive but shrinking momentum gets a paler green than a growing bar.
+            const color =
+              value < 0
+                ? 'rgba(220,50,47,0.6)'
+                : prev != null && value < prev
+                  ? 'rgba(133,153,0,0.25)'
+                  : 'rgba(133,153,0,0.6)'
+            return { time: time(r), value, color }
+          }),
       )
       addLine('macd', C.blue)
       addLine('macd_signal', C.orange)
