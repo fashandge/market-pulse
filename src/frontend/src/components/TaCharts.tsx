@@ -404,10 +404,12 @@ function buildIndicatorPane(
           .map((r, i, bars) => {
             const value = r.macd_hist as number
             const prev = i > 0 ? (bars[i - 1].macd_hist as number) : null
-            // Positive but shrinking momentum gets a paler green than a growing bar.
+            // Fading momentum (bar moving back toward zero) gets a paler shade.
             const color =
               value < 0
-                ? 'rgba(220,50,47,0.6)'
+                ? prev != null && value > prev
+                  ? 'rgba(220,50,47,0.25)'
+                  : 'rgba(220,50,47,0.6)'
                 : prev != null && value < prev
                   ? 'rgba(133,153,0,0.25)'
                   : 'rgba(133,153,0,0.6)'
