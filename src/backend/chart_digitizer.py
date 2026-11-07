@@ -3,7 +3,7 @@
 Built for the Credit Bubble Bulletin's Bloomberg charts (``cbb_charts``): one
 blue line on white, light-gray horizontal gridlines with numeric labels on the
 left, a calendar-date x axis, and a title naming the window ("34-Day to 10/23",
-"'26 through 10/23").
+"'26 through 10/23", "33-Day to Nov. 6": the end date is numeric or a month name).
 
 Steps:
 
@@ -40,7 +40,7 @@ LINE_RGB = np.array([79, 129, 189])
 GRID_RGB = np.array([217, 217, 217])
 FRAME = 15  # px of the image's own light-gray border to ignore
 TESSERACT = shutil.which("tesseract") or "/opt/homebrew/bin/tesseract"
-VERSION = 2  # bump when the output changes, so stored readings are recomputed
+VERSION = 3  # bump when the output changes, so stored readings are recomputed
 
 
 class DigitizeError(Exception):
@@ -105,12 +105,22 @@ def _y_scale(im: np.ndarray, rows: list[float], left: int) -> tuple[float, float
     return float(a), float(b), resid
 
 
+MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
+# "Nov. 6", "Sept. 3", "October 30": a month name or abbreviation, then the day
+MONTH_DAY_RE = re.compile(
+    r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s*(\d{1,2})(?!\d)", re.IGNORECASE
+)
+
+
 def parse_title(text: str, modified: date) -> tuple[date, int | None]:
-    """(end date, trading-day count or None) from a title like "34-Day to 10/23"."""
-    m = re.search(r"(\d{1,2})/(\d{1,2})(?!\d)", text)
-    if not m:
+    """(end date, trading-day count or None) from a title like "34-Day to 10/23"
+    or "33-Day to Nov. 6"."""
+    if m := re.search(r"(\d{1,2})/(\d{1,2})(?!\d)", text):
+        month, day = int(m.group(1)), int(m.group(2))
+    elif m := MONTH_DAY_RE.search(text):
+        month, day = MONTHS.index(m.group(1)[:3].lower()) + 1, int(m.group(2))
+    else:
         raise DigitizeError(f"no end date in title {text!r}")
-    month, day = int(m.group(1)), int(m.group(2))
     year = modified.year - 1 if month > modified.month + 1 else modified.year
     n = re.search(r"(\d+)\s*-\s*Day", text, re.IGNORECASE)
     return date(year, month, day), int(n.group(1)) if n else None

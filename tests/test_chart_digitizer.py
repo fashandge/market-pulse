@@ -21,6 +21,11 @@ def test_parse_title_reads_end_date_and_window():
     assert cd.parse_title("Goldman Short Index: '26 through 10/23", dt.date(2026, 10, 23)) == (dt.date(2026, 10, 23), None)
     # a December chart posted in early January belongs to the previous year
     assert cd.parse_title("x: 34-Day to 12/31", dt.date(2027, 1, 2))[0] == dt.date(2026, 12, 31)
+    # since November the titles spell the month: "Nov. 6", with a straight or curly apostrophe
+    assert cd.parse_title("Goldman Short Index: 33-Day to Nov. 6", dt.date(2026, 11, 6)) == (dt.date(2026, 11, 6), 33)
+    assert cd.parse_title("Goldman Short Index: ‘26 through Nov. 6", dt.date(2026, 11, 6)) == (dt.date(2026, 11, 6), None)
+    assert cd.parse_title("x: 20-Day to Sept. 3", dt.date(2026, 9, 3))[0] == dt.date(2026, 9, 3)
+    assert cd.parse_title("x: 20-Day to December 31", dt.date(2027, 1, 2))[0] == dt.date(2026, 12, 31)
 
 
 def test_window_adds_weekdays_the_database_does_not_have_yet():
